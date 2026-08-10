@@ -1,0 +1,34 @@
+<!--
+  Contour Form 1 — Webflow Code Embed replacement.
+  Paste this into the contact-form_embed Code Embed on the Free Trial page,
+  replacing the current ~50k-char inline version.
+
+  JS is served by GitHub Pages — rebuilds on every push to main (~30-60s),
+  browser cache max 10 minutes. No tags or cache purging needed.
+  For the production cutover, optionally switch to a pinned jsDelivr tag URL
+  (https://cdn.jsdelivr.net/gh/contour-tech/contour-education-signup-form-hubspot@v1.0.0/js/form1.js)
+  for a frozen, immutable version.
+
+  CSS stays in the Webflow page header code — unchanged.
+  The Cal.com booking widget script on the page is separate — do not touch.
+-->
+
+<div id="contour-form1"></div>
+
+<script charset="utf-8" type="text/javascript" src="https://js-ap1.hsforms.net/forms/embed/v2.js"></script>
+
+<script src="https://contour-tech.github.io/contour-education-signup-form-hubspot/js/form1.js"></script>
+
+<script>
+  hbspt.forms.create({
+    portalId: "441696810",
+    formId: "b9c413c9-b520-4d4a-85d8-78934dc948bb",
+    region: "ap1",
+    target: "#contour-form1",
+    onFormReady: function ($form) {
+      if (window.ContourForm1Logic) {
+        ContourForm1Logic.init($form[0]);
+      }
+    }
+  });
+</script>

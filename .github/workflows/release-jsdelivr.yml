@@ -1,0 +1,53 @@
+name: Verify jsDelivr + create release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Wait for jsDelivr to serve this tag, verify byte-identical
+        run: |
+          URL="https://cdn.jsdelivr.net/gh/${GITHUB_REPOSITORY}@${GITHUB_REF_NAME}/js/form1.js"
+          echo "Verifying $URL"
+          for i in $(seq 1 20); do
+            if curl -fsS "$URL" -o /tmp/cdn.js && cmp -s /tmp/cdn.js js/form1.js; then
+              echo "jsDelivr serves ${GITHUB_REF_NAME} byte-identical."
+              exit 0
+            fi
+            echo "Not ready yet (attempt $i/20), retrying in 15s..."
+            sleep 15
+          done
+          echo "jsDelivr did not serve the correct file within 5 minutes." >&2
+          exit 1
+
+      - name: Create GitHub Release with production URL
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          URL="https://cdn.jsdelivr.net/gh/${GITHUB_REPOSITORY}@${GITHUB_REF_NAME}/js/form1.js"
+          PAGES_URL="https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}/js/form1.js"
+          gh release create "${GITHUB_REF_NAME}" \
+            --title "Form 1 logic ${GITHUB_REF_NAME}" \
+            --notes "**Production (pinned, immutable) URL:**
+
+          \`\`\`
+          ${URL}
+          \`\`\`
+
+          Verified byte-identical against the repo at tag time.
+
+          **Staging URL (auto-updates on push to main):**
+          \`\`\`
+          ${PAGES_URL}
+          \`\`\`
+
+          To ship to production: replace the script src in the Webflow Code Embed with the pinned URL above."

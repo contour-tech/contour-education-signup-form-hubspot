@@ -1,0 +1,1201 @@
+/* =========================================================
+   CONTOUR HUBSPOT FORM STYLING
+========================================================= */
+
+.hs-form,
+form.hsForm {
+  font-family: inherit;
+  color: #212121;
+  text-align: left;
+  margin-top: 2.5rem;
+
+  /* Widen just the HubSpot form */
+  max-width: 880px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.hs-form fieldset {
+  max-width: 100% !important;
+  margin-bottom: 0;
+}
+
+.hs-form fieldset.form-columns-2 .hs-form-field,
+.hs-form fieldset.form-columns-3 .hs-form-field {
+  padding-right: 0.75rem;
+}
+
+.hs-form fieldset.form-columns-2 .hs-form-field:last-child,
+.hs-form fieldset.form-columns-3 .hs-form-field:last-child {
+  padding-right: 0;
+}
+
+.hs-form .hs-form-field {
+  margin-bottom: 1.25rem;
+  box-sizing: border-box; /* without this, padding-right on non-last fields in a 2/3-column fieldset (below) adds to the field's width rather than being contained within it — likely why Email/Phone (and other 2-column pairs) were never actually symmetric */
+}
+
+/* =========================================================
+   LABELS
+========================================================= */
+
+.hs-form .hs-form-field > label,
+.hs-form .hs-fieldtype-booleancheckbox > label > span,
+.hs-form .hs-fieldtype-checkbox > label > span {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: nowrap;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #0C3166;
+  margin-bottom: 0.5rem;
+  letter-spacing: 0.01em;
+}
+
+.hs-form .hs-form-required {
+  color: #0540F2;
+  margin-left: 0.25rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.hs-form .hs-field-desc {
+  font-size: 0.8rem;
+  color: #6b6b6b;
+  margin-top: 0.25rem;
+  margin-bottom: 0.5rem;
+}
+
+/* =========================================================
+   SECTION HEADINGS
+========================================================= */
+
+.hs-form .hs-richtext h1,
+.hs-form .hs-richtext h2,
+.hs-form .hs-richtext h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #0C3166;
+  text-align: left;
+  margin: 2rem 0 1rem 0;
+  padding-top: 0.5rem; /* explicit gap above the heading — padding doesn't collapse the way margin can, so this stays visible regardless */
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(12,49,102,0.12);
+}
+
+.hs-form .hs-richtext:first-child h1,
+.hs-form .hs-richtext:first-child h2,
+.hs-form .hs-richtext:first-child h3 {
+  margin-top: 0;
+  padding-top: 0;
+}
+
+/* =========================================================
+   SECTION DIVIDERS
+   -----------------------------------------------------------
+   Inserted via JS (ensureDividerBefore) directly above the Program
+   Interest and Referral fields.
+========================================================= */
+
+.contour-section-divider {
+  border: none;
+  border-top: 1px solid rgba(12, 49, 102, 0.12);
+  margin: 2rem 0 1.5rem;
+}
+
+/* =========================================================
+   INPUTS
+========================================================= */
+
+.hs-form .hs-input:not([type="checkbox"]):not([type="radio"]):not([type="file"]) {
+  width: 100% !important;
+  font-family: inherit;
+  font-size: 1rem;
+  color: #212121;
+  background-color: #FFFFFF;
+  border: 1px solid rgba(12,49,102,0.18);
+  border-radius: 0.75rem;
+  padding: 0.875rem 1rem;
+  line-height: 1.4;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  box-sizing: border-box;
+  min-height: 56px;
+}
+
+.hs-form textarea.hs-input {
+  min-height: 8rem;
+  resize: vertical;
+}
+
+.hs-form .hs-input:focus {
+  outline: none;
+  border-color: #0540F2;
+  box-shadow: 0 0 0 3px rgba(5,64,242,0.15);
+}
+
+.hs-form .hs-input::placeholder {
+  color: rgba(33,33,33,0.4);
+}
+
+/* =========================================================
+   SELECTS
+========================================================= */
+
+.hs-form select.hs-input {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path fill='none' stroke='%230C3166' stroke-width='2' d='M1 1l5 5 5-5'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
+  padding-right: 2.5rem;
+}
+
+/* =========================================================
+   RADIO + CHECKBOX CARD GRID
+========================================================= */
+
+.hs-form .hs-fieldtype-booleancheckbox ul,
+.hs-form .hs-fieldtype-checkbox ul,
+.hs-form .hs-fieldtype-radio ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+/* Remove default spacing */
+
+.hs-form .hs-fieldtype-booleancheckbox li,
+.hs-form .hs-fieldtype-checkbox li,
+.hs-form .hs-fieldtype-radio li {
+  margin: 0;
+}
+
+/* Hide native inputs */
+
+.hs-form .hs-fieldtype-booleancheckbox li input,
+.hs-form .hs-fieldtype-checkbox li input,
+.hs-form .hs-fieldtype-radio li input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Card appearance */
+
+.hs-form .hs-fieldtype-booleancheckbox li label,
+.hs-form .hs-fieldtype-checkbox li label,
+.hs-form .hs-fieldtype-radio li label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 100%; /* fills its grid column fluidly — was a hardcoded 364px calibrated against an incorrect assumed container width (see 48rem container width audit) */
+  box-sizing: border-box;
+  min-height: 56px;
+  padding: 0.875rem 1rem;
+
+  border: 1px solid rgba(12,49,102,0.12);
+  border-radius: 1rem;
+  background: #FFFFFF;
+
+  font-size: 1rem;
+  font-weight: 500;
+  color: #0C3166;
+  text-align: center;
+  line-height: 1.4;
+
+  cursor: pointer;
+  box-sizing: border-box;
+
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    transform 0.15s ease;
+}
+
+/* Hover state */
+
+.hs-form .hs-fieldtype-booleancheckbox li label:hover,
+.hs-form .hs-fieldtype-checkbox li label:hover,
+.hs-form .hs-fieldtype-radio li label:hover {
+  background: rgba(12,49,102,0.04);
+  transform: translateY(-1px);
+}
+
+/* Selected text */
+
+.hs-form .hs-fieldtype-booleancheckbox li input:checked + span,
+.hs-form .hs-fieldtype-checkbox li input:checked + span,
+.hs-form .hs-fieldtype-radio li input:checked + span {
+  color: #FFF9F1;
+  font-weight: 600;
+}
+
+/* Selected card */
+
+.hs-form .hs-fieldtype-booleancheckbox li label:has(input:checked),
+.hs-form .hs-fieldtype-checkbox li label:has(input:checked),
+.hs-form .hs-fieldtype-radio li label:has(input:checked) {
+  background: #0C3166;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+/* =========================================================
+   RICH TEXT
+========================================================= */
+
+.hs-form .hs-richtext,
+.hs-form .hs-richtext p {
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: #212121;
+  margin: 0 0 1rem 0;
+  text-align: left;
+}
+
+.hs-form .hs-richtext a {
+  color: #0540F2;
+  text-decoration: underline;
+}
+
+  
+/* =========================================================
+   ERROR MESSAGES
+========================================================= */
+
+.hs-form .hs-error-msgs,
+.hs-form .hs-error-msg {
+  list-style: none;
+  padding: 0;
+  margin: 0.375rem 0 0 0;
+  font-size: 0.85rem;
+  color: #c8102e;
+}
+
+.hs-form .hs-input.invalid,
+.hs-form .hs-input.error {
+  border-color: #c8102e;
+}
+
+/* Prevent validation errors inheriting card styles */
+
+.hs-form .hs-error-msgs {
+  margin-top: 0.5rem;
+  padding-left: 0 !important;
+  text-align: left !important;
+}
+
+.hs-form .hs-error-msgs li,
+.hs-form .hs-error-msgs label {
+  display: block !important;
+  width: 100% !important;
+
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+
+  padding: 0 !important;
+  margin: 0 !important;
+
+  min-height: auto !important;
+
+  color: #c8102e !important;
+  font-size: 0.85rem !important;
+  font-weight: 500 !important;
+  line-height: 1.4 !important;
+
+  text-align: left !important;
+
+  transform: none !important;
+  cursor: default !important;
+}
+
+/* =========================================================
+   SUBMIT BUTTON
+========================================================= */
+
+.hs-form .hs-submit {
+  margin-top: 1.5rem;
+  text-align: center;
+}
+
+.hs-form .hs-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+
+  background-color: #D7FC3D;
+  color: #0C3166;
+
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 700;
+
+  padding: 1rem 2.25rem;
+
+  border: none;
+  border-radius: 999px;
+
+  cursor: pointer;
+
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+
+  width: auto;
+  min-width: 12rem;
+}
+
+.hs-form .hs-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(12,49,102,0.12);
+}
+
+.hs-form .hs-button:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(5,64,242,0.25);
+}
+
+/* =========================================================
+   THANK YOU STATE
+========================================================= */
+
+.submitted-message {
+  padding: 2rem;
+  background-color: #FFFFFF;
+  border: 1px solid rgba(12,49,102,0.12);
+  border-radius: 1rem;
+  text-align: center;
+  color: #0C3166;
+  font-size: 1.05rem;
+}
+
+/* =========================================================
+   MOBILE
+========================================================= */
+
+@media screen and (max-width: 767px) {
+
+  .hs-form fieldset.form-columns-2 .hs-form-field,
+  .hs-form fieldset.form-columns-3 .hs-form-field {
+    padding-right: 0;
+    width: 100% !important;
+  }
+
+  .hs-form .hs-button {
+    width: 100%;
+  }
+
+  .hs-form .hs-fieldtype-booleancheckbox ul,
+  .hs-form .hs-fieldtype-checkbox ul,
+  .hs-form .hs-fieldtype-radio ul {
+    grid-template-columns: 1fr;
+  }
+}
+  .contour-program-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  position: relative;
+  box-sizing: border-box;
+  border: 1px solid #d8dce1;
+  border-radius: 12px;
+  padding: 18px 20px;
+  margin-bottom: 0; /* the JS-applied grid gap handles spacing between cards */
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+ 
+.contour-program-card:hover {
+  border-color: #9aa5b1;
+}
+ 
+.contour-program-card--selected {
+  border-color: #2f6f3e;
+  box-shadow: 0 0 0 1px #2f6f3e;
+}
+
+/* Greyed out / unselectable — region-ineligible for the current Location.
+   pointer-events:none is a belt-and-braces addition alongside the input's
+   own `disabled` attribute (which already prevents selection/submission
+   on its own) — this also stops hover states from firing on a card that
+   shouldn't visually respond to interaction. */
+.contour-program-card--disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Hide the real checkbox visually but keep it functional/focusable */
+.contour-program-card input[type="checkbox"] {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+}
+
+.contour-program-card__badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background-color: #2f6f3e;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.contour-program-card--selected .contour-program-card__badge {
+  display: flex;
+}
+
+.contour-program-interest-location-hint {
+  font-size: 0.85rem;
+  color: #6b7280;
+  margin: -0.25rem 0 0.75rem;
+}
+
+.contour-program-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.contour-program-card__logo-placeholder {
+  width: 40px;
+  height: 40px;
+  margin-bottom: 4px;
+  border: 1px dashed #c7ccd3;
+  border-radius: 8px;
+  background-color: #f4f5f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Fallback glyph — only shown on the empty placeholder box, i.e. a
+   card that didn't match a known PROGRAM_CARD_CONFIG pattern and so
+   has no logoUrl. Real logos (below) don't get this. */
+.contour-program-card__logo-placeholder:not(.contour-program-card__logo-placeholder--has-logo)::before {
+  content: "";
+  width: 18px;
+  height: 18px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%239aa5b1' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='3' y='3' width='18' height='18' rx='2'/><circle cx='8.5' cy='8.5' r='1.5'/><path d='M21 15l-5-5L5 21'/></svg>");
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+/* Actual logo — sized for a horizontal lockup (fixed height, auto
+   width) rather than the square placeholder box, since all three
+   supplied logos are wide horizontal versions, not icons. */
+.contour-program-card__logo-placeholder--has-logo {
+  width: auto;
+  height: 28px;
+  margin-bottom: 8px;
+  border: none;
+  border-radius: 0;
+  background-color: transparent;
+  justify-content: flex-start;
+}
+
+.contour-program-card__logo {
+  height: 100%;
+  width: auto;
+  max-width: 100%;
+  display: block;
+  object-fit: contain;
+}
+
+.contour-program-card__title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1a1d21;
+}
+ 
+.contour-program-card__description {
+  font-size: 14px;
+  color: #6b7280;
+  line-height: 1.4;
+}
+ 
+.contour-program-card__pill {
+  display: inline-block;
+  width: fit-content;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 4px 12px;
+  border-radius: 999px;
+  margin-top: 2px;
+}
+ 
+.contour-pill--blue {
+  /* Education */
+  background-color: #092749;
+  color: #FFFFFF;
+}
+ 
+.contour-pill--green {
+  /* TestPrep — same yellow-green as the submit button, paired with the
+     same dark navy text color already used there for contrast */
+  background-color: #D7FC3D;
+  color: #0C3166;
+}
+ 
+.contour-pill--purple {
+  /* MedPrep */
+  background-color: #007AFF;
+  color: #FFFFFF;
+}
+
+/* =========================================================
+   PROGRAM INTEREST — 3-COLUMN CARD GRID
+   -----------------------------------------------------------
+   The grid layout itself is now applied via inline style in JS
+   (enforceProgramCardGrid() in form1_custom_logic.js), not a CSS class
+   here. HubSpot's own forms script apparently rewrites the <ul>'s
+   className wholesale when the field's validation state changes (e.g.
+   selecting then unselecting a card), which silently wiped out a
+   class-based grid rule that lived here previously. Inline style + a
+   MutationObserver reasserting it in JS is robust against that; nothing
+   needed in this stylesheet for it anymore.
+========================================================= */
+
+/* =========================================================
+   STUDENT / GUARDIAN FIELD PAIRING
+   -----------------------------------------------------------
+   Pairs Student/Guardian detail fields into two-column rows
+   (first/last name together, email/phone together).
+
+   UPDATE: switched from float + width + padding-right to flex +
+   flex-wrap + gap. Floats don't form independent "rows" — each new
+   float just packs into the next available horizontal slot, so when
+   HubSpot injects a validation error message under one field (e.g.
+   Student First Name), that field's box grows taller than its sibling,
+   and the NEXT field in DOM order (Student Email) can't slot in
+   cleanly to the right — it gets pushed down and misaligned, cascading
+   through the rest of the group. This is the same category of bug the
+   Parent/Guardian radio card fix already solved the same way (see its
+   own "UPDATE 4" comment elsewhere in this file) — flex-wrap sizes each
+   wrapped line independently by its own tallest item, so a taller First
+   Name field only affects the First/Last row, and Email/Phone on the
+   next line are unaffected.
+
+   Confirmed via the live rendered DOM: these fields sit as direct
+   siblings inside a single .hs-dependent-field wrapper (HubSpot's
+   container for the whole Contact Type conditional group) — assumed to
+   still be the ONLY children of that wrapper; if HubSpot has since
+   added other elements inside it, this display:flex could affect more
+   than intended and is worth a quick DOM check.
+========================================================= */
+
+.hs-form .hs-dependent-field {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 0.75rem;
+  row-gap: 1.25rem; /* replaces each field's own margin-bottom while inside this wrapper */
+  margin-bottom: 1.25rem; /* this wrapper isn't a .hs-form-field itself, so it doesn't inherit the sitewide field spacing — needed so the next field (e.g. Current School) doesn't sit flush against it */
+}
+
+/* Default: any direct child of this wrapper takes the full row —
+   this notably includes the Contact Type radio field itself (also a
+   direct child of .hs-dependent-field, not just the 8 conditionally-
+   shown detail fields below it), which otherwise fell back to flex's
+   default shrink-to-fit sizing once this wrapper became a flex
+   container, condensing its cards down to their content width. */
+.hs-form .hs-dependent-field > .hs-form-field {
+  flex: 0 0 100%;
+  margin-bottom: 0 !important;
+}
+
+/* !important here guarantees this wins over the full-width default
+   above regardless of selector specificity ordering (that rule has
+   more class-selector weight than this one does). */
+.hs-form .hs_student_first_name,
+.hs-form .hs_student_last_name,
+.hs-form .hs_student_email,
+.hs-form .hs_student_phone,
+.hs-form .hs_guardian_s_first_name,
+.hs-form .hs_guardian_s_last_name,
+.hs-form .hs_guardian_email,
+.hs-form .hs_guardian_phone {
+  flex: 0 0 calc(50% - 0.375rem) !important;
+  box-sizing: border-box;
+  margin-bottom: 0 !important;
+}
+
+@media screen and (max-width: 767px) {
+  .hs-form .hs_student_first_name,
+  .hs-form .hs_student_last_name,
+  .hs-form .hs_student_email,
+  .hs-form .hs_student_phone,
+  .hs-form .hs_guardian_s_first_name,
+  .hs-form .hs_guardian_s_last_name,
+  .hs-form .hs_guardian_email,
+  .hs-form .hs_guardian_phone {
+    flex: 0 0 100% !important;
+  }
+}
+
+/* =========================================================
+   INTERESTED SUBJECTS — PLAIN CHECKBOXES + STATIC CATEGORY HEADERS
+   -----------------------------------------------------------
+   Interested Subjects previously reused the generic checkbox-card
+   styling (button-like box, hidden native input) also used for
+   Campus/Referral/etc — fine at their scale, but a wall of heavy,
+   near-identical boxes at 70+ subjects. Switched to plain checkboxes
+   (visible native input, small square, left-aligned text) — the same
+   pattern already used for the waitlist/TOS single checkboxes, just
+   applied across this whole multi-select list instead of one field.
+   Scoped tightly to .hs_web_form__interested_subject (this field's own wrapper
+   class) so Campus/Referral/waitlist/TOS keep their existing card
+   treatment untouched.
+
+   Pairs with enhanceInterestedSubjectsCategories() in
+   form1_custom_logic.js, which groups subjects under a heading
+   (Science, Mathematics, English, Selective Entry, Medical Entry,
+   Other) — static labels only, no click/expand behaviour, so no
+   interactive affordance (cursor, hover, chevron) here either.
+========================================================= */
+
+.hs_web_form__interested_subject li.hs-form-checkbox label {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  width: auto !important;
+  min-height: 0 !important;
+  padding: 0.375rem 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  background: none !important;
+  box-shadow: none !important;
+  cursor: pointer !important;
+  font-weight: 400 !important;
+  color: #212121 !important;
+  text-align: left !important;
+  gap: 0.5rem;
+}
+
+.hs_web_form__interested_subject li.hs-form-checkbox label:hover {
+  background: none !important;
+  transform: none !important;
+}
+
+.hs_web_form__interested_subject li.hs-form-checkbox input[type="checkbox"] {
+  position: static !important;
+  opacity: 1 !important;
+  width: 1.1rem !important;
+  height: 1.1rem !important;
+  margin: 0 !important;
+  pointer-events: auto !important;
+  flex-shrink: 0;
+  accent-color: #0540F2;
+}
+
+.hs_web_form__interested_subject li.hs-form-checkbox input:checked + span {
+  color: #0C3166 !important;
+  font-weight: 600 !important;
+}
+
+.hs_web_form__interested_subject li.hs-form-checkbox label:has(input:checked) {
+  background: none !important;
+  border-color: transparent !important;
+}
+
+.hs_web_form__interested_subject li.hs-form-checkbox.contour-subject-option--blocked label {
+  cursor: not-allowed !important;
+  opacity: 0.5;
+}
+
+.contour-subject-exclusion-note {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: #6b7280;
+  margin-top: 0.125rem;
+  margin-left: 1.6rem; /* aligns under the label text, past the checkbox */
+}
+
+.contour-subject-category-header {
+  grid-column: 1 / -1; /* span both columns of the outer checkbox grid */
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #0C3166;
+  padding: 0.625rem 0.25rem 0.25rem;
+  margin-top: 0.5rem;
+  border-bottom: 1px solid rgba(12, 49, 102, 0.12);
+}
+
+.contour-subject-category-header:first-child {
+  margin-top: 0;
+}
+
+/* =========================================================
+   PARENT OR GUARDIAN — RADIO CARD FIX
+========================================================= */
+
+/**
+ * Contour Form 1 — Parent/Guardian radio card fix
+ * ===================================================
+ * UPDATE: originally scoped to .hs_contact_type, but the field's real
+ * internal name turned out to be .hs_web_form_contact_type in the live
+ * DOM (renamed at some point on the HubSpot side) — so that version of
+ * the fix silently matched nothing, which is why neither issue appeared
+ * to be resolved. Rescoped to .hs-fieldtype-radio, the field TYPE class
+ * rather than the specific property name, since this is currently the
+ * only radio-type field on the form — more resilient to a future
+ * property rename breaking this again. If a second radio field is ever
+ * added with different intended styling, this would need narrowing back
+ * down to a specific field.
+ *
+ * Self-contained override, using !important throughout — deliberately
+ * not relying on the generic ".hs-fieldtype-radio li label" rule
+ * elsewhere in the stylesheet, since that rule not reliably reaching
+ * this specific field is the most likely explanation for the reduced
+ * click target (if the label isn't actually getting `display:flex;
+ * width:100%`, it shrinks to fit just its text).
+ *
+ * UPDATE 4: switched from float + padding to flex + gap entirely.
+ * Padding-based spacing puts the gutter INSIDE each card's own box
+ * (Student's padding-right, Guardian's padding-left), which — as
+ * confirmed by inspecting the rendered DOM — shows up as uneven
+ * spacing added to each card individually rather than a clean gap
+ * between them, and doesn't stack cleanly on mobile (no left/right
+ * edge alignment once the cards wrap to full width). `gap` is a real
+ * "space between boxes" property that lives in neither box, so this
+ * class of problem isn't possible with it. Also means this field no
+ * longer tries to imitate the text fields' exact column mechanism —
+ * it's simply two equal-width flex items with a clean gap between them.
+ */
+
+.hs-fieldtype-radio .input > ul.inputs-list {
+  display: flex !important;
+  gap: 1.25rem !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  list-style: none !important;
+}
+
+.hs-fieldtype-radio .input > ul.inputs-list > li.hs-form-radio {
+  flex: 1 1 0% !important; /* flex-basis 0 forces genuinely equal widths regardless of content — no max-width needed, this already fills the row fluidly */
+  width: auto !important;
+  box-sizing: border-box !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  display: block !important;
+}
+
+.hs-fieldtype-radio .input > ul.inputs-list > li.hs-form-radio input[type="radio"] {
+  position: absolute !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+.hs-fieldtype-radio .input > ul.inputs-list > li.hs-form-radio label.hs-form-radio-display {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100% !important;
+  min-height: 56px !important;
+  padding: 0.75rem 1rem !important;
+  box-sizing: border-box !important;
+  border: 1px solid rgba(12, 49, 102, 0.12) !important;
+  border-radius: 1rem !important;
+  background: #FFFFFF !important;
+  font-size: 1rem;
+  font-weight: 500;
+  color: #0C3166;
+  text-align: center;
+  line-height: 1.4;
+  cursor: pointer !important;
+  transition: background-color 0.2s ease, color 0.2s ease, transform 0.15s ease;
+}
+
+.hs-fieldtype-radio .input > ul.inputs-list > li.hs-form-radio label.hs-form-radio-display:hover {
+  background: rgba(12, 49, 102, 0.04) !important;
+  transform: translateY(-1px);
+}
+
+.hs-fieldtype-radio .input > ul.inputs-list > li.hs-form-radio label.hs-form-radio-display:has(input:checked) {
+  background: #0C3166 !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+.hs-fieldtype-radio .input > ul.inputs-list > li.hs-form-radio input:checked + span {
+  color: #FFF9F1 !important;
+  font-weight: 600 !important;
+}
+
+/* Illustration variant — image stacked above the Student/Guardian
+   text, same "image above label" pattern as the Program Interest
+   cards' logos. Pairs with enhanceContactTypeIllustrations() in
+   form1_custom_logic.js. Only applied when a matching illustration
+   was actually found for that option, so this never affects a radio
+   field elsewhere on the form that doesn't have illustrations set. */
+.hs-fieldtype-radio .input > ul.inputs-list > li.hs-form-radio label.hs-form-radio-display.contour-contact-type-has-illustration {
+  flex-direction: column !important;
+  gap: 0.5rem;
+  min-height: 0 !important;
+  padding: 1.25rem 1rem !important;
+}
+
+.contour-contact-type-illustration {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+}
+
+@media screen and (max-width: 767px) {
+  .hs-fieldtype-radio .input > ul.inputs-list {
+    flex-direction: column !important;
+    gap: 0.75rem !important;
+  }
+}
+
+/* =========================================================
+   CHECKBOX MULTI-SELECT LI PADDING FIX
+========================================================= */
+
+/**
+ * Contour Form 1 — Checkbox multi-select li padding fix
+ * =========================================================
+ * Same root cause as the Parent/Guardian radio fix: the sitewide base
+ * stylesheet has a bare `li { margin-top: 0.25rem; margin-bottom: 0.25rem;
+ * padding-left: 0.5rem; }` rule applying to every <li> site-wide. The
+ * existing "RADIO + CHECKBOX CARD GRID" section already zeroes margin
+ * for these elements ("Remove default spacing"), but never resets
+ * padding — leaving that sitewide padding-left: 0.5rem (8px) sitting on
+ * every checkbox option across Interested Subjects, Campus, and
+ * Referral, unaccounted for.
+ *
+ * Scoped to .hs-fieldtype-checkbox li.hs-form-checkbox specifically, so
+ * Program Interest (which no longer has any li.hs-form-checkbox elements
+ * — its cards were rebuilt into .contour-program-card by
+ * enhanceProgramInterestCards()) is automatically unaffected.
+ */
+
+.hs-fieldtype-checkbox li.hs-form-checkbox {
+  padding: 0 !important;
+}
+
+/* =========================================================
+   WELCOME CONSULTATION (CALENDLY EMBED)
+========================================================= */
+
+/**
+ * Contour Form 1 — Welcome Consultation (Calendly) embed
+ * ==========================================================
+ * Pairs with renderWelcomeConsultation() in form1_custom_logic.js.
+ * Minimal styling — the widget itself is Calendly's own iframe content
+ * and isn't stylable beyond its container's dimensions.
+ */
+
+#contour-welcome-consultation {
+  margin: 2rem 0;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(12, 49, 102, 0.12);
+}
+
+.contour-welcome-consultation__heading {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #0C3166;
+  margin-bottom: 0.5rem;
+}
+
+.contour-welcome-consultation__copy {
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: #212121;
+  margin: 0 0 1rem;
+}
+
+.contour-welcome-consultation__widget {
+  min-width: 320px;
+  height: 1000px;
+}
+
+/* =========================================================
+   SCHOOL SEARCH COMBOBOX
+========================================================= */
+
+/**
+ * Contour Form 1 — School search combobox
+ * ===========================================
+ * Pairs with enhanceSchoolSearch() in form1_custom_logic.js, which
+ * wraps the real school_text input in a positioned container and adds
+ * a filtered suggestions listbox beneath it.
+ *
+ * Deliberately minimal/unopinionated styling — just enough for the
+ * listbox to function (positioning, scroll, visible focus). Visual
+ * design (fonts, colours, spacing) is left to match the rest of your
+ * site's form field styling.
+ */
+
+.contour-school-search {
+  position: relative;
+}
+
+.contour-school-search__listbox {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 20;
+  max-height: 280px;
+  overflow-y: auto;
+  margin: 4px 0 0;
+  padding: 4px 0;
+  list-style: none;
+  background: #fff;
+  border: 1px solid rgba(12, 49, 102, 0.18);
+  border-radius: 0.75rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.contour-school-search__listbox[hidden] {
+  display: none;
+}
+
+.contour-school-search__option {
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+.contour-school-search__option[aria-selected="true"],
+.contour-school-search__option:hover {
+  background: rgba(12, 49, 102, 0.06);
+}
+
+/* =========================================================
+   CAMPUS — ADDRESS ON SECOND LINE
+   -----------------------------------------------------------
+   Pairs with enhanceCampusLabels() in form1_custom_logic.js, which
+   splits a bracketed street address out of the option's label text
+   onto its own smaller-font line.
+========================================================= */
+
+.contour-campus-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.contour-campus-address {
+  font-size: 0.8em;
+  font-weight: 400;
+  opacity: 0.75;
+}
+
+.contour-no-programs-message {
+  grid-column: 1 / -1;
+  width: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1.25rem 1.5rem;
+  margin-top: 0.75rem;
+  margin-bottom: 1.25rem;
+  border: 1px solid rgba(12, 49, 102, 0.15);
+  border-radius: 12px;
+  background-color: #F9F3EB;
+  color: #212121;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.contour-no-programs-message__text {
+  margin: 0;
+}
+
+/* The waitlist field's default field spacing (margin-bottom from the
+   sitewide .hs-form-field rule) is redundant once it's nested inside
+   this box — the container's own `gap` handles spacing instead. */
+.contour-no-programs-message .hs_join_no_program_waitlist {
+  margin-bottom: 0 !important;
+}
+/**
+ * Contour Form 1 — single-opt-in checkboxes (plain style)
+ * ===========================================================
+ * The sitewide "RADIO + CHECKBOX CARD GRID" rules apply the big
+ * card-button treatment to every checkbox-type field generically. Two
+ * fields need to look like ordinary checkboxes instead — small square,
+ * visible native input, plain text label — since each is a single
+ * incidental opt-in, not a set of options to choose between like
+ * Program Interest or Interested Subjects:
+ *   - join_no_program_waitlist ("Get Notified")
+ *   - tos_privacy_consent
+ *
+ * Covers BOTH markup shapes HubSpot can use for a single checkbox
+ * field, since a single opt-in is commonly built as a "booleancheckbox"
+ * fieldtype (li.hs-form-booleancheckbox) rather than the multi-option
+ * "checkbox" fieldtype (li.hs-form-checkbox) used elsewhere on this
+ * form (Campus, Referral, Interested Subjects) — the two use different
+ * class names on the same <li> structure. Not yet confirmed against the
+ * live DOM which one either field actually uses, so both are covered
+ * rather than guessing; if this still doesn't clear the card styling,
+ * the field's wrapper class itself (hs_join_no_program_waitlist /
+ * hs_tos_privacy_consent) is the next thing to verify against the real
+ * DOM, since HubSpot property names don't always match the rendered
+ * class 1:1 on this project (see field-naming history elsewhere in the
+ * handover doc).
+ *
+ * Scoped tightly to these two fields so nothing else is affected.
+ */
+
+.hs_join_no_program_waitlist ul.inputs-list,
+.hs_tos_privacy_consent ul.inputs-list {
+  display: block !important;
+  grid-template-columns: none !important;
+  gap: 0 !important;
+}
+
+.hs_join_no_program_waitlist li.hs-form-checkbox,
+.hs_join_no_program_waitlist li.hs-form-booleancheckbox,
+.hs_tos_privacy_consent li.hs-form-checkbox,
+.hs_tos_privacy_consent li.hs-form-booleancheckbox {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.hs_join_no_program_waitlist li.hs-form-checkbox label,
+.hs_join_no_program_waitlist li.hs-form-booleancheckbox label,
+.hs_tos_privacy_consent li.hs-form-checkbox label,
+.hs_tos_privacy_consent li.hs-form-booleancheckbox label {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  width: auto !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  background: none !important;
+  box-shadow: none !important;
+  cursor: pointer !important;
+  font-size: 1rem !important;
+  font-weight: 400 !important;
+  color: #212121 !important;
+  text-align: left !important;
+  gap: 0.5rem;
+}
+
+.hs_join_no_program_waitlist li.hs-form-checkbox label:hover,
+.hs_join_no_program_waitlist li.hs-form-booleancheckbox label:hover,
+.hs_tos_privacy_consent li.hs-form-checkbox label:hover,
+.hs_tos_privacy_consent li.hs-form-booleancheckbox label:hover {
+  background: none !important;
+  transform: none !important;
+}
+
+.hs_join_no_program_waitlist li.hs-form-checkbox input[type="checkbox"],
+.hs_join_no_program_waitlist li.hs-form-booleancheckbox input[type="checkbox"],
+.hs_tos_privacy_consent li.hs-form-checkbox input[type="checkbox"],
+.hs_tos_privacy_consent li.hs-form-booleancheckbox input[type="checkbox"] {
+  position: static !important;
+  opacity: 1 !important;
+  width: 1.1rem !important;
+  height: 1.1rem !important;
+  margin: 0 !important;
+  pointer-events: auto !important;
+  flex-shrink: 0;
+  accent-color: #0540F2;
+}
+
+.hs_join_no_program_waitlist li.hs-form-checkbox input:checked + span,
+.hs_join_no_program_waitlist li.hs-form-booleancheckbox input:checked + span,
+.hs_tos_privacy_consent li.hs-form-checkbox input:checked + span,
+.hs_tos_privacy_consent li.hs-form-booleancheckbox input:checked + span {
+  color: #212121 !important;
+  font-weight: 400 !important;
+}
+
+.hs_join_no_program_waitlist li.hs-form-checkbox label:has(input:checked),
+.hs_join_no_program_waitlist li.hs-form-booleancheckbox label:has(input:checked),
+.hs_tos_privacy_consent li.hs-form-checkbox label:has(input:checked),
+.hs_tos_privacy_consent li.hs-form-booleancheckbox label:has(input:checked) {
+  background: none !important;
+  border-color: transparent !important;
+}
+
+/* The TOS/Privacy Policy label text includes two hyperlinks (Terms of
+   Service, Privacy Policy) — functional but unstyled by default since
+   the plain-checkbox override above resets the label's own text
+   styling. Bold + underline so they read as clickable links. */
+.hs_tos_privacy_consent li.hs-form-checkbox label a,
+.hs_tos_privacy_consent li.hs-form-booleancheckbox label a {
+  text-decoration: underline;
+}
+/**
+ * Contour Form 1 — International phone field (country code selector)
+ * =======================================================================
+ * HubSpot's "phone with country code" field renders as three elements
+ * sharing the .hs-input class: the outer wrapper div, the country
+ * <select>, and the number <input type="tel"> (plus a hidden input that
+ * actually carries the submitted "phone" value — HubSpot's own script
+ * manages that automatically, nothing needed here for it).
+ *
+ * Since all three independently match the sitewide generic
+ * ".hs-input { width: 100% !important; border: ...; padding: ...;
+ * min-height: 56px; }" rule, the wrapper rendered as its OWN bordered
+ * box, with two more full-width bordered boxes stacked inside it —
+ * not just a simple vertical-stacking issue, a doubled-up nested-box
+ * one. Fixed by neutralising the wrapper's own inherited box styling
+ * (it should just be a flex container, not a visible box itself) and
+ * letting the select and input keep their own individual box styling
+ * side by side instead of each claiming a full line.
+ */
+
+.hs-form .hs-fieldtype-intl-phone.hs-input:not([type="checkbox"]):not([type="radio"]):not([type="file"]) {
+  display: flex !important;
+  align-items: stretch;
+  gap: 0.5rem;
+  width: 100% !important;
+  border: none !important;
+  padding: 0 !important;
+  background: none !important;
+  min-height: 0 !important;
+  box-sizing: border-box !important;
+}
+
+.hs-form .hs-fieldtype-intl-phone select.hs-input:not([type="checkbox"]):not([type="radio"]):not([type="file"]) {
+  flex: 0 0 auto !important;
+  width: auto !important;
+  min-width: 90px;
+  max-width: 130px;
+}
+
+.hs-form .hs-fieldtype-intl-phone input.hs-input[type="tel"]:not([type="checkbox"]):not([type="radio"]):not([type="file"]) {
+  flex: 1 1 auto !important;
+  width: auto !important;
+  min-width: 0;
+}
+
+/* Very narrow screens: stack instead of forcing a cramped side-by-side
+   fit. Adjust this breakpoint if the side-by-side layout still feels
+   too tight above it in testing. */
+@media screen and (max-width: 480px) {
+  .hs-form .hs-fieldtype-intl-phone.hs-input:not([type="checkbox"]):not([type="radio"]):not([type="file"]) {
+    flex-direction: column !important;
+  }
+  .hs-form .hs-fieldtype-intl-phone select.hs-input:not([type="checkbox"]):not([type="radio"]):not([type="file"]) {
+    max-width: 100%;
+    width: 100% !important;
+  }
+}

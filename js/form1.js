@@ -1,0 +1,1883 @@
+/* Contour Form 1 logic — source of truth: github.com/contour-tech/contour-education-signup-form-hubspot */
+var ContourForm1Logic = function() {
+  "use strict";
+  var FIELD_SELECTORS = {
+    contactType: '[name="web_form_contact_type"]',
+    intakeYear: '[name="which_year_are_you_interested_in_tutoring_for_"]',
+    location: '[name="state_territory_country"]',
+    programInterest: '[name="program_interest"]',
+    interestedSubjects: '[name="web_form__interested_subject"]',
+    campus: '[name="web_form__preferred_campuses"]',
+    yearLevel: '[name="year_level"]',
+    schoolText: '[name="school_text"]',
+    schoolCode: '[name="school_code"]',
+    acaraId: '[name="acara_id"]',
+    emailTemp: '[name="email_2"]',
+    noProgramWaitlist: '[name="join_no_program_waitlist"]',
+    referral: '[name="referral"]'
+  };
+  var FIELD_WRAPPER_CLASS = "hs-form-field";
+  var VALID_LOCATIONS = [ "VIC", "NSW", "QLD", "SA", "ACT", "TAS", "WA", "NT", "United Kingdom", "New Zealand", "Overseas" ];
+  var PROGRAM_CARD_CONFIG = [ {
+    match: /education|tutoring/i,
+    title: "Year 7 - 12 Tutoring",
+    description: "Expert tutoring for in-depth understanding and results",
+    pillText: "Available all year levels",
+    pillClass: "contour-pill--blue",
+    logoUrl: "https://cdn.prod.website-files.com/696ed06d2e62378f0a51f2d4/6a0bbf0cd57f2b816bcc79fb_Final%20EDUCATION%20horizontal%20logo.svg"
+  }, {
+    match: /test\s*prep|selective/i,
+    title: "Selective Entry",
+    description: "Preparing junior students for selective school examinations",
+    pillText: "Years 6–8 only",
+    pillClass: "contour-pill--green",
+    logoUrl: "https://cdn.prod.website-files.com/696ed06d2e62378f0a51f2d4/6a0bbed5fdbd2c829b5e4e7c_Final%20TESTPREP%20Charcoal%20horizontal%20logo.svg"
+  }, {
+    match: /med\s*prep|ucat/i,
+    title: "Medical Entry",
+    description: "UCAT tutoring and medical interview coaching",
+    pillText: "Year 10+ & Graduated",
+    pillClass: "contour-pill--purple",
+    logoUrl: "https://cdn.prod.website-files.com/696ed06d2e62378f0a51f2d4/6a0bbed5058c7ec65b1a454e_Final%20MEDPREP%20Charcoal%20horizontal%20logo.svg"
+  } ];
+  var UK_TOKEN = "United Kingdom";
+  var UCAT_UK_PATTERN = /UCAT\s*\(UK\)/i;
+  var UCAT_ANZ_PATTERN = /UCAT\s*\(ANZ\)/i;
+  // 2027 Curriculum Planning Matrix (Wassim, 7 Aug 2026): region x year level
+  // -> subject codes shown for intake 2027. Intake 2026 keeps the structured-
+  // value logic (the matrix is a 2027 planning view and omits 2026-only
+  // subjects like VSE Core).
+  var SUBJECT_MATRIX_INTAKE = "2027";
+  var SUBJECT_MATRIX = {"VIC":{"Year 5":["VSC-EN05","VSC-MA05","VSC-WR05"],"Year 6":["VIC-EN07","VIC-EN08","VIC-MA07","VIC-MA08","VIC-SC07","VIC-SC08","VSE-EN06","VSE-MA06","VSE-WR06"],"Year 7":["VIC-EN07","VIC-EN08","VIC-EN09","VIC-MA07","VIC-MA08","VIC-MA09","VIC-SC07","VIC-SC08","VIC-SC09","VSE-EN07","VSE-MA07","VSE-WR07"],"Year 8":["VIC-EN08","VIC-EN09","VIC-EN10","VIC-MA08","VIC-MA09","VIC-MA1A","VIC-SC08","VIC-SC09","VIC-SC10","VSE-EN08","VSE-MA08","VSE-WR08"],"Year 9":["VCE-BI12","VCE-CH12","VCE-EL12","VCE-EN12","VCE-MM12","VCE-PH12","VCE-SM12","VIC-EN09","VIC-EN10","VIC-MA09","VIC-MA1A","VIC-SC09","VIC-SC10"],"Year 10":["MD-INT","UCAT-ANZ-CORE","VCE-BI12","VCE-BI34","VCE-CH12","VCE-CH34","VCE-EL12","VCE-EL34","VCE-EN12","VCE-EN34","VCE-MM12","VCE-MM34","VCE-PH12","VCE-PH34","VCE-SM12","VCE-SM34","VIC-EN10","VIC-MA1A","VIC-SC10"],"Year 11":["MD-INT","UCAT-ANZ-CORE","VCE-BI12","VCE-BI34","VCE-CH12","VCE-CH34","VCE-EL12","VCE-EL34","VCE-EN12","VCE-EN34","VCE-MM12","VCE-MM34","VCE-PH12","VCE-PH34","VCE-SM12","VCE-SM34"],"Year 12":["MD-INT","UCAT-ANZ-MAST","VCE-BI12","VCE-BI34","VCE-CH12","VCE-CH34","VCE-EL12","VCE-EL34","VCE-EN12","VCE-EN34","VCE-MM12","VCE-MM34","VCE-PH12","VCE-PH34","VCE-SM12","VCE-SM34"],"Graduated":["GAMSAT","MD-INT","UCAT-ANZ-MAST"]},"QLD":{"Year 6":["QLD-EN07","QLD-EN08","QLD-MA07","QLD-MA08","QLD-SC07","QLD-SC08"],"Year 7":["QLD-EN07","QLD-EN08","QLD-EN09","QLD-MA07","QLD-MA08","QLD-MA09","QLD-SC07","QLD-SC08","QLD-SC09"],"Year 8":["QLD-EN08","QLD-EN09","QLD-EN10","QLD-MA08","QLD-MA09","QLD-MA1A","QLD-SC08","QLD-SC09","QLD-SC10"],"Year 9":["QCE-BI12","QCE-CH12","QCE-MM12","QCE-PH12","QCE-SM12","QLD-EN09","QLD-EN10","QLD-MA09","QLD-MA1A","QLD-SC09","QLD-SC10"],"Year 10":["MD-INT","QCE-BI12","QCE-BI34","QCE-CH12","QCE-CH34","QCE-MM12","QCE-MM34","QCE-PH12","QCE-PH34","QCE-SM12","QCE-SM34","QLD-EN10","QLD-MA1A","QLD-SC10","UCAT-ANZ-CORE"],"Year 11":["MD-INT","QCE-BI12","QCE-BI34","QCE-CH12","QCE-CH34","QCE-MM12","QCE-MM34","QCE-PH12","QCE-PH34","QCE-SM12","QCE-SM34","UCAT-ANZ-CORE"],"Year 12":["MD-INT","QCE-BI12","QCE-BI34","QCE-CH12","QCE-CH34","QCE-MM12","QCE-MM34","QCE-PH12","QCE-PH34","QCE-SM12","QCE-SM34","UCAT-ANZ-MAST"],"Graduated":["GAMSAT","MD-INT","UCAT-ANZ-MAST"]},"WA":{"Year 10":["MD-INT","UCAT-ANZ-CORE"],"Year 11":["MD-INT","UCAT-ANZ-CORE"],"Year 12":["MD-INT","UCAT-ANZ-MAST"],"Graduated":["GAMSAT","MD-INT","UCAT-ANZ-MAST"]},"SA":{"Year 10":["MD-INT","UCAT-ANZ-CORE"],"Year 11":["MD-INT","UCAT-ANZ-CORE"],"Year 12":["MD-INT","UCAT-ANZ-MAST"],"Graduated":["GAMSAT","MD-INT","UCAT-ANZ-MAST"]},"NSW":{"Year 6":["NSW-EN07","NSW-EN08","NSW-MA07","NSW-MA08","NSW-SC07","NSW-SC08"],"Year 7":["NSW-EN08","NSW-EN09","NSW-EN10","NSW-MA07","NSW-MA08","NSW-MA09","NSW-SC08","NSW-SC09","NSW-SC10"],"Year 8":["NSW-EN08","NSW-EN09","NSW-EN10","NSW-MA08","NSW-MA09","NSW-MA10","NSW-SC08","NSW-SC09","NSW-SC10"],"Year 9":["NSW-EN09","NSW-EN10","NSW-MA09","NSW-MA10","NSW-SC09","NSW-SC10","PRE-BIOL","PRE-CHEM","PRE-MADV","PRE-MAE1","PRE-PHYS"],"Year 10":["HSC-BIOL","HSC-CHEM","HSC-MADV","HSC-MAE1","HSC-MAE2","HSC-PHYS","MD-INT","NSW-EN10","NSW-MA10","NSW-SC10","PRE-BIOL","PRE-CHEM","PRE-MADV","PRE-MAE1","PRE-PHYS","UCAT-ANZ-CORE"],"Year 11":["HSC-BIOL","HSC-CHEM","HSC-MADV","HSC-MAE1","HSC-MAE2","HSC-PHYS","MD-INT","PRE-BIOL","PRE-CHEM","PRE-MADV","PRE-MAE1","PRE-PHYS","UCAT-ANZ-CORE"],"Year 12":["HSC-BIOL","HSC-CHEM","HSC-MADV","HSC-MAE1","HSC-MAE2","HSC-PHYS","MD-INT","PRE-BIOL","PRE-CHEM","PRE-MADV","PRE-MAE1","PRE-PHYS","UCAT-ANZ-MAST"],"Graduated":["GAMSAT","MD-INT","UCAT-ANZ-MAST"]},"TAS":{"Year 10":["MD-INT","UCAT-ANZ-CORE"],"Year 11":["MD-INT","UCAT-ANZ-CORE"],"Year 12":["MD-INT","UCAT-ANZ-MAST"],"Graduated":["GAMSAT","MD-INT","UCAT-ANZ-MAST"]},"ACT":{"Year 10":["MD-INT","UCAT-ANZ-CORE"],"Year 11":["MD-INT","UCAT-ANZ-CORE"],"Year 12":["MD-INT","UCAT-ANZ-MAST"],"Graduated":["GAMSAT","MD-INT","UCAT-ANZ-MAST"]},"NT":{"Year 10":["MD-INT","UCAT-ANZ-CORE"],"Year 11":["MD-INT","UCAT-ANZ-CORE"],"Year 12":["MD-INT","UCAT-ANZ-MAST"],"Graduated":["GAMSAT","MD-INT","UCAT-ANZ-MAST"]},"NZ":{"Year 11":["MD-INT","UCAT-ANZ-CORE"],"Year 12":["MD-INT","UCAT-ANZ-CORE"],"Year 13":["MD-INT","UCAT-ANZ-MAST"],"Graduated":["GAMSAT","MD-INT","UCAT-ANZ-MAST"]},"UK":{"Year 10":["MD-INT","UCAT-UK-MAST"],"Year 11":["MD-INT","UCAT-UK-MAST"],"Year 12":["MD-INT","UCAT-UK-MAST"],"Year 13":["MD-INT","UCAT-UK-MAST"],"Graduated":["GAMSAT","MD-INT","UCAT-UK-MAST"]},"INTERNATIONAL":{"Year 10":["MD-INT","UCAT-ANZ-CORE"],"Year 11":["MD-INT","UCAT-ANZ-CORE"],"Year 12":["MD-INT","UCAT-ANZ-MAST"],"Year 13":["MD-INT","UCAT-ANZ-MAST"],"Graduated":["GAMSAT","MD-INT","UCAT-ANZ-MAST"]}};
+  // Waitlist-only subjects (Amitav call + Wassim, 7 Aug 2026): 2026 TestPrep
+  // is bookable for VSE Core (Year 7) only - Foundation (Y6) and Mastery (Y8)
+  // 2026 intakes go to waitlist, as do the Year 6 2027 VSE subjects.
+  var WAITLIST_SUBJECT_CODES = ["VSE-FOEN", "VSE-FOMA", "VSE-FOWR", "VSE-MAEN", "VSE-MAMA", "VSE-MAWR", "VSE-EN06", "VSE-MA06", "VSE-WR06"];
+  var CATEGORY_DISPLAY_ORDER = [ "Science", "Mathematics", "English", "TestPrep", "MedPrep", "Other" ];
+  var CATEGORY_DISPLAY_NAMES = {
+    TestPrep: "Selective Entry",
+    MedPrep: "Medical Entry"
+  };
+  function matrixLocationKey(location) {
+    if (location === "United Kingdom") return "UK";
+    if (location === "New Zealand") return "NZ";
+    if (location === "Overseas") return "INTERNATIONAL";
+    return location;
+  }
+  function subjectMatchesMatrix(classification, location, yearLevel, selectedIntakeYear) {
+    // Returns true/false when the matrix rules, null when the caller should
+    // fall back to the structured-value logic.
+    if (selectedIntakeYear !== SUBJECT_MATRIX_INTAKE) return null;
+    if (!classification.code || !location || !yearLevel) return null;
+    var byYear = SUBJECT_MATRIX[matrixLocationKey(location)];
+    if (!byYear) return false;
+    var codes = byYear[yearLevel];
+    if (!codes) return false;
+    return codes.indexOf(classification.code) !== -1;
+  }
+  function isWaitlistSubject(classification) {
+    return !!classification.code && WAITLIST_SUBJECT_CODES.indexOf(classification.code) !== -1;
+  }
+  function subjectMatchesLocation(subjectState, selectedLocation) {
+    if (!subjectState) return true;
+    if (subjectState === "ANZ") return !!selectedLocation && selectedLocation !== UK_TOKEN;
+    if (subjectState === "UK") return selectedLocation === UK_TOKEN;
+    return subjectState === selectedLocation;
+  }
+  function subjectMatchesPrograms(subjectProgram, selectedPrograms) {
+    if (subjectProgram === null) return true;
+    return selectedPrograms.indexOf(subjectProgram) !== -1;
+  }
+  function subjectMatchesDelivery(classification) {
+    return classification.delivery === "Term";
+  }
+  function subjectMatchesIntake(classification, selectedIntakeYear) {
+    if (!classification.intake) return true;
+    if (!selectedIntakeYear) return true;
+    return classification.intake.indexOf(selectedIntakeYear) !== -1;
+  }
+  function parseStructuredSubjectValue(rawValue) {
+    if (!rawValue || rawValue.indexOf(":") === -1) return null;
+    var pairs = rawValue.split("|");
+    var parsed = {};
+    for (var i = 0; i < pairs.length; i++) {
+      var idx = pairs[i].indexOf(":");
+      if (idx === -1) continue;
+      var key = pairs[i].slice(0, idx).trim();
+      var value = pairs[i].slice(idx + 1).trim();
+      parsed[key] = value;
+    }
+    if (!parsed.code || !parsed.program) return null;
+    return parsed;
+  }
+  function structuredYearListToLevels(yearStr) {
+    if (!yearStr || yearStr === "ALL") return null;
+    return yearStr.split(",").map(function(token) {
+      var trimmed = token.trim();
+      return trimmed === "Graduated" ? "Graduated" : "Year " + trimmed;
+    });
+  }
+  function classificationFromStructuredValue(parsed) {
+    var state = !parsed.state || parsed.state === "ALL" ? null : parsed.state;
+    var intake = parsed.intake ? parsed.intake.split(",").map(function(s) {
+      return s.trim();
+    }) : null;
+    return {
+      program: parsed.program,
+      state: state,
+      category: parsed.category || parsed.program,
+      yearsShown: structuredYearListToLevels(parsed.year),
+      delivery: parsed.delivery || "Term",
+      intake: intake,
+      code: parsed.code,
+      subject: parsed.subject || null,
+      structured: true
+    };
+  }
+  function parseStructuredCampusValue(rawValue) {
+    if (!rawValue || rawValue.indexOf(":") === -1) return null;
+    var pairs = rawValue.split("|");
+    var parsed = {};
+    for (var i = 0; i < pairs.length; i++) {
+      var idx = pairs[i].indexOf(":");
+      if (idx === -1) continue;
+      var key = pairs[i].slice(0, idx).trim();
+      var value = pairs[i].slice(idx + 1).trim();
+      parsed[key] = value;
+    }
+    if (!parsed.code) return null;
+    return parsed;
+  }
+  function classificationFromStructuredCampusValue(parsed) {
+    return {
+      code: parsed.code,
+      state: !parsed.state || parsed.state === "ALL" ? null : parsed.state,
+      country: parsed.country || null
+    };
+  }
+  var formRoot = null;
+  function q(selector) {
+    return formRoot.querySelector(selector);
+  }
+  function qAll(selector) {
+    return Array.prototype.slice.call(formRoot.querySelectorAll(selector));
+  }
+  function fieldWrapper(el) {
+    if (!el) return null;
+    return el.closest ? el.closest("." + FIELD_WRAPPER_CLASS) : null;
+  }
+  function showFieldWrapper(el) {
+    var wrap = fieldWrapper(el);
+    if (wrap) wrap.style.removeProperty("display");
+  }
+  function hideFieldWrapper(el) {
+    var wrap = fieldWrapper(el);
+    if (wrap) wrap.style.display = "none";
+  }
+  function toggleFieldWrapper(el, shouldShow) {
+    if (shouldShow) showFieldWrapper(el); else hideFieldWrapper(el);
+  }
+  function getValue(selector) {
+    var el = q(selector);
+    return el ? el.value || "" : "";
+  }
+  function getCheckedValues(selector) {
+    return qAll(selector + ":checked").map(function(el) {
+      return el.value;
+    });
+  }
+  function setCheckboxChecked(inputEl, checked) {
+    if (!inputEl) return;
+    if (inputEl.checked !== checked) {
+      inputEl.click();
+    }
+  }
+  function optionWrapper(inputEl) {
+    return inputEl.closest(".contour-program-card") || inputEl.closest("li") || (inputEl.parentElement && inputEl.parentElement.tagName === "LABEL" ? inputEl.parentElement : null) || inputEl.parentElement;
+  }
+  function optionLabelText(inputEl) {
+    var wrap = optionWrapper(inputEl);
+    return wrap ? wrap.textContent.trim() : "";
+  }
+  function showOption(inputEl) {
+    var wrap = optionWrapper(inputEl);
+    if (wrap) wrap.style.removeProperty("display");
+  }
+  function hideOption(inputEl) {
+    var wrap = optionWrapper(inputEl);
+    if (wrap) wrap.style.display = "none";
+    setCheckboxChecked(inputEl, false);
+  }
+  function setHiddenValue(selector, value) {
+    var el = q(selector);
+    if (!el) return;
+    el.value = value;
+    el.dispatchEvent(new Event("input", {
+      bubbles: true
+    }));
+    el.dispatchEvent(new Event("change", {
+      bubbles: true
+    }));
+  }
+  function matchCardConfig(inputEl, index) {
+    var haystack = (inputEl.value || "") + " " + optionLabelText(inputEl);
+    for (var i = 0; i < PROGRAM_CARD_CONFIG.length; i++) {
+      if (PROGRAM_CARD_CONFIG[i].match.test(haystack)) return PROGRAM_CARD_CONFIG[i];
+    }
+    console.warn('Contour Form 1 logic: Program Interest option "' + haystack.trim() + "\" didn't match a known card pattern — falling back to positional order.");
+    return PROGRAM_CARD_CONFIG[index] || null;
+  }
+  function enhanceCampusLabels() {
+    var options = qAll(FIELD_SELECTORS.campus);
+    options.forEach(function(opt) {
+      var wrap = optionWrapper(opt);
+      if (!wrap || wrap.querySelector(".contour-campus-address")) return;
+      var span = wrap.querySelector("input + span");
+      if (!span) return;
+      var fullText = span.textContent;
+      var match = fullText.match(/^(.*?)\s*\(([^)]+)\)\s*$/);
+      if (!match) return;
+      var mainText = match[1].trim();
+      var addressText = match[2].trim();
+      span.textContent = "";
+      span.classList.add("contour-campus-label");
+      var mainSpan = document.createElement("span");
+      mainSpan.className = "contour-campus-name";
+      mainSpan.textContent = mainText;
+      span.appendChild(mainSpan);
+      span.appendChild(document.createTextNode(" "));
+      var addressSpan = document.createElement("span");
+      addressSpan.className = "contour-campus-address";
+      addressSpan.textContent = addressText;
+      span.appendChild(addressSpan);
+    });
+  }
+  function enhanceProgramInterestCards() {
+    var checkboxes = qAll(FIELD_SELECTORS.programInterest);
+    var gridApplied = false;
+    checkboxes.forEach(function(inputEl, index) {
+      if (inputEl.closest(".contour-program-card")) return;
+      var config = matchCardConfig(inputEl, index);
+      var nativeWrapper = inputEl.closest("li") || inputEl.parentElement;
+      var sharedParent = nativeWrapper.parentNode;
+      var card = document.createElement("label");
+      card.className = "contour-program-card";
+      var badge = document.createElement("span");
+      badge.className = "contour-program-card__badge";
+      badge.setAttribute("aria-hidden", "true");
+      badge.textContent = "✓";
+      card.appendChild(badge);
+      var body = document.createElement("span");
+      body.className = "contour-program-card__body";
+      var logoPlaceholder = document.createElement("span");
+      logoPlaceholder.className = "contour-program-card__logo-placeholder";
+      logoPlaceholder.setAttribute("aria-hidden", "true");
+      if (config && config.logoUrl) {
+        logoPlaceholder.classList.add("contour-program-card__logo-placeholder--has-logo");
+        var logoImg = document.createElement("img");
+        logoImg.className = "contour-program-card__logo";
+        logoImg.src = config.logoUrl;
+        logoImg.alt = "";
+        logoPlaceholder.appendChild(logoImg);
+      }
+      body.appendChild(logoPlaceholder);
+      var titleEl = document.createElement("span");
+      titleEl.className = "contour-program-card__title";
+      titleEl.textContent = config ? config.title : optionLabelText(inputEl);
+      body.appendChild(titleEl);
+      if (config) {
+        var descEl = document.createElement("span");
+        descEl.className = "contour-program-card__description";
+        descEl.textContent = config.description;
+        body.appendChild(descEl);
+        var pillEl = document.createElement("span");
+        pillEl.className = "contour-program-card__pill " + config.pillClass;
+        pillEl.textContent = config.pillText;
+        body.appendChild(pillEl);
+      }
+      card.appendChild(body);
+      card.insertBefore(inputEl, card.firstChild);
+      function syncSelectedState() {
+        card.classList.toggle("contour-program-card--selected", inputEl.checked);
+      }
+      inputEl.addEventListener("change", syncSelectedState);
+      syncSelectedState();
+      nativeWrapper.parentNode.replaceChild(card, nativeWrapper);
+      if (!gridApplied && sharedParent) {
+        enforceProgramCardGrid(sharedParent);
+        gridApplied = true;
+      }
+    });
+  }
+  function enforceProgramCardGrid(ul) {
+    var mq = window.matchMedia("(max-width: 700px)");
+    function apply() {
+      ul.style.display = "grid";
+      ul.style.gap = "14px";
+      ul.style.gridTemplateColumns = mq.matches ? "1fr" : "repeat(3, minmax(0, 1fr))";
+    }
+    apply();
+    mq.addEventListener("change", apply);
+    var observer = new MutationObserver(apply);
+    observer.observe(ul, {
+      attributes: true,
+      attributeFilter: [ "class" ]
+    });
+  }
+  function enforceContactTypeLayout(ul) {
+    var mq = window.matchMedia("(max-width: 767px)");
+    function apply() {
+      ul.style.display = "flex";
+      ul.style.flexDirection = mq.matches ? "column" : "row";
+      ul.style.gap = mq.matches ? "0.75rem" : "1.25rem";
+    }
+    apply();
+    mq.addEventListener("change", apply);
+    var observer = new MutationObserver(apply);
+    observer.observe(ul, {
+      attributes: true,
+      attributeFilter: [ "class" ]
+    });
+  }
+  function enforceContactTypeLayoutIfPresent() {
+    var contactTypeUl = formRoot.querySelector(".hs-fieldtype-radio .input > ul.inputs-list");
+    if (contactTypeUl) enforceContactTypeLayout(contactTypeUl);
+  }
+  var CONTACT_TYPE_ILLUSTRATIONS = [ {
+    match: /student/i,
+    url: "https://cdn.prod.website-files.com/696ed06d2e62378f0a51f2d4/6a66e39e97ac4cd2dff8015f_Workbook%20Outline%202.avif"
+  }, {
+    match: /guardian/i,
+    url: "https://cdn.prod.website-files.com/696ed06d2e62378f0a51f2d4/69af5e98ec0cb906f867e85d_Special%20events.avif"
+  } ];
+  function matchContactTypeIllustration(labelText) {
+    for (var i = 0; i < CONTACT_TYPE_ILLUSTRATIONS.length; i++) {
+      if (CONTACT_TYPE_ILLUSTRATIONS[i].match.test(labelText)) return CONTACT_TYPE_ILLUSTRATIONS[i];
+    }
+    return null;
+  }
+  function enhanceContactTypeIllustrations() {
+    var radios = qAll(FIELD_SELECTORS.contactType);
+    radios.forEach(function(radio) {
+      var wrap = optionWrapper(radio);
+      if (!wrap || wrap.querySelector(".contour-contact-type-illustration")) return;
+      var label = wrap.querySelector("label.hs-form-radio-display");
+      if (!label) return;
+      var config = matchContactTypeIllustration(optionLabelText(radio));
+      if (!config) return;
+      var img = document.createElement("img");
+      img.className = "contour-contact-type-illustration";
+      img.src = config.url;
+      img.alt = "";
+      label.classList.add("contour-contact-type-has-illustration");
+      label.insertBefore(img, label.firstChild);
+    });
+  }
+  function subjectMatchesYearLevel(classification, yearLevelValue) {
+    if (!yearLevelValue) return true;
+    if (classification.yearsShown === null) return true;
+    return classification.yearsShown.indexOf(yearLevelValue) !== -1;
+  }
+  function isProgramEligibleFromSubjects(programValue, location, yearLevel, intakeYear) {
+    var subjectInputs = qAll(FIELD_SELECTORS.interestedSubjects);
+    for (var i = 0; i < subjectInputs.length; i++) {
+      var classification = getClassification(subjectInputs[i]);
+      if (classification.program !== programValue) continue;
+      var matrixVerdict = subjectMatchesMatrix(classification, location, yearLevel, intakeYear);
+      if (matrixVerdict === false) continue;
+      if (matrixVerdict === null) {
+        if (!subjectMatchesLocation(classification.state, location)) continue;
+        if (!subjectMatchesYearLevel(classification, yearLevel)) continue;
+      }
+      if (!subjectMatchesDelivery(classification)) continue;
+      if (!subjectMatchesIntake(classification, intakeYear)) continue;
+      return true;
+    }
+    return false;
+  }
+  function hasNativeRequiredMark(fieldWrap) {
+    return !!fieldWrap.querySelector('label .hs-form-required:not([class*="contour-"])');
+  }
+  function createRequiredMarkUpdater(fieldSelectorKey, className) {
+    var mark = null;
+    return function(shouldShow) {
+      if (!mark) {
+        var field = q(FIELD_SELECTORS[fieldSelectorKey]);
+        var fieldWrap = field ? fieldWrapper(field) : null;
+        if (!fieldWrap) return;
+        if (hasNativeRequiredMark(fieldWrap)) return;
+        var label = fieldWrap.querySelector("label");
+        mark = document.createElement("span");
+        mark.className = "hs-form-required " + className;
+        mark.textContent = "*";
+        mark.style.display = "none";
+        if (label) label.appendChild(mark); else fieldWrap.insertBefore(mark, fieldWrap.firstChild);
+      }
+      mark.style.display = shouldShow ? "" : "none";
+    };
+  }
+  var updateProgramInterestRequiredMark = createRequiredMarkUpdater("programInterest", "contour-program-interest-required");
+  var updateCampusRequiredMark = createRequiredMarkUpdater("campus", "contour-campus-required");
+  var updateSubjectsRequiredMark = createRequiredMarkUpdater("interestedSubjects", "contour-subjects-required");
+  function evaluateProgramInterestOptions() {
+    var location = getValue(FIELD_SELECTORS.location);
+    var yearLevel = getValue(FIELD_SELECTORS.yearLevel);
+    var intakeYear = getValue(FIELD_SELECTORS.intakeYear);
+    var options = qAll(FIELD_SELECTORS.programInterest);
+    var anyEligible = false;
+    var eligibleOptions = [];
+    options.forEach(function(opt) {
+      var programValue = opt.value;
+      var eligible = !!location && !!yearLevel && !!intakeYear && isProgramEligibleFromSubjects(programValue, location, yearLevel, intakeYear);
+      if (eligible) {
+        anyEligible = true;
+        eligibleOptions.push(opt);
+      }
+      var card = opt.closest(".contour-program-card");
+      if (card) card.classList.toggle("contour-program-card--disabled", !eligible);
+      if (!eligible) setCheckboxChecked(opt, false);
+      opt.disabled = !eligible;
+    });
+    var anyChecked = options.some(function(opt) {
+      return opt.checked;
+    });
+    if (eligibleOptions.length === 1 && !anyChecked) {
+      setCheckboxChecked(eligibleOptions[0], true);
+    }
+    showFieldWrapper(q(FIELD_SELECTORS.programInterest));
+    updateProgramInterestLocationHint(!location || !yearLevel || !intakeYear);
+    updateProgramInterestRequiredMark(anyEligible);
+    updateNoProgramsAvailableMessage(location, yearLevel, intakeYear, anyEligible);
+  }
+  function ensureProgramInterestLocationHint() {
+    var existing = formRoot.querySelector("#contour-program-interest-location-hint");
+    if (existing) return existing;
+    var programField = q(FIELD_SELECTORS.programInterest);
+    var fieldWrap = programField ? fieldWrapper(programField) : null;
+    if (!fieldWrap) return null;
+    var hint = document.createElement("p");
+    hint.id = "contour-program-interest-location-hint";
+    hint.className = "contour-program-interest-location-hint";
+    hint.textContent = "Select your location, year level, and intake year to see available programs";
+    var label = fieldWrap.querySelector("label");
+    if (label && label.parentNode) {
+      label.parentNode.insertBefore(hint, label.nextSibling);
+    } else {
+      fieldWrap.insertBefore(hint, fieldWrap.firstChild);
+    }
+    return hint;
+  }
+  function updateProgramInterestLocationHint(shouldShow) {
+    var hint = ensureProgramInterestLocationHint();
+    if (!hint) return;
+    hint.style.display = shouldShow ? "" : "none";
+  }
+  function ensureNoProgramsMessage() {
+    var existing = formRoot.querySelector("#contour-no-programs-message");
+    if (existing) return existing;
+    var container = document.createElement("div");
+    container.id = "contour-no-programs-message";
+    container.className = "contour-no-programs-message";
+    container.style.display = "none";
+    var text = document.createElement("p");
+    text.className = "contour-no-programs-message__text";
+    container.appendChild(text);
+    var programField = q(FIELD_SELECTORS.programInterest);
+    var fieldWrap = programField ? fieldWrapper(programField) : null;
+    if (fieldWrap && fieldWrap.parentNode) {
+      fieldWrap.parentNode.insertBefore(container, fieldWrap.nextSibling);
+    } else if (formRoot) {
+      formRoot.appendChild(container);
+    }
+    var waitlistField = q(FIELD_SELECTORS.noProgramWaitlist);
+    var waitlistWrap = waitlistField ? fieldWrapper(waitlistField) : null;
+    if (waitlistWrap) container.appendChild(waitlistWrap);
+    return container;
+  }
+  function getNoProgramsMessageText(location, yearLevel, intakeYear) {
+    var DEFAULT_MESSAGE = "We don't currently offer any programs for your location and year level, join the waitlist to be notified when new programs become available";
+    if (intakeYear !== "2026") return DEFAULT_MESSAGE;
+    var programValues = qAll(FIELD_SELECTORS.programInterest).map(function(opt) {
+      return opt.value;
+    });
+    var wouldBeEligibleFor2027 = programValues.some(function(programValue) {
+      return isProgramEligibleFromSubjects(programValue, location, yearLevel, "2027");
+    });
+    if (wouldBeEligibleFor2027) {
+      return "We don't currently offer any programs for your location and year level in 2026, update your intake year to 2027 to see more options";
+    }
+    return DEFAULT_MESSAGE;
+  }
+  function updateNoProgramsAvailableMessage(location, yearLevel, intakeYear, anyEligible) {
+    var shouldShow = !!location && !!yearLevel && !!intakeYear && !anyEligible;
+    var message = ensureNoProgramsMessage();
+    message.style.display = shouldShow ? "" : "none";
+    if (shouldShow) {
+      var textEl = message.querySelector(".contour-no-programs-message__text");
+      if (textEl) textEl.textContent = getNoProgramsMessageText(location, yearLevel, intakeYear);
+    } else {
+      var waitlistField = q(FIELD_SELECTORS.noProgramWaitlist);
+      setCheckboxChecked(waitlistField, false);
+    }
+  }
+  var YEAR_13_LOCATIONS = [ "United Kingdom", "New Zealand", "Overseas" ];
+  function evaluateYearLevelOptions() {
+    var select = q(FIELD_SELECTORS.yearLevel);
+    if (!select) return;
+    var location = getValue(FIELD_SELECTORS.location);
+    var intakeYear = getValue(FIELD_SELECTORS.intakeYear);
+    var year13Eligible = YEAR_13_LOCATIONS.indexOf(location) !== -1;
+    var year5Blocked = intakeYear === "2026";
+    Array.prototype.forEach.call(select.options, function(opt) {
+      if (opt.value === "Year 13") {
+        opt.hidden = !year13Eligible;
+        opt.disabled = !year13Eligible;
+        return;
+      }
+      if (opt.value === "Year 5") {
+        if (!opt.hasAttribute("data-original-text")) {
+          opt.setAttribute("data-original-text", opt.textContent);
+        }
+        var originalText = opt.getAttribute("data-original-text");
+        opt.disabled = year5Blocked;
+        opt.textContent = year5Blocked ? originalText + " - Subjects coming in 2027" : originalText;
+      }
+    });
+    if (!year13Eligible && select.value === "Year 13") {
+      select.value = "";
+      select.dispatchEvent(new Event("change", {
+        bubbles: true
+      }));
+    }
+    if (year5Blocked && select.value === "Year 5") {
+      select.value = "";
+      select.dispatchEvent(new Event("change", {
+        bubbles: true
+      }));
+    }
+  }
+  var subjectClassificationCache = new WeakMap;
+  var updateSchoolRequiredMark = createRequiredMarkUpdater("schoolText", "contour-school-required");
+  function evaluateSchoolFieldVisibility() {
+    var input = q(FIELD_SELECTORS.schoolText);
+    if (!input) return;
+    var location = getValue(FIELD_SELECTORS.location);
+    var shouldHide = YEAR_13_LOCATIONS.indexOf(location) !== -1;
+    toggleFieldWrapper(input, !shouldHide);
+    updateSchoolRequiredMark(!shouldHide);
+    if (shouldHide) {
+      var codeInput = q(FIELD_SELECTORS.schoolCode);
+      var acaraInput = q(FIELD_SELECTORS.acaraId);
+      if (input.value) setHiddenValue(FIELD_SELECTORS.schoolText, "");
+      if (codeInput && codeInput.value) setHiddenValue(FIELD_SELECTORS.schoolCode, "");
+      if (acaraInput && acaraInput.value) setHiddenValue(FIELD_SELECTORS.acaraId, "");
+    }
+  }
+  function setFieldLabelText(fieldSelectorKey, text) {
+    var field = q(FIELD_SELECTORS[fieldSelectorKey]);
+    var wrap = field ? fieldWrapper(field) : null;
+    if (!wrap) return;
+    var label = wrap.querySelector("label");
+    if (!label) return;
+    var spans = label.querySelectorAll("span");
+    for (var i = 0; i < spans.length; i++) {
+      if (!/hs-form-required/.test(spans[i].className)) {
+        spans[i].textContent = text;
+        return;
+      }
+    }
+    var node = label.firstChild;
+    while (node && node.nodeType !== 3) node = node.nextSibling;
+    if (node) node.nodeValue = text; else label.insertBefore(document.createTextNode(text), label.firstChild);
+  }
+  function evaluateIntakeYearDependents() {
+    var intake = getValue(FIELD_SELECTORS.intakeYear);
+    var yearSelect = q(FIELD_SELECTORS.yearLevel);
+    if (yearSelect) {
+      yearSelect.disabled = !intake;
+      if (!intake && yearSelect.value) {
+        yearSelect.value = "";
+        yearSelect.dispatchEvent(new Event("change", {
+          bubbles: true
+        }));
+      }
+      setFieldLabelText("yearLevel", intake ? "Year level in " + intake : "Current Year Level");
+    }
+    var schoolInput = q(FIELD_SELECTORS.schoolText);
+    if (schoolInput) {
+      var location = getValue(FIELD_SELECTORS.location);
+      schoolInput.disabled = !intake || !location;
+      setFieldLabelText("schoolText", intake ? "School in " + intake : "Current School");
+    }
+  }
+  function injectDisabledFieldStyles() {
+    if (document.getElementById("contour-disabled-field-styles")) return;
+    var style = document.createElement("style");
+    style.id = "contour-disabled-field-styles";
+    style.textContent = ".hs-form select:disabled, .hs-form input:disabled { opacity: 0.55; background-color: #f1f0ec; cursor: not-allowed; }" + ".contour-prefill-offer { margin-top: 8px; padding: 12px; border: 1px solid #d8d5cc; border-radius: 8px; background: #faf9f6; }" + ".contour-prefill-offer__message { margin: 0 0 8px; font-size: 14px; }" + ".contour-prefill-offer__code-row { display: flex; gap: 8px; align-items: center; }" + ".contour-prefill-offer__code-input { max-width: 140px; }" + ".contour-prefill-offer__confirm { cursor: pointer; }" + ".contour-prefill-offer__error { margin: 8px 0 0; color: #b3261e; font-size: 13px; }" + ".contour-prefill-banner { display: flex; align-items: flex-start; gap: 14px; margin: 0 0 24px; padding: 18px 22px; border: 1px solid rgba(12, 49, 102, 0.12); border-radius: 16px; background: #FFFFFF; box-shadow: 0 1px 3px rgba(12, 49, 102, 0.06); }" + ".contour-prefill-banner__badge { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; background: #D7FC3D; color: #0C3166; font-size: 15px; font-weight: 700; }" + ".contour-prefill-banner__content { flex: 1; min-width: 0; }" + ".contour-prefill-banner__title { margin: 0 0 2px; font-size: 15px; font-weight: 700; color: #0C3166; }" + ".contour-prefill-banner__text { margin: 0 0 8px; font-size: 13.5px; line-height: 1.45; color: #6b7280; }" + ".contour-prefill-banner__reset { display: inline-block; font-size: 13px; font-weight: 600; color: #0C3166; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }" + ".contour-prefill-banner__reset:hover { color: #0540F2; }" + ".contour-subject-summary { margin: 24px 0; padding: 20px 22px; border: 1px solid rgba(12, 49, 102, 0.12); border-radius: 16px; background: #FFFFFF; box-shadow: 0 1px 3px rgba(12, 49, 102, 0.06); }" + ".contour-subject-summary__heading { font-size: 15px; font-weight: 700; color: #0C3166; margin-bottom: 14px; }" + ".contour-subject-summary__grid { display: flex; flex-wrap: wrap; gap: 24px; }" + ".contour-subject-summary__col { flex: 1 1 180px; min-width: 160px; }" + ".contour-subject-summary__col-title { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #6b7280; margin-bottom: 8px; }" + ".contour-subject-summary__chips { display: flex; flex-wrap: wrap; gap: 6px; }" + ".contour-subject-chip { display: inline-block; padding: 5px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 600; line-height: 1.3; }" + ".contour-subject-chip--navy { background: #092749; color: #FFFFFF; }" + ".contour-subject-chip--lime { background: #D7FC3D; color: #0C3166; }" + ".contour-subject-chip--blue { background: #007AFF; color: #FFFFFF; }" + ".contour-waitlist-badge { display: inline-block; margin-left: 8px; padding: 2px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: 0.03em; background: #FFF3D6; color: #8a5a00; border: 1px solid #f0d9a6; vertical-align: middle; }" + ".contour-form-loader { display: flex; flex-direction: column; align-items: center; padding: 60px 0; }" + ".contour-form-loader__spinner { width: 36px; height: 36px; border: 4px solid #e3e0d8; border-top-color: #1a1a2e; border-radius: 50%; animation: contour-spin 0.8s linear infinite; }" + "@keyframes contour-spin { to { transform: rotate(360deg); } }" + ".contour-form-loader__text { margin-top: 12px; font-size: 14px; }";
+    document.head.appendChild(style);
+  }
+  function getClassification(inputEl) {
+    if (subjectClassificationCache.has(inputEl)) {
+      return subjectClassificationCache.get(inputEl);
+    }
+    var structuredParsed = parseStructuredSubjectValue(inputEl.value);
+    var classification;
+    if (structuredParsed) {
+      classification = classificationFromStructuredValue(structuredParsed);
+    } else {
+      console.warn('Contour Form 1 logic: subject option "' + optionLabelText(inputEl) + '" has no valid structured value — always shown until fixed.');
+      classification = {
+        program: null,
+        state: null,
+        category: "Other",
+        yearsShown: null,
+        delivery: "Term",
+        intake: null,
+        code: null,
+        subject: null,
+        structured: false
+      };
+    }
+    subjectClassificationCache.set(inputEl, classification);
+    return classification;
+  }
+  var categoryHeaderMap = {};
+  function enhanceInterestedSubjectsCategories() {
+    var checkboxes = qAll(FIELD_SELECTORS.interestedSubjects);
+    if (checkboxes.length === 0) return;
+    var firstWrapper = optionWrapper(checkboxes[0]);
+    var listParent = firstWrapper ? firstWrapper.parentNode : null;
+    if (!listParent) return;
+    var buckets = {};
+    checkboxes.forEach(function(inputEl) {
+      var classification = getClassification(inputEl);
+      var category = classification.category || "Other";
+      if (!buckets[category]) buckets[category] = [];
+      buckets[category].push(optionWrapper(inputEl));
+    });
+    var orderedCategories = CATEGORY_DISPLAY_ORDER.concat(Object.keys(buckets).filter(function(c) {
+      return CATEGORY_DISPLAY_ORDER.indexOf(c) === -1;
+    }));
+    orderedCategories.forEach(function(category) {
+      var items = buckets[category];
+      if (!items || items.length === 0) return;
+      var header = document.createElement("li");
+      header.className = "contour-subject-category-header";
+      header.textContent = CATEGORY_DISPLAY_NAMES[category] || category;
+      listParent.appendChild(header);
+      categoryHeaderMap[category] = header;
+      items.forEach(function(li) {
+        listParent.appendChild(li);
+      });
+    });
+  }
+  function evaluateInterestedSubjectsOptions() {
+    var location = getValue(FIELD_SELECTORS.location);
+    var yearLevel = getValue(FIELD_SELECTORS.yearLevel);
+    var selectedPrograms = getCheckedValues(FIELD_SELECTORS.programInterest);
+    var selectedIntakeYear = getValue(FIELD_SELECTORS.intakeYear);
+    var options = qAll(FIELD_SELECTORS.interestedSubjects);
+    var anyVisible = false;
+    var anyVisibleByCategory = {};
+    options.forEach(function(opt) {
+      var classification = getClassification(opt);
+      var matrixVerdict = subjectMatchesMatrix(classification, location, yearLevel, selectedIntakeYear);
+      var locationOk;
+      var yearOk;
+      if (matrixVerdict === null) {
+        locationOk = subjectMatchesLocation(classification.state, location);
+        yearOk = subjectMatchesYearLevel(classification, yearLevel);
+      } else {
+        locationOk = matrixVerdict;
+        yearOk = true;
+      }
+      var programOk = subjectMatchesPrograms(classification.program, selectedPrograms);
+      var deliveryOk = subjectMatchesDelivery(classification);
+      var intakeOk = subjectMatchesIntake(classification, selectedIntakeYear);
+      var shouldShow = !!location && selectedPrograms.length > 0 && locationOk && programOk && yearOk && deliveryOk && intakeOk;
+      shouldShow ? showOption(opt) : hideOption(opt);
+      if (shouldShow) {
+        updateWaitlistBadge(opt, classification);
+        anyVisible = true;
+        var category = classification.category || "Other";
+        anyVisibleByCategory[category] = true;
+      }
+    });
+    Object.keys(categoryHeaderMap).forEach(function(category) {
+      categoryHeaderMap[category].style.display = anyVisibleByCategory[category] ? "" : "none";
+    });
+    toggleFieldWrapper(q(FIELD_SELECTORS.interestedSubjects), anyVisible);
+    updateSubjectsRequiredMark(anyVisible);
+    evaluateSubjectExclusions();
+  }
+  function updateWaitlistBadge(opt, classification) {
+    var wrap = optionWrapper(opt);
+    if (!wrap) return;
+    var badge = wrap.querySelector(".contour-waitlist-badge");
+    if (isWaitlistSubject(classification)) {
+      if (!badge) {
+        badge = document.createElement("span");
+        badge.className = "contour-waitlist-badge";
+        badge.textContent = "Waitlist";
+        var span = wrap.querySelector("input + span") || wrap;
+        span.appendChild(badge);
+      }
+      badge.style.display = "";
+    } else if (badge) {
+      badge.style.display = "none";
+    }
+  }
+  function subjectExclusionKey(classification) {
+    if (classification.program !== "Education") return null;
+    if (!classification.subject) return null;
+    return classification.state + "|" + classification.subject;
+  }
+  function ensureSubjectExclusionNote(opt) {
+    var wrap = optionWrapper(opt);
+    if (!wrap) return null;
+    var note = wrap.querySelector(".contour-subject-exclusion-note");
+    if (note) return note;
+    note = document.createElement("span");
+    note.className = "contour-subject-exclusion-note";
+    note.style.display = "none";
+    wrap.appendChild(note);
+    return note;
+  }
+  function evaluateSubjectExclusions() {
+    var options = qAll(FIELD_SELECTORS.interestedSubjects);
+    var checkedByKey = {};
+    options.forEach(function(opt) {
+      if (!opt.checked) return;
+      var key = subjectExclusionKey(getClassification(opt));
+      if (key) checkedByKey[key] = opt;
+    });
+    options.forEach(function(opt) {
+      var wrap = optionWrapper(opt);
+      var isVisible = wrap && wrap.style.display !== "none";
+      var key = subjectExclusionKey(getClassification(opt));
+      var blockingOption = key ? checkedByKey[key] : null;
+      var blocked = isVisible && !!blockingOption && blockingOption !== opt;
+      var note = ensureSubjectExclusionNote(opt);
+      opt.disabled = blocked;
+      if (wrap) wrap.classList.toggle("contour-subject-option--blocked", blocked);
+      if (note) {
+        if (blocked) {
+          note.textContent = "You can only select one level of this subject";
+          note.style.display = "";
+        } else {
+          note.style.display = "none";
+        }
+      }
+    });
+  }
+  var campusClassificationCache = new WeakMap;
+  function getCampusClassification(inputEl) {
+    if (campusClassificationCache.has(inputEl)) {
+      return campusClassificationCache.get(inputEl);
+    }
+    var parsed = parseStructuredCampusValue(inputEl.value);
+    var classification;
+    if (parsed) {
+      classification = classificationFromStructuredCampusValue(parsed);
+    } else {
+      console.warn('Contour Form 1 logic: campus option "' + optionLabelText(inputEl) + '" has no valid structured value — always shown until fixed.');
+      classification = {
+        code: null,
+        state: null,
+        country: null
+      };
+    }
+    campusClassificationCache.set(inputEl, classification);
+    return classification;
+  }
+  function evaluateCampusOptions() {
+    var location = getValue(FIELD_SELECTORS.location);
+    var selectedPrograms = getCheckedValues(FIELD_SELECTORS.programInterest);
+    var options = qAll(FIELD_SELECTORS.campus);
+    var isMedPrepOnly = selectedPrograms.length === 1 && selectedPrograms[0] === "MedPrep";
+    if (isMedPrepOnly) {
+      options.forEach(function(opt) {
+        var isOnline = getCampusClassification(opt).code === "ONLINE";
+        setCheckboxChecked(opt, isOnline);
+      });
+      toggleFieldWrapper(q(FIELD_SELECTORS.campus), false);
+      updateCampusRequiredMark(false);
+      return;
+    }
+    var fieldShouldShow = selectedPrograms.length > 0;
+    options.forEach(function(opt) {
+      var classification = getCampusClassification(opt);
+      var shouldShow = fieldShouldShow && subjectMatchesLocation(classification.state, location);
+      shouldShow ? showOption(opt) : hideOption(opt);
+    });
+    toggleFieldWrapper(q(FIELD_SELECTORS.campus), fieldShouldShow);
+    updateCampusRequiredMark(fieldShouldShow);
+  }
+  function fixRadioCardClickArea() {
+    qAll(".hs-fieldtype-radio .hs-form-radio-display").forEach(function(label) {
+      label.addEventListener("click", function(e) {
+        var input = label.querySelector('input[type="radio"]');
+        if (!input || e.target === input) return;
+        e.preventDefault();
+        if (!input.checked) input.click();
+      }, true);
+    });
+  }
+  function fixCheckboxCardClickArea() {
+    qAll(".hs-fieldtype-checkbox .hs-form-checkbox-display").forEach(function(label) {
+      label.addEventListener("click", function(e) {
+        var input = label.querySelector('input[type="checkbox"]');
+        if (!input || e.target === input) return;
+        e.preventDefault();
+        input.click();
+      }, true);
+    });
+  }
+  function fixProgramCardClickArea() {
+    qAll(".contour-program-card").forEach(function(label) {
+      label.addEventListener("click", function(e) {
+        var input = label.querySelector('input[type="checkbox"]');
+        if (!input || e.target === input) return;
+        e.preventDefault();
+        input.click();
+      }, true);
+    });
+  }
+  var PREFETCH_ENDPOINT = "https://australia-southeast1-hubspot-signup-form.cloudfunctions.net/contour-form1-prefetch";
+  var PREFETCH_OTP_ENABLED = false;
+  var STUDENT_ID_PARAM = "student_id";
+  var EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  var prefetchedTrialSubjectCodes = [];
+  var prefetchedEnrolledSubjectCodes = [];
+  function startUrlPrefetch() {
+    if (!PREFETCH_ENDPOINT) return null;
+    var studentId = getUrlParam(STUDENT_ID_PARAM);
+    if (!studentId) return null;
+    var request = fetch(PREFETCH_ENDPOINT + "/prefetch?studentId=" + encodeURIComponent(studentId)).then(function(res) {
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      return res.json();
+    }).catch(function(err) {
+      console.warn("Contour Form 1 logic: URL prefetch failed —", err);
+      return null;
+    });
+    var timeout = new Promise(function(resolve) {
+      setTimeout(function() {
+        resolve(null);
+      }, 8000);
+    });
+    return Promise.race([request, timeout]);
+  }
+  var urlPrefetchPromise = startUrlPrefetch();
+  function showFormLoader() {
+    if (document.getElementById("contour-form-loader")) return;
+    var loader = document.createElement("div");
+    loader.id = "contour-form-loader";
+    loader.className = "contour-form-loader";
+    var spinner = document.createElement("div");
+    spinner.className = "contour-form-loader__spinner";
+    loader.appendChild(spinner);
+    var text = document.createElement("p");
+    text.className = "contour-form-loader__text";
+    text.textContent = "Fetching your details…";
+    loader.appendChild(text);
+    formRoot.parentNode.insertBefore(loader, formRoot);
+    formRoot.style.display = "none";
+  }
+  function hideFormLoader() {
+    var loader = document.getElementById("contour-form-loader");
+    if (loader && loader.parentNode) loader.parentNode.removeChild(loader);
+    formRoot.style.removeProperty("display");
+  }
+  function splitMultiValue(raw) {
+    if (!raw) return [];
+    return String(raw).split(";").map(function(s) {
+      return s.trim();
+    }).filter(function(s) {
+      return s.length > 0;
+    });
+  }
+  function setSelectOrTextValue(selector, value) {
+    var el = q(selector);
+    if (!el || value === undefined || value === null || value === "") return;
+    el.value = value;
+    el.dispatchEvent(new Event("input", {
+      bubbles: true
+    }));
+    el.dispatchEvent(new Event("change", {
+      bubbles: true
+    }));
+  }
+  function attemptCheckboxValues(selector, values, excludeCodes) {
+    if (!values || values.length === 0) return [];
+    var remaining = [];
+    values.forEach(function(value) {
+      if (excludeCodes && excludeCodes.length > 0) {
+        var parsed = parseStructuredSubjectValue(value);
+        if (parsed && excludeCodes.indexOf(parsed.code) !== -1) return;
+      }
+      var applied = false;
+      qAll(selector).forEach(function(opt) {
+        if (applied || opt.value !== value) return;
+        var wrap = optionWrapper(opt);
+        var visible = !wrap || wrap.style.display !== "none";
+        if (opt.disabled || !visible) return;
+        setCheckboxChecked(opt, true);
+        applied = true;
+      });
+      if (!applied) remaining.push(value);
+    });
+    return remaining;
+  }
+  var pendingPrefill = null;
+  var applyingPendingPrefill = false;
+  function applyPendingPrefill() {
+    if (!pendingPrefill || applyingPendingPrefill) return;
+    applyingPendingPrefill = true;
+    var excludeCodes = prefetchedTrialSubjectCodes.concat(prefetchedEnrolledSubjectCodes);
+    pendingPrefill.programs = attemptCheckboxValues(FIELD_SELECTORS.programInterest, pendingPrefill.programs);
+    pendingPrefill.subjects = attemptCheckboxValues(FIELD_SELECTORS.interestedSubjects, pendingPrefill.subjects, excludeCodes);
+    pendingPrefill.campuses = attemptCheckboxValues(FIELD_SELECTORS.campus, pendingPrefill.campuses);
+    if (pendingPrefill.programs.length === 0 && pendingPrefill.subjects.length === 0 && pendingPrefill.campuses.length === 0) {
+      pendingPrefill = null;
+    }
+    applyingPendingPrefill = false;
+  }
+  function setTextWhenPresent(selector, value, tries) {
+    if (value === undefined || value === null || value === "") return;
+    var el = q(selector);
+    if (el) {
+      setSelectOrTextValue(selector, value);
+      return;
+    }
+    if (tries <= 0) return;
+    setTimeout(function() {
+      setTextWhenPresent(selector, value, tries - 1);
+    }, 150);
+  }
+  // Complete ITU E.164 country calling codes (longest-prefix order; shared
+  // codes map to the primary country: +1 -> us, +7 -> ru, +44 -> gb).
+  var PHONE_DIAL_CODES = [["211", "ss"], ["212", "ma"], ["213", "dz"], ["216", "tn"], ["218", "ly"], ["220", "gm"], ["221", "sn"], ["222", "mr"], ["223", "ml"], ["224", "gn"], ["225", "ci"], ["226", "bf"], ["227", "ne"], ["228", "tg"], ["229", "bj"], ["230", "mu"], ["231", "lr"], ["232", "sl"], ["233", "gh"], ["234", "ng"], ["235", "td"], ["236", "cf"], ["237", "cm"], ["238", "cv"], ["239", "st"], ["240", "gq"], ["241", "ga"], ["242", "cg"], ["243", "cd"], ["244", "ao"], ["245", "gw"], ["246", "io"], ["248", "sc"], ["249", "sd"], ["250", "rw"], ["251", "et"], ["252", "so"], ["253", "dj"], ["254", "ke"], ["255", "tz"], ["256", "ug"], ["257", "bi"], ["258", "mz"], ["260", "zm"], ["261", "mg"], ["262", "re"], ["263", "zw"], ["264", "na"], ["265", "mw"], ["266", "ls"], ["267", "bw"], ["268", "sz"], ["269", "km"], ["290", "sh"], ["291", "er"], ["297", "aw"], ["298", "fo"], ["299", "gl"], ["350", "gi"], ["351", "pt"], ["352", "lu"], ["353", "ie"], ["354", "is"], ["355", "al"], ["356", "mt"], ["357", "cy"], ["358", "fi"], ["359", "bg"], ["370", "lt"], ["371", "lv"], ["372", "ee"], ["373", "md"], ["374", "am"], ["375", "by"], ["376", "ad"], ["377", "mc"], ["378", "sm"], ["380", "ua"], ["381", "rs"], ["382", "me"], ["383", "xk"], ["385", "hr"], ["386", "si"], ["387", "ba"], ["389", "mk"], ["420", "cz"], ["421", "sk"], ["423", "li"], ["500", "fk"], ["501", "bz"], ["502", "gt"], ["503", "sv"], ["504", "hn"], ["505", "ni"], ["506", "cr"], ["507", "pa"], ["508", "pm"], ["509", "ht"], ["590", "gp"], ["591", "bo"], ["592", "gy"], ["593", "ec"], ["595", "py"], ["597", "sr"], ["598", "uy"], ["599", "cw"], ["670", "tl"], ["672", "nf"], ["673", "bn"], ["674", "nr"], ["675", "pg"], ["676", "to"], ["677", "sb"], ["678", "vu"], ["679", "fj"], ["680", "pw"], ["681", "wf"], ["682", "ck"], ["683", "nu"], ["685", "ws"], ["686", "ki"], ["687", "nc"], ["688", "tv"], ["689", "pf"], ["690", "tk"], ["691", "fm"], ["692", "mh"], ["850", "kp"], ["852", "hk"], ["853", "mo"], ["855", "kh"], ["856", "la"], ["880", "bd"], ["886", "tw"], ["960", "mv"], ["961", "lb"], ["962", "jo"], ["963", "sy"], ["964", "iq"], ["965", "kw"], ["966", "sa"], ["967", "ye"], ["968", "om"], ["970", "ps"], ["971", "ae"], ["972", "il"], ["973", "bh"], ["974", "qa"], ["975", "bt"], ["976", "mn"], ["977", "np"], ["992", "tj"], ["993", "tm"], ["994", "az"], ["995", "ge"], ["996", "kg"], ["998", "uz"], ["20", "eg"], ["27", "za"], ["30", "gr"], ["31", "nl"], ["32", "be"], ["33", "fr"], ["34", "es"], ["36", "hu"], ["39", "it"], ["40", "ro"], ["41", "ch"], ["43", "at"], ["44", "gb"], ["45", "dk"], ["46", "se"], ["47", "no"], ["48", "pl"], ["49", "de"], ["51", "pe"], ["52", "mx"], ["53", "cu"], ["54", "ar"], ["55", "br"], ["56", "cl"], ["57", "co"], ["58", "ve"], ["60", "my"], ["61", "au"], ["62", "id"], ["63", "ph"], ["64", "nz"], ["65", "sg"], ["66", "th"], ["81", "jp"], ["82", "kr"], ["84", "vn"], ["86", "cn"], ["90", "tr"], ["91", "in"], ["92", "pk"], ["93", "af"], ["94", "lk"], ["95", "mm"], ["98", "ir"], ["1", "us"], ["7", "ru"]];
+  function splitE164(value) {
+    if (!value || value.charAt(0) !== "+") return null;
+    var digits = value.slice(1).replace(/\D/g, "");
+    for (var i = 0; i < PHONE_DIAL_CODES.length; i++) {
+      var dial = PHONE_DIAL_CODES[i][0];
+      if (digits.indexOf(dial) === 0) {
+        return {
+          dial: dial,
+          iso: PHONE_DIAL_CODES[i][1],
+          national: digits.slice(dial.length)
+        };
+      }
+    }
+    return null;
+  }
+  function fireInputEvents(inp) {
+    inp.dispatchEvent(new Event("input", {
+      bubbles: true
+    }));
+    inp.dispatchEvent(new Event("change", {
+      bubbles: true
+    }));
+  }
+  function setPhoneValue(selector, value) {
+    if (!value) return;
+    var el = q(selector);
+    if (!el) return;
+    var wrap = fieldWrapper(el) || el.parentElement;
+    var select = wrap ? wrap.querySelector("select") : null;
+    var parts = splitE164(value);
+    if (select && parts) {
+      var matched = false;
+      Array.prototype.forEach.call(select.options, function(opt) {
+        if (matched) return;
+        var v = (opt.value || "").toLowerCase();
+        if (v === parts.iso || v === parts.dial || v === "+" + parts.dial || v.indexOf(parts.iso + "_") === 0 || v.indexOf("_" + parts.dial) !== -1) {
+          select.value = opt.value;
+          matched = true;
+        }
+      });
+      if (matched) {
+        fireInputEvents(select);
+        var inputs = Array.prototype.slice.call(wrap.querySelectorAll("input"));
+        inputs.forEach(function(inp) {
+          // Hidden input carries the full E.164 value for submission; the
+          // visible one only holds the national number.
+          inp.value = inp.type === "hidden" ? value : parts.national;
+          fireInputEvents(inp);
+        });
+        return;
+      }
+    }
+    el.value = value;
+    fireInputEvents(el);
+    el.dispatchEvent(new Event("blur", {
+      bubbles: true
+    }));
+  }
+  function applyPrefill(contact, guardian, associatedStudent) {
+    var contactType = contact.contact_type;
+    if (contactType === "Student" || contactType === "Guardian") {
+      qAll(FIELD_SELECTORS.contactType).forEach(function(radio) {
+        if (radio.value === contactType) setCheckboxChecked(radio, true);
+      });
+    }
+    if (contactType === "Guardian") {
+      setSelectOrTextValue('[name="firstname"]', contact.firstname);
+      setSelectOrTextValue('[name="lastname"]', contact.lastname);
+      setSelectOrTextValue(FIELD_SELECTORS.emailTemp, contact.email_2 || contact.email);
+      setPhoneValue('[name="phone"]', contact.phone);
+      var s = associatedStudent || {
+        firstname: contact.student_first_name,
+        lastname: contact.student_last_name,
+        email: contact.student_email,
+        phone: contact.student_phone
+      };
+      setTextWhenPresent('[name="student_first_name"]', s.firstname, 10);
+      setTextWhenPresent('[name="student_last_name"]', s.lastname, 10);
+      setTextWhenPresent('[name="student_email"]', s.email_2 || s.email, 10);
+      setTextWhenPresent('[name="student_phone"]', s.phone, 10);
+    } else {
+      setSelectOrTextValue('[name="firstname"]', contact.firstname);
+      setSelectOrTextValue('[name="lastname"]', contact.lastname);
+      setSelectOrTextValue(FIELD_SELECTORS.emailTemp, contact.email_2 || contact.email);
+      setPhoneValue('[name="phone"]', contact.phone);
+    }
+    setSelectOrTextValue(FIELD_SELECTORS.location, contact.state_territory_country);
+    setSelectOrTextValue(FIELD_SELECTORS.intakeYear, contact.which_year_are_you_interested_in_tutoring_for_);
+    setSelectOrTextValue(FIELD_SELECTORS.yearLevel, contact.year_level);
+    if (contact.school_text) {
+      setSelectOrTextValue(FIELD_SELECTORS.schoolText, contact.school_text);
+      setSelectOrTextValue(FIELD_SELECTORS.schoolCode, contact.school_code || "");
+      setSelectOrTextValue(FIELD_SELECTORS.acaraId, contact.acara_id || "");
+      var schoolInput = q(FIELD_SELECTORS.schoolText);
+      if (schoolInput) setTimeout(function() {
+        schoolInput.dispatchEvent(new Event("blur"));
+      }, 200);
+    }
+    pendingPrefill = {
+      programs: splitMultiValue(contact.program_interest),
+      subjects: splitMultiValue(contact.web_form__interested_subject),
+      campuses: splitMultiValue(contact.web_form__preferred_campuses)
+    };
+    applyPendingPrefill();
+    setSelectOrTextValue(FIELD_SELECTORS.referral, contact.referral);
+  }
+  function getUrlParam(name) {
+    var match = new RegExp("[?&]" + name + "=([^&#]*)").exec(window.location.search);
+    return match ? decodeURIComponent(match[1].replace(/\+/g, " ")) : "";
+  }
+  function renderPrefillBanner(fullName) {
+    var existing = formRoot.querySelector("#contour-prefill-banner");
+    if (existing) existing.parentNode.removeChild(existing);
+    var banner = document.createElement("div");
+    banner.id = "contour-prefill-banner";
+    banner.className = "contour-prefill-banner";
+    var badge = document.createElement("span");
+    badge.className = "contour-prefill-banner__badge";
+    badge.setAttribute("aria-hidden", "true");
+    badge.innerHTML = '<svg viewBox="0 0 16 16" width="15" height="15" xmlns="http://www.w3.org/2000/svg"><path d="M3 8.5 6.5 12 13 4.5" fill="none" stroke="#0C3166" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    banner.appendChild(badge);
+    var content = document.createElement("div");
+    content.className = "contour-prefill-banner__content";
+    var title = document.createElement("p");
+    title.className = "contour-prefill-banner__title";
+    title.textContent = fullName ? "Welcome back, " + fullName : "Welcome back";
+    content.appendChild(title);
+    var text = document.createElement("p");
+    text.className = "contour-prefill-banner__text";
+    text.textContent = "We've prefilled your details from your previous signup — please review them before submitting.";
+    content.appendChild(text);
+    var resetLink = document.createElement("a");
+    resetLink.href = "#";
+    resetLink.className = "contour-prefill-banner__reset";
+    resetLink.textContent = "Not you, or starting fresh? Clear the form";
+    resetLink.addEventListener("click", function(e) {
+      e.preventDefault();
+      // A DOM-level reset fights HubSpot's internal form state (radios get
+      // restored on re-render) — reloading without the student_id param
+      // guarantees a pristine blank form.
+      window.location.href = window.location.pathname;
+    });
+    content.appendChild(resetLink);
+    banner.appendChild(content);
+    formRoot.insertBefore(banner, formRoot.firstChild);
+  }
+  function initPrefetchFromUrl() {
+    if (!urlPrefetchPromise) return;
+    showFormLoader();
+    urlPrefetchPromise.then(function(data) {
+      if (data && data.found && data.contact) {
+        prefetchedTrialSubjectCodes = data.trialSubjectCodes || [];
+        prefetchedEnrolledSubjectCodes = data.enrolledSubjectCodes || [];
+        applyPrefill(data.contact, data.guardian, data.associatedStudent);
+        var fullName = ((data.contact.firstname || "") + " " + (data.contact.lastname || "")).trim();
+        renderPrefillBanner(fullName);
+        if (prefetchedTrialSubjectCodes.length > 0 || prefetchedEnrolledSubjectCodes.length > 0) {
+          setFieldLabelText("interestedSubjects", "Additional Subjects");
+        }
+        renderSubjectSummary();
+      }
+      hideFormLoader();
+    });
+  }
+  function prefetchPost(path, payload) {
+    return fetch(PREFETCH_ENDPOINT + path, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload)
+    }).then(function(res) {
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      return res.json();
+    });
+  }
+  function enhanceEmailPrefill() {
+    if (!PREFETCH_ENDPOINT || !PREFETCH_OTP_ENABLED) return;
+    var emailInput = q(FIELD_SELECTORS.emailTemp);
+    if (!emailInput) return;
+    var wrap = fieldWrapper(emailInput) || emailInput.parentElement;
+    var box = document.createElement("div");
+    box.id = "contour-prefill-offer";
+    box.className = "contour-prefill-offer";
+    box.style.display = "none";
+    var message = document.createElement("p");
+    message.className = "contour-prefill-offer__message";
+    box.appendChild(message);
+    var codeRow = document.createElement("div");
+    codeRow.className = "contour-prefill-offer__code-row";
+    codeRow.style.display = "none";
+    var codeInput = document.createElement("input");
+    codeInput.type = "text";
+    codeInput.inputMode = "numeric";
+    codeInput.maxLength = 6;
+    codeInput.placeholder = "6-digit code";
+    codeInput.className = "contour-prefill-offer__code-input";
+    codeRow.appendChild(codeInput);
+    var confirmBtn = document.createElement("button");
+    confirmBtn.type = "button";
+    confirmBtn.textContent = "Prefill my details";
+    confirmBtn.className = "contour-prefill-offer__confirm";
+    codeRow.appendChild(confirmBtn);
+    box.appendChild(codeRow);
+    var errorEl = document.createElement("p");
+    errorEl.className = "contour-prefill-offer__error";
+    errorEl.style.display = "none";
+    box.appendChild(errorEl);
+    wrap.appendChild(box);
+    var lastRequestedEmail = null;
+    function reset() {
+      box.style.display = "none";
+      codeRow.style.display = "none";
+      errorEl.style.display = "none";
+      codeInput.value = "";
+    }
+    emailInput.addEventListener("input", function() {
+      reset();
+      lastRequestedEmail = null;
+    });
+    emailInput.addEventListener("blur", function() {
+      var email = emailInput.value.trim();
+      if (!EMAIL_SHAPE.test(email) || email === lastRequestedEmail) return;
+      lastRequestedEmail = email;
+      prefetchPost("/request", {
+        email: email
+      }).then(function(data) {
+        if (!data || !data.found) return;
+        if (emailInput.value.trim() !== email) return;
+        message.textContent = "Looks like you've signed up with us before. We've emailed a 6-digit code to " + email + " — enter it below to prefill your details.";
+        box.style.display = "";
+        codeRow.style.display = "";
+      }).catch(function(err) {
+        console.warn("Contour Form 1 logic: prefetch request failed —", err);
+      });
+    });
+    confirmBtn.addEventListener("click", function() {
+      var email = emailInput.value.trim();
+      var code = codeInput.value.trim();
+      if (!code) return;
+      confirmBtn.disabled = true;
+      prefetchPost("/confirm", {
+        email: email,
+        code: code
+      }).then(function(data) {
+        confirmBtn.disabled = false;
+        if (data && data.ok && data.contact) {
+          applyPrefill(data.contact);
+          message.textContent = "Your details have been prefilled from your previous signup. Please review before submitting.";
+          codeRow.style.display = "none";
+          errorEl.style.display = "none";
+          return;
+        }
+        errorEl.textContent = "That code didn't match. Please check the email and try again.";
+        errorEl.style.display = "";
+      }).catch(function(err) {
+        confirmBtn.disabled = false;
+        errorEl.textContent = "Something went wrong verifying the code. Please try again.";
+        errorEl.style.display = "";
+        console.warn("Contour Form 1 logic: prefetch confirm failed —", err);
+      });
+    });
+  }
+  var CALENDLY_URLS = {
+    anz: "https://calendly.com/contourmedprep/welcome-consultation-anz",
+    uk: "https://calendly.com/contourmedprep/welcome-consultation-uk"
+  };
+  function isTestprepSelected() {
+    var checkedSubjects = qAll(FIELD_SELECTORS.interestedSubjects + ":checked");
+    for (var i = 0; i < checkedSubjects.length; i++) {
+      if (getClassification(checkedSubjects[i]).program === "TestPrep") return true;
+    }
+    return false;
+  }
+  function isUcatSelected() {
+    var checkedSubjects = qAll(FIELD_SELECTORS.interestedSubjects + ":checked");
+    for (var i = 0; i < checkedSubjects.length; i++) {
+      var labelText = optionLabelText(checkedSubjects[i]);
+      if (UCAT_UK_PATTERN.test(labelText) || UCAT_ANZ_PATTERN.test(labelText)) return true;
+    }
+    return false;
+  }
+  function loadCalendlyScript(callback) {
+    if (window.Calendly) {
+      callback();
+      return;
+    }
+    var existing = document.getElementById("contour-calendly-script");
+    if (existing) {
+      existing.addEventListener("load", callback);
+      return;
+    }
+    var script = document.createElement("script");
+    script.id = "contour-calendly-script";
+    script.src = "https://assets.calendly.com/assets/external/widget.js";
+    script.async = true;
+    script.onload = callback;
+    document.body.appendChild(script);
+  }
+  function ensureWelcomeConsultationContainer() {
+    var existing = formRoot.querySelector("#contour-welcome-consultation");
+    if (existing) return existing;
+    var wrapper = document.createElement("div");
+    wrapper.id = "contour-welcome-consultation";
+    wrapper.style.display = "none";
+    var heading = document.createElement("div");
+    heading.className = "contour-welcome-consultation__heading";
+    heading.textContent = "Book Your Welcome Consultation";
+    wrapper.appendChild(heading);
+    var copy = document.createElement("p");
+    copy.className = "contour-welcome-consultation__copy";
+    copy.textContent = "New UCAT students are required to book a Welcome Consultation before a trial can be booked. Please register your consultation below before completing the rest of this form.";
+    wrapper.appendChild(copy);
+    var widgetContainer = document.createElement("div");
+    widgetContainer.className = "contour-welcome-consultation__widget";
+    wrapper.appendChild(widgetContainer);
+    var campusField = q(FIELD_SELECTORS.campus);
+    var campusFieldWrap = campusField ? fieldWrapper(campusField) : null;
+    var submitBlock = formRoot.querySelector(".hs-submit");
+    if (campusFieldWrap && campusFieldWrap.parentNode) {
+      campusFieldWrap.parentNode.insertBefore(wrapper, campusFieldWrap.nextSibling);
+    } else if (submitBlock && submitBlock.parentNode) {
+      submitBlock.parentNode.insertBefore(wrapper, submitBlock);
+    } else {
+      formRoot.appendChild(wrapper);
+    }
+    return wrapper;
+  }
+  function renderWelcomeConsultation() {
+    var wrapper = ensureWelcomeConsultationContainer();
+    var ucat = isUcatSelected();
+    var testprep = isTestprepSelected();
+    if (!ucat && !testprep) {
+      wrapper.style.display = "none";
+      return;
+    }
+    wrapper.style.display = "";
+    var copyEl = wrapper.querySelector(".contour-welcome-consultation__copy");
+    if (copyEl) {
+      var audience = ucat && testprep ? "UCAT and Selective Entry" : ucat ? "UCAT" : "Selective Entry";
+      copyEl.textContent = "New " + audience + " students are required to book a Welcome Consultation before a trial can be booked. Please register your consultation below before completing the rest of this form.";
+    }
+    var location = getValue(FIELD_SELECTORS.location);
+    var isUk = location === UK_TOKEN;
+    var baseUrl = isUk ? CALENDLY_URLS.uk : CALENDLY_URLS.anz;
+    var firstname = getValue('[name="firstname"]');
+    var lastname = getValue('[name="lastname"]');
+    var email = getValue(FIELD_SELECTORS.emailTemp);
+    var fullName = (firstname + " " + lastname).trim();
+    var params = [];
+    if (fullName) params.push("name=" + encodeURIComponent(fullName));
+    if (email) params.push("email=" + encodeURIComponent(email));
+    var queryString = params.join("&");
+    var fullUrl = baseUrl + (queryString ? "?" + queryString : "");
+    var widgetContainer = wrapper.querySelector(".contour-welcome-consultation__widget");
+    widgetContainer.innerHTML = "";
+    loadCalendlyScript(function() {
+      Calendly.initInlineWidget({
+        url: fullUrl,
+        parentElement: widgetContainer
+      });
+    });
+  }
+  function subjectCodeToLabel(code) {
+    var options = qAll(FIELD_SELECTORS.interestedSubjects);
+    for (var i = 0; i < options.length; i++) {
+      var parsed = parseStructuredSubjectValue(options[i].value);
+      if (parsed && parsed.code === code) return optionLabelText(options[i]);
+    }
+    return code;
+  }
+  function ensureSubjectSummary() {
+    var existing = formRoot.querySelector("#contour-subject-summary");
+    if (existing) return existing;
+    var container = document.createElement("div");
+    container.id = "contour-subject-summary";
+    container.className = "contour-subject-summary";
+    container.style.display = "none";
+    var heading = document.createElement("div");
+    heading.className = "contour-subject-summary__heading";
+    heading.textContent = "Your Subjects";
+    container.appendChild(heading);
+    var grid = document.createElement("div");
+    grid.className = "contour-subject-summary__grid";
+    container.appendChild(grid);
+    var subjectsField = q(FIELD_SELECTORS.interestedSubjects);
+    var subjectsWrap = subjectsField ? fieldWrapper(subjectsField) : null;
+    if (subjectsWrap && subjectsWrap.parentNode) {
+      subjectsWrap.parentNode.insertBefore(container, subjectsWrap.nextSibling);
+    } else {
+      var submitBlock = formRoot.querySelector(".hs-submit");
+      if (submitBlock && submitBlock.parentNode) {
+        submitBlock.parentNode.insertBefore(container, submitBlock);
+      } else {
+        formRoot.appendChild(container);
+      }
+    }
+    return container;
+  }
+  function renderSubjectSummary() {
+    var container = ensureSubjectSummary();
+    var grid = container.querySelector(".contour-subject-summary__grid");
+    var interested = qAll(FIELD_SELECTORS.interestedSubjects + ":checked").map(function(opt) {
+      return optionLabelText(opt);
+    });
+    var trialing = prefetchedTrialSubjectCodes.map(subjectCodeToLabel);
+    var enrolled = prefetchedEnrolledSubjectCodes.map(subjectCodeToLabel);
+    var columns = [{
+      title: "Interested Subject" + (interested.length === 1 ? "" : "s"),
+      items: interested,
+      chipClass: "contour-subject-chip--navy"
+    }, {
+      title: "Trialing Subject" + (trialing.length === 1 ? "" : "s"),
+      items: trialing,
+      chipClass: "contour-subject-chip--lime"
+    }, {
+      title: "Enrolled Subject" + (enrolled.length === 1 ? "" : "s"),
+      items: enrolled,
+      chipClass: "contour-subject-chip--blue"
+    }];
+    grid.innerHTML = "";
+    var anyColumn = false;
+    columns.forEach(function(col) {
+      if (col.items.length === 0) return;
+      anyColumn = true;
+      var colEl = document.createElement("div");
+      colEl.className = "contour-subject-summary__col";
+      var title = document.createElement("div");
+      title.className = "contour-subject-summary__col-title";
+      title.textContent = col.title;
+      colEl.appendChild(title);
+      var chips = document.createElement("div");
+      chips.className = "contour-subject-summary__chips";
+      col.items.forEach(function(label) {
+        var chip = document.createElement("span");
+        chip.className = "contour-subject-chip " + col.chipClass;
+        chip.textContent = label;
+        chips.appendChild(chip);
+      });
+      colEl.appendChild(chips);
+      grid.appendChild(colEl);
+    });
+    container.style.display = anyColumn ? "" : "none";
+  }
+  function attachListeners() {
+    var locationEl = q(FIELD_SELECTORS.location);
+    if (locationEl) {
+      locationEl.addEventListener("change", function() {
+        evaluateProgramInterestOptions();
+        evaluateInterestedSubjectsOptions();
+        evaluateCampusOptions();
+        evaluateYearLevelOptions();
+        evaluateSchoolFieldVisibility();
+        evaluateIntakeYearDependents();
+        renderWelcomeConsultation();
+        applyPendingPrefill();
+      });
+    }
+    qAll(FIELD_SELECTORS.programInterest).forEach(function(el) {
+      el.addEventListener("change", function() {
+        evaluateInterestedSubjectsOptions();
+        evaluateCampusOptions();
+        renderWelcomeConsultation();
+        applyPendingPrefill();
+      });
+    });
+    qAll(FIELD_SELECTORS.interestedSubjects).forEach(function(el) {
+      el.addEventListener("change", function() {
+        evaluateSubjectExclusions();
+        renderWelcomeConsultation();
+        renderSubjectSummary();
+      });
+    });
+    var yearLevelEl = q(FIELD_SELECTORS.yearLevel);
+    if (yearLevelEl) {
+      yearLevelEl.addEventListener("change", function() {
+        evaluateProgramInterestOptions();
+        evaluateInterestedSubjectsOptions();
+        applyPendingPrefill();
+      });
+    }
+    var intakeYearEl = q(FIELD_SELECTORS.intakeYear);
+    if (intakeYearEl) {
+      intakeYearEl.addEventListener("change", function() {
+        evaluateProgramInterestOptions();
+        evaluateInterestedSubjectsOptions();
+        evaluateYearLevelOptions();
+        evaluateIntakeYearDependents();
+        applyPendingPrefill();
+      });
+    }
+  }
+  var SCHOOL_LIST_URL = "https://cdn.prod.website-files.com/696ed06d2e62378f0a51f2d4/6a58568773b5f6caa95424cc_7250ab944ad1d54f698183343d9a5688_schools_with_codes.txt";
+  var schoolListCache = null;
+  var schoolListPromise = null;
+  function loadSchoolList() {
+    if (schoolListCache) return Promise.resolve(schoolListCache);
+    if (schoolListPromise) return schoolListPromise;
+    schoolListPromise = fetch(SCHOOL_LIST_URL).then(function(res) {
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      return res.json();
+    }).then(function(list) {
+      schoolListCache = list;
+      return list;
+    }).catch(function(err) {
+      console.warn("Contour Form 1 logic: failed to load school list —", err);
+      schoolListCache = [];
+      return schoolListCache;
+    });
+    return schoolListPromise;
+  }
+  function enhanceSchoolSearch() {
+    var input = q(FIELD_SELECTORS.schoolText);
+    if (!input) return;
+    if (input.closest(".contour-school-search")) return;
+    var codeInput = q(FIELD_SELECTORS.schoolCode);
+    var acaraInput = q(FIELD_SELECTORS.acaraId);
+    var wrapper = document.createElement("div");
+    wrapper.className = "contour-school-search";
+    input.parentNode.insertBefore(wrapper, input);
+    wrapper.appendChild(input);
+    input.setAttribute("role", "combobox");
+    input.setAttribute("aria-autocomplete", "list");
+    input.setAttribute("aria-expanded", "false");
+    input.setAttribute("autocomplete", "off");
+    var listbox = document.createElement("ul");
+    listbox.className = "contour-school-search__listbox";
+    listbox.setAttribute("role", "listbox");
+    listbox.id = "contour-school-listbox";
+    listbox.hidden = true;
+    wrapper.appendChild(listbox);
+    input.setAttribute("aria-controls", listbox.id);
+    var MIN_CHARS = 2;
+    var MAX_RESULTS = 50;
+    var activeIndex = -1;
+    var currentMatches = [];
+    function normalize(s) {
+      return s.toLowerCase().trim();
+    }
+    function matchesQueryAndLocation(school, query, location) {
+      if (!location || school.state !== location) return false;
+      return normalize(school.name).indexOf(query) !== -1;
+    }
+    function tokenize(s) {
+      return normalize(s).split(/[^a-z0-9]+/).filter(function(w) {
+        return w.length > 0;
+      });
+    }
+    function levenshtein(a, b) {
+      var m = a.length, n = b.length;
+      if (m === 0) return n;
+      if (n === 0) return m;
+      var prev = new Array(n + 1);
+      var curr = new Array(n + 1);
+      for (var j = 0; j <= n; j++) prev[j] = j;
+      for (var i = 1; i <= m; i++) {
+        curr[0] = i;
+        for (var j2 = 1; j2 <= n; j2++) {
+          var cost = a.charAt(i - 1) === b.charAt(j2 - 1) ? 0 : 1;
+          curr[j2] = Math.min(prev[j2] + 1, curr[j2 - 1] + 1, prev[j2 - 1] + cost);
+        }
+        var tmp = prev;
+        prev = curr;
+        curr = tmp;
+      }
+      return prev[n];
+    }
+    function typoTolerance(len) {
+      if (len <= 3) return 0;
+      if (len <= 6) return 1;
+      return 2;
+    }
+    function fuzzyWordMatches(queryWord, nameWord) {
+      if (nameWord.indexOf(queryWord) === 0) return true;
+      var tolerance = typoTolerance(queryWord.length);
+      if (tolerance === 0) return false;
+      return levenshtein(queryWord, nameWord) <= tolerance;
+    }
+    function fuzzyMatchesQueryAndLocation(school, queryWords, location) {
+      if (!location || school.state !== location) return false;
+      var nameWords = tokenize(school.name);
+      return queryWords.every(function(qw) {
+        return nameWords.some(function(nw) {
+          return fuzzyWordMatches(qw, nw);
+        });
+      });
+    }
+    function searchSchools(list, query, location) {
+      var exact = list.filter(function(school) {
+        return matchesQueryAndLocation(school, query, location);
+      });
+      if (exact.length > 0) return exact;
+      var queryWords = tokenize(query);
+      if (queryWords.length === 0) return [];
+      return list.filter(function(school) {
+        return fuzzyMatchesQueryAndLocation(school, queryWords, location);
+      });
+    }
+    function renderResults(matches) {
+      listbox.innerHTML = "";
+      currentMatches = matches;
+      activeIndex = -1;
+      if (matches.length === 0) {
+        listbox.hidden = true;
+        input.setAttribute("aria-expanded", "false");
+        return;
+      }
+      matches.forEach(function(school, i) {
+        var li = document.createElement("li");
+        li.className = "contour-school-search__option";
+        li.id = "contour-school-option-" + i;
+        li.setAttribute("role", "option");
+        li.setAttribute("aria-selected", "false");
+        li.textContent = school.name;
+        li.addEventListener("mousedown", function(e) {
+          e.preventDefault();
+          selectSchool(school);
+        });
+        listbox.appendChild(li);
+      });
+      listbox.hidden = false;
+      input.setAttribute("aria-expanded", "true");
+    }
+    var suppressNextInputEvent = false;
+    function closeListbox() {
+      listbox.hidden = true;
+      input.setAttribute("aria-expanded", "false");
+      input.removeAttribute("aria-activedescendant");
+      activeIndex = -1;
+    }
+    function setHiddenField(el, value) {
+      if (!el) return;
+      el.value = value || "";
+      el.dispatchEvent(new Event("input", {
+        bubbles: true
+      }));
+      el.dispatchEvent(new Event("change", {
+        bubbles: true
+      }));
+    }
+    function selectSchool(school) {
+      input.value = school.name;
+      setHiddenField(acaraInput, school.acara_id);
+      setHiddenField(codeInput, school.school_code);
+      closeListbox();
+      suppressNextInputEvent = true;
+      input.dispatchEvent(new Event("input", {
+        bubbles: true
+      }));
+      input.dispatchEvent(new Event("change", {
+        bubbles: true
+      }));
+    }
+    function moveActive(delta) {
+      if (currentMatches.length === 0) return;
+      activeIndex = (activeIndex + delta + currentMatches.length) % currentMatches.length;
+      var options = listbox.querySelectorAll(".contour-school-search__option");
+      options.forEach(function(opt, i) {
+        opt.setAttribute("aria-selected", i === activeIndex ? "true" : "false");
+      });
+      input.setAttribute("aria-activedescendant", "contour-school-option-" + activeIndex);
+      options[activeIndex].scrollIntoView({
+        block: "nearest"
+      });
+    }
+    input.addEventListener("input", function() {
+      if (suppressNextInputEvent) {
+        suppressNextInputEvent = false;
+        return;
+      }
+      var query = normalize(input.value);
+      if (query.length < MIN_CHARS) {
+        closeListbox();
+        if (codeInput && codeInput.value) setHiddenField(codeInput, "");
+        if (acaraInput && acaraInput.value) setHiddenField(acaraInput, "");
+        return;
+      }
+      if (codeInput && codeInput.value) setHiddenField(codeInput, "");
+      if (acaraInput && acaraInput.value) setHiddenField(acaraInput, "");
+      loadSchoolList().then(function(list) {
+        var currentLocation = getValue(FIELD_SELECTORS.location);
+        var matches = searchSchools(list, query, currentLocation).slice(0, MAX_RESULTS);
+        renderResults(matches);
+      });
+    });
+    input.addEventListener("keydown", function(e) {
+      if (listbox.hidden && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
+        var query = normalize(input.value);
+        if (query.length >= MIN_CHARS) {
+          loadSchoolList().then(function(list) {
+            var currentLocation = getValue(FIELD_SELECTORS.location);
+            renderResults(searchSchools(list, query, currentLocation).slice(0, MAX_RESULTS));
+          });
+        }
+        return;
+      }
+      switch (e.key) {
+       case "ArrowDown":
+        e.preventDefault();
+        moveActive(1);
+        break;
+
+       case "ArrowUp":
+        e.preventDefault();
+        moveActive(-1);
+        break;
+
+       case "Enter":
+        if (activeIndex >= 0 && currentMatches[activeIndex]) {
+          e.preventDefault();
+          selectSchool(currentMatches[activeIndex]);
+        }
+        break;
+
+       case "Escape":
+        closeListbox();
+        break;
+      }
+    });
+    input.addEventListener("blur", function() {
+      setTimeout(closeListbox, 100);
+    });
+    document.addEventListener("click", function(e) {
+      if (!wrapper.contains(e.target)) closeListbox();
+    });
+    loadSchoolList();
+  }
+  function watchSchoolFieldRerender() {
+    // HubSpot v2 embeds re-render a field's DOM when native validation fires,
+    // destroying the injected combobox — detect that and re-apply.
+    var observer = new MutationObserver(function() {
+      var input = q(FIELD_SELECTORS.schoolText);
+      if (input && !input.closest(".contour-school-search")) {
+        enhanceSchoolSearch();
+        evaluateIntakeYearDependents();
+      }
+    });
+    observer.observe(formRoot, {
+      childList: true,
+      subtree: true
+    });
+  }
+  var pendingErrorScrolls = null;
+  function scrollErrorIntoView(el) {
+    if (!el) return;
+    if (pendingErrorScrolls) {
+      pendingErrorScrolls.push(el);
+      return;
+    }
+    pendingErrorScrolls = [el];
+    setTimeout(function() {
+      var best = null;
+      var bestTop = null;
+      for (var i = 0; i < pendingErrorScrolls.length; i++) {
+        var top = pendingErrorScrolls[i].getBoundingClientRect().top;
+        if (bestTop === null || top < bestTop) {
+          bestTop = top;
+          best = pendingErrorScrolls[i];
+        }
+      }
+      pendingErrorScrolls = null;
+      if (best && best.scrollIntoView) best.scrollIntoView({
+        behavior: "smooth",
+        block: "center"
+      });
+    }, 0);
+  }
+  function isFieldWrapVisible(fieldWrap) {
+    return fieldWrap.style.display !== "none";
+  }
+  function schoolFieldSatisfied() {
+    var input = q(FIELD_SELECTORS.schoolText);
+    return !!input && input.value.trim() !== "";
+  }
+  function anyProgramInterestOptionEligible() {
+    return qAll(FIELD_SELECTORS.programInterest).some(function(opt) {
+      return !opt.disabled;
+    });
+  }
+  function enforceFieldRequiredValidation(fieldSelectorKey, errorText, errorClass, isFieldRelevantFn, isFieldSatisfiedFn) {
+    var options = qAll(FIELD_SELECTORS[fieldSelectorKey]);
+    if (options.length === 0) return;
+    var fieldWrap = fieldWrapper(options[0]);
+    if (!fieldWrap) return;
+    if (hasNativeRequiredMark(fieldWrap)) return;
+    function defaultSatisfied() {
+      return qAll(FIELD_SELECTORS[fieldSelectorKey]).some(function(opt) {
+        return opt.checked;
+      });
+    }
+    var isSatisfied = isFieldSatisfiedFn || defaultSatisfied;
+    function isValid() {
+      return !isFieldRelevantFn(fieldWrap) || isSatisfied();
+    }
+    var errorList = document.createElement("ul");
+    errorList.className = "no-list hs-error-msgs inputs-list " + errorClass;
+    errorList.setAttribute("role", "alert");
+    errorList.style.display = "none";
+    var errorItem = document.createElement("li");
+    var errorLabel = document.createElement("label");
+    errorLabel.className = "hs-error-msg hs-main-font-element";
+    errorLabel.textContent = errorText;
+    errorItem.appendChild(errorLabel);
+    errorList.appendChild(errorItem);
+    fieldWrap.appendChild(errorList);
+    function showError() {
+      errorList.style.display = "";
+      scrollErrorIntoView(fieldWrap);
+    }
+    function clearError() {
+      errorList.style.display = "none";
+    }
+    options.forEach(function(opt) {
+      opt.addEventListener("change", function() {
+        if (isValid()) clearError();
+      });
+      opt.addEventListener("input", function() {
+        if (isValid()) clearError();
+      });
+    });
+    if (formRoot) {
+      formRoot.addEventListener("submit", function(e) {
+        if (!isValid()) {
+          e.preventDefault();
+          e.stopImmediatePropagation();
+          showError();
+        }
+      }, true);
+    }
+  }
+  function enforceEmailTempValidation() {
+    var input = q(FIELD_SELECTORS.emailTemp);
+    if (!input) return;
+    var EMAIL_PATTERN = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+    function isValid() {
+      var value = input.value.trim();
+      if (value === "") return true;
+      return EMAIL_PATTERN.test(value);
+    }
+    var wrapper = fieldWrapper(input) || input.parentElement;
+    var errorList = document.createElement("ul");
+    errorList.className = "no-list hs-error-msgs inputs-list contour-email-temp-error";
+    errorList.setAttribute("role", "alert");
+    errorList.style.display = "none";
+    var errorItem = document.createElement("li");
+    var errorLabel = document.createElement("label");
+    errorLabel.className = "hs-error-msg hs-main-font-element";
+    errorLabel.textContent = "Please enter a valid email address.";
+    errorItem.appendChild(errorLabel);
+    errorList.appendChild(errorItem);
+    wrapper.appendChild(errorList);
+    function showError() {
+      input.classList.add("invalid", "error");
+      errorList.style.display = "";
+    }
+    function clearError() {
+      input.classList.remove("invalid", "error");
+      errorList.style.display = "none";
+    }
+    input.addEventListener("blur", function() {
+      if (isValid()) clearError(); else showError();
+    });
+    input.addEventListener("input", function() {
+      if (isValid()) clearError();
+    });
+    if (formRoot) {
+      formRoot.addEventListener("submit", function(e) {
+        if (!isValid()) {
+          e.preventDefault();
+          e.stopImmediatePropagation();
+          showError();
+          scrollErrorIntoView(fieldWrapper(input) || input);
+          input.focus();
+        }
+      }, true);
+    }
+  }
+  function ensureDividerBefore(fieldEl, id) {
+    if (!fieldEl) return;
+    var wrap = fieldWrapper(fieldEl);
+    if (!wrap || !wrap.parentNode) return;
+    if (formRoot.querySelector("#" + id)) return;
+    var divider = document.createElement("hr");
+    divider.id = id;
+    divider.className = "contour-section-divider";
+    wrap.parentNode.insertBefore(divider, wrap);
+  }
+  function init(formElement) {
+    formRoot = formElement;
+    enhanceProgramInterestCards();
+    enhanceInterestedSubjectsCategories();
+    injectDisabledFieldStyles();
+    enhanceSchoolSearch();
+    watchSchoolFieldRerender();
+    enhanceCampusLabels();
+    ensureDividerBefore(q(FIELD_SELECTORS.programInterest), "contour-divider-program-interest");
+    ensureDividerBefore(q(FIELD_SELECTORS.referral), "contour-divider-referral");
+    fixRadioCardClickArea();
+    fixCheckboxCardClickArea();
+    fixProgramCardClickArea();
+    enforceContactTypeLayoutIfPresent();
+    enhanceContactTypeIllustrations();
+    enforceEmailTempValidation();
+    enhanceEmailPrefill();
+    enforceFieldRequiredValidation("programInterest", "Please select a program.", "contour-program-interest-error", anyProgramInterestOptionEligible);
+    enforceFieldRequiredValidation("campus", "Please select a campus.", "contour-campus-error", isFieldWrapVisible);
+    enforceFieldRequiredValidation("interestedSubjects", "Please select at least one subject.", "contour-subjects-error", isFieldWrapVisible);
+    enforceFieldRequiredValidation("schoolText", "Please enter your school.", "contour-school-error", isFieldWrapVisible, schoolFieldSatisfied);
+    attachListeners();
+    evaluateProgramInterestOptions();
+    evaluateInterestedSubjectsOptions();
+    evaluateCampusOptions();
+    evaluateYearLevelOptions();
+    evaluateSchoolFieldVisibility();
+    evaluateIntakeYearDependents();
+    renderWelcomeConsultation();
+    renderSubjectSummary();
+    initPrefetchFromUrl();
+  }
+  return {
+    init: init
+  };
+}();
