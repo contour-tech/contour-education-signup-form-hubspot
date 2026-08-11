@@ -1138,15 +1138,21 @@ var ContourForm1Logic = function() {
     banner.appendChild(content);
     formRoot.insertBefore(banner, formRoot.firstChild);
   }
-  function defaultContactTypeToStudent() {
-    var radios = qAll(FIELD_SELECTORS.contactType);
-    var anyChecked = radios.some(function(r) {
-      return r.checked;
-    });
-    if (anyChecked) return;
-    radios.forEach(function(radio) {
-      if (radio.value === "Student") setCheckboxChecked(radio, true);
-    });
+  function defaultContactTypeToStudent(tries) {
+    if (tries === undefined) tries = 8;
+    // HubSpot's embed hydrates/re-renders right after onFormReady and wipes a
+    // synchronous click — select on a delay and verify it stuck, retrying
+    // against fresh nodes.
+    setTimeout(function() {
+      var radios = qAll(FIELD_SELECTORS.contactType);
+      if (radios.length === 0 || radios.some(function(r) {
+        return r.checked;
+      })) return;
+      radios.forEach(function(radio) {
+        if (radio.value === "Student") setCheckboxChecked(radio, true);
+      });
+      if (tries > 0) defaultContactTypeToStudent(tries - 1);
+    }, 250);
   }
   function initPrefetchFromUrl() {
     if (!urlPrefetchPromise) {
