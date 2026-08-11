@@ -1018,12 +1018,16 @@ var ContourForm1Logic = function() {
   }
   function applyPrefill(contact, guardian, associatedStudent) {
     var contactType = contact.contact_type;
-    if (contactType === "Student" || contactType === "Guardian") {
+    // "Parent" records use the same flow as "Guardian" — the form radio only
+    // knows Student/Guardian.
+    var isGuardianFlow = contactType === "Guardian" || contactType === "Parent";
+    if (contactType === "Student" || isGuardianFlow) {
+      var radioValue = isGuardianFlow ? "Guardian" : "Student";
       qAll(FIELD_SELECTORS.contactType).forEach(function(radio) {
-        if (radio.value === contactType) setCheckboxChecked(radio, true);
+        if (radio.value === radioValue) setCheckboxChecked(radio, true);
       });
     }
-    if (contactType === "Guardian") {
+    if (isGuardianFlow) {
       setSelectOrTextValue('[name="firstname"]', contact.firstname);
       setSelectOrTextValue('[name="lastname"]', contact.lastname);
       setSelectOrTextValue(FIELD_SELECTORS.emailTemp, contact.email_2 || contact.email);

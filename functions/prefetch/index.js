@@ -99,7 +99,9 @@ async function associatedPeople(contactId) {
     if (!props) continue;
     const labels = (r.associationTypes || []).map((t) => t.label || "");
     const guardianish =
-      labels.some((l) => /guardian/i.test(l)) || props.contact_type === "Guardian";
+      labels.some((l) => /guardian|parent/i.test(l)) ||
+      props.contact_type === "Guardian" ||
+      props.contact_type === "Parent";
     if (!guardian && guardianish) guardian = props;
     if (!student && props.contact_type === "Student") student = props;
   }
