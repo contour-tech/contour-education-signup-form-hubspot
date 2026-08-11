@@ -15,7 +15,8 @@ var ContourForm1Logic = function() {
     emailTemp: '[name="email_2"]',
     studentPhone: '[name="student_phone_number"]',
     noProgramWaitlist: '[name="join_no_program_waitlist"]',
-    referral: '[name="referral"]'
+    referral: '[name="referral"]',
+    contactMethod: '[name="how_did_they_contact_us"]'
   };
   var FIELD_WRAPPER_CLASS = "hs-form-field";
   var VALID_LOCATIONS = [ "VIC", "NSW", "QLD", "SA", "ACT", "TAS", "WA", "NT", "United Kingdom", "New Zealand", "Overseas" ];
@@ -2147,6 +2148,104 @@ var ContourForm1Logic = function() {
       if (input) input.focus();
     }, true);
   }
+  /* =========================================================
+     HOW DID THEY CONTACT US — internal-only question
+     -----------------------------------------------------------
+     Staff taking a signup on someone's behalf record how that person
+     reached us; public visitors must never see the question and are
+     recorded as "Website Sign-Ups" automatically. The two are split by
+     ?type=internal on the form URL.
+
+     The field is deliberately NOT hidden in HubSpot: a hidden field is
+     rendered as <input type="hidden"> with the <select> and every option
+     dropped from the page (the embed bundle picks the component from the
+     hidden flag before it consults the field type), leaving nothing to
+     reveal. It is also deliberately NOT required in HubSpot, because a
+     native required mark both blocks public visitors on a field they
+     can't see and makes enforceFieldRequiredValidation() bail out.
+     ========================================================= */
+  var INTERNAL_TYPE_PARAM = "type";
+  var INTERNAL_TYPE_VALUE = "internal";
+  var CONTACT_METHOD_DEFAULT_VALUE = "Website Sign-Ups";
+  var updateContactMethodRequiredMark = createRequiredMarkUpdater("contactMethod", "contour-contact-method-required");
+  var contactMethodCleared = false;
+  function isInternalMode() {
+    return getUrlParam(INTERNAL_TYPE_PARAM).trim().toLowerCase() === INTERNAL_TYPE_VALUE;
+  }
+  function contactMethodOptions(select) {
+    return Array.prototype.slice.call(select.options);
+  }
+  // Returns true when it had to create one, which also means HubSpot has just
+  // rendered the <select> fresh — without a blank option the browser preselects
+  // the first real one, so the caller has to clear that.
+  function ensureContactMethodPlaceholder(select) {
+    var existing = contactMethodOptions(select).some(function(option) {
+      return option.value === "";
+    });
+    if (existing) return false;
+    var placeholder = document.createElement("option");
+    placeholder.value = "";
+    placeholder.textContent = "Please select";
+    select.insertBefore(placeholder, select.firstChild);
+    return true;
+  }
+  // setSelectOrTextValue() ignores "" by design, so clearing needs its own path.
+  function clearContactMethodValue(select) {
+    if (select.value === "") return;
+    select.value = "";
+    select.dispatchEvent(new Event("input", {
+      bubbles: true
+    }));
+    select.dispatchEvent(new Event("change", {
+      bubbles: true
+    }));
+  }
+  function evaluateContactMethodField() {
+    var select = q(FIELD_SELECTORS.contactMethod);
+    if (!select) return;
+    var internal = isInternalMode();
+    toggleFieldWrapper(select, internal);
+    updateContactMethodRequiredMark(internal);
+    if (!internal) {
+      if (select.value !== CONTACT_METHOD_DEFAULT_VALUE) {
+        setSelectOrTextValue(FIELD_SELECTORS.contactMethod, CONTACT_METHOD_DEFAULT_VALUE);
+      }
+      return;
+    }
+    // Take the public default off the menu so staff make a real choice.
+    // Hidden + disabled rather than removed: the <select> is React-owned, and
+    // detaching a child it still tracks can throw on its next re-render.
+    var freshRender = ensureContactMethodPlaceholder(select);
+    contactMethodOptions(select).forEach(function(option) {
+      if (option.value !== CONTACT_METHOD_DEFAULT_VALUE) return;
+      option.hidden = true;
+      option.disabled = true;
+    });
+    // Nothing may arrive preselected. Clear on the first pass, on a fresh
+    // HubSpot render, and any time the public default is showing — but leave a
+    // staff member's own choice alone on subsequent observer callbacks.
+    if (freshRender || !contactMethodCleared || select.value === CONTACT_METHOD_DEFAULT_VALUE) {
+      clearContactMethodValue(select);
+      contactMethodCleared = true;
+    }
+  }
+  function watchContactMethodField() {
+    // HubSpot re-renders the form after hydration and again when its own
+    // validation fires, which restores the default option and the wrapper's
+    // display. evaluateContactMethodField() is idempotent, so the mutations it
+    // makes itself no-op on the next observer callback.
+    var observer = new MutationObserver(function() {
+      evaluateContactMethodField();
+    });
+    observer.observe(formRoot, {
+      childList: true,
+      subtree: true
+    });
+  }
+  function contactMethodSatisfied() {
+    var select = q(FIELD_SELECTORS.contactMethod);
+    return !!select && select.value.trim() !== "" && select.value !== CONTACT_METHOD_DEFAULT_VALUE;
+  }
   function ensureDividerBefore(fieldEl, id) {
     if (!fieldEl) return;
     var wrap = fieldWrapper(fieldEl);
@@ -2182,6 +2281,7 @@ var ContourForm1Logic = function() {
     enforceFieldRequiredValidation("campus", "Please select a campus.", "contour-campus-error", isFieldWrapVisible);
     enforceFieldRequiredValidation("interestedSubjects", "Please select at least one subject.", "contour-subjects-error", isFieldWrapVisible);
     enforceFieldRequiredValidation("schoolText", "Please enter your school.", "contour-school-error", isFieldWrapVisible, schoolFieldSatisfied);
+    enforceFieldRequiredValidation("contactMethod", "Please select how they contacted us.", "contour-contact-method-error", isInternalMode, contactMethodSatisfied);
     attachListeners();
     evaluateProgramInterestOptions();
     evaluateInterestedSubjectsOptions();
@@ -2189,6 +2289,8 @@ var ContourForm1Logic = function() {
     evaluateYearLevelOptions();
     evaluateSchoolFieldVisibility();
     evaluateIntakeYearDependents();
+    evaluateContactMethodField();
+    watchContactMethodField();
     renderWelcomeConsultation();
     renderSubjectSummary();
     initPrefetchFromUrl();
