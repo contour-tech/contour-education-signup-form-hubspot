@@ -1138,8 +1138,21 @@ var ContourForm1Logic = function() {
     banner.appendChild(content);
     formRoot.insertBefore(banner, formRoot.firstChild);
   }
+  function defaultContactTypeToStudent() {
+    var radios = qAll(FIELD_SELECTORS.contactType);
+    var anyChecked = radios.some(function(r) {
+      return r.checked;
+    });
+    if (anyChecked) return;
+    radios.forEach(function(radio) {
+      if (radio.value === "Student") setCheckboxChecked(radio, true);
+    });
+  }
   function initPrefetchFromUrl() {
-    if (!urlPrefetchPromise) return;
+    if (!urlPrefetchPromise) {
+      defaultContactTypeToStudent();
+      return;
+    }
     showFormLoader();
     urlPrefetchPromise.then(function(data) {
       if (data && data.found && data.contact) {
@@ -1153,6 +1166,9 @@ var ContourForm1Logic = function() {
         }
         renderSubjectSummary();
       }
+      // Prefill takes precedence (Guardian/Parent records select Guardian);
+      // anything else — no record, unknown contact_type — defaults to Student.
+      defaultContactTypeToStudent();
       hideFormLoader();
     });
   }
