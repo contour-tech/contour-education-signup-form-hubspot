@@ -1979,8 +1979,11 @@ var ContourForm1Logic = function() {
     // Leading zeros are trunk prefixes (0470… in AU, 07… in the UK) and are
     // never part of the international number.
     var national = String(nationalDigits || "").replace(/\D/g, "").replace(/^0+/, "");
-    if (national === "") return "";
-    return dial ? "+" + dial + " " + national : "+" + national;
+    if (!dial) return national === "" ? "" : "+" + national;
+    // The dial code stays in the box even with no number typed yet, so the
+    // field reads the same as HubSpot's own phone widget from first render
+    // (which seeds "+61" the moment the form loads).
+    return national === "" ? "+" + dial + " " : "+" + dial + " " + national;
   }
   function normalizeStudentPhoneInput(select, input) {
     var value = (input.value || "").trim();
@@ -2023,6 +2026,9 @@ var ContourForm1Logic = function() {
     var existing = (input.value || "").trim();
     var existingParts = existing.charAt(0) === "+" ? splitE164(existing) : null;
     selectStudentPhoneCountry(select, existingParts ? existingParts.iso : STUDENT_PHONE_DEFAULT_ISO);
+    // Seed the dial code straight away (no input/change events — this isn't the
+    // user typing), matching how HubSpot's own widget shows "+61" on load.
+    input.value = existing === "" ? formatStudentPhone(studentPhoneDial(select), "") : input.value;
     if (existing !== "") normalizeStudentPhoneInput(select, input);
     var previousDial = studentPhoneDial(select);
     select.addEventListener("change", function() {
@@ -2039,7 +2045,13 @@ var ContourForm1Logic = function() {
       updateStudentPhoneError();
     });
     input.addEventListener("blur", function() {
-      normalizeStudentPhoneInput(select, input);
+      // Clearing the box entirely still leaves the dial code behind, so the
+      // control never loses the country half of the pair.
+      if ((input.value || "").trim() === "") {
+        input.value = formatStudentPhone(studentPhoneDial(select), "");
+      } else {
+        normalizeStudentPhoneInput(select, input);
+      }
       previousDial = studentPhoneDial(select);
       fireInputEvents(input);
       updateStudentPhoneError(true);
@@ -2059,15 +2071,32 @@ var ContourForm1Logic = function() {
       subtree: true
     });
   }
-  function studentPhoneIsValid() {
+  // "ok" | "empty" | "incomplete" | "invalid". Seeding the dial code means the
+  // input is never blank once rendered, so HubSpot's own required-field check
+  // always passes — "incomplete" (dial code but no number) is therefore ours to
+  // catch, with HubSpot's own wording so the field reads like the rest of them.
+  function studentPhoneState() {
     var input = q(FIELD_SELECTORS.studentPhone);
-    if (!input) return true;
+    if (!input) return "ok";
     var wrap = fieldWrapper(input);
-    if (wrap && !isFieldWrapVisible(wrap)) return true;
-    var digits = (input.value || "").replace(/\D/g, "");
-    // An empty required field is HubSpot's own error to raise, not ours.
-    if (digits === "") return true;
-    return digits.length >= STUDENT_PHONE_MIN_DIGITS && digits.length <= STUDENT_PHONE_MAX_DIGITS;
+    if (wrap && !isFieldWrapVisible(wrap)) return "ok";
+    var value = (input.value || "").trim();
+    var digits = value.replace(/\D/g, "");
+    // Genuinely blank: HubSpot's own required error covers it.
+    if (value === "") return "empty";
+    var group = input.closest(".contour-intl-phone");
+    var select = group ? group.querySelector("select") : null;
+    var dial = select ? studentPhoneDial(select) : "";
+    var national = dial && digits.indexOf(dial) === 0 ? digits.slice(dial.length) : digits;
+    if (national === "") return "incomplete";
+    if (digits.length < STUDENT_PHONE_MIN_DIGITS || digits.length > STUDENT_PHONE_MAX_DIGITS) {
+      return "invalid";
+    }
+    return "ok";
+  }
+  function studentPhoneIsValid() {
+    var state = studentPhoneState();
+    return state === "ok" || state === "empty";
   }
   function ensureStudentPhoneError() {
     var input = q(FIELD_SELECTORS.studentPhone);
@@ -2083,7 +2112,6 @@ var ContourForm1Logic = function() {
     var errorItem = document.createElement("li");
     var errorLabel = document.createElement("label");
     errorLabel.className = "hs-error-msg hs-main-font-element";
-    errorLabel.textContent = "Please enter a valid phone number.";
     errorItem.appendChild(errorLabel);
     errorList.appendChild(errorItem);
     wrap.appendChild(errorList);
@@ -2093,12 +2121,17 @@ var ContourForm1Logic = function() {
     var input = q(FIELD_SELECTORS.studentPhone);
     var errorList = ensureStudentPhoneError();
     if (!input || !errorList) return;
-    if (studentPhoneIsValid()) {
+    var state = studentPhoneState();
+    if (state === "ok" || state === "empty") {
       input.classList.remove("invalid", "error");
       errorList.style.display = "none";
       return;
     }
     if (!showWhenInvalid) return;
+    var errorLabel = errorList.querySelector(".hs-error-msg");
+    if (errorLabel) {
+      errorLabel.textContent = state === "incomplete" ? "Please complete this required field." : "Please enter a valid phone number.";
+    }
     input.classList.add("invalid", "error");
     errorList.style.display = "";
   }
