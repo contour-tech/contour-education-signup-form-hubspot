@@ -13,6 +13,7 @@ var ContourForm1Logic = function() {
     schoolCode: '[name="school_code"]',
     acaraId: '[name="acara_id"]',
     emailTemp: '[name="email_2"]',
+    studentPhone: '[name="student_phone_number"]',
     noProgramWaitlist: '[name="join_no_program_waitlist"]',
     referral: '[name="referral"]'
   };
@@ -590,12 +591,16 @@ var ContourForm1Logic = function() {
     while (node && node.nodeType !== 3) node = node.nextSibling;
     if (node) node.nodeValue = text; else label.insertBefore(document.createTextNode(text), label.firstChild);
   }
+  var lastIntakeForYearLevel = null;
   function evaluateIntakeYearDependents() {
     var intake = getValue(FIELD_SELECTORS.intakeYear);
     var yearSelect = q(FIELD_SELECTORS.yearLevel);
     if (yearSelect) {
       yearSelect.disabled = !intake;
-      if (!intake && yearSelect.value) {
+      // The answer means "year level in <intake year>" — switching intake
+      // (2026 <-> 2027) invalidates it, so force a re-selection.
+      var intakeSwitched = !!intake && !!lastIntakeForYearLevel && intake !== lastIntakeForYearLevel;
+      if ((!intake || intakeSwitched) && yearSelect.value) {
         yearSelect.value = "";
         yearSelect.dispatchEvent(new Event("change", {
           bubbles: true
@@ -603,6 +608,7 @@ var ContourForm1Logic = function() {
       }
       setFieldLabelText("yearLevel", intake ? "Year level in " + intake : "Current Year Level");
     }
+    lastIntakeForYearLevel = intake || null;
     var schoolInput = q(FIELD_SELECTORS.schoolText);
     if (schoolInput) {
       var location = getValue(FIELD_SELECTORS.location);
@@ -1001,10 +1007,20 @@ var ContourForm1Logic = function() {
       if (matched) {
         fireInputEvents(select);
         var inputs = Array.prototype.slice.call(wrap.querySelectorAll("input"));
+        var hasHidden = inputs.some(function(inp) {
+          return inp.type === "hidden";
+        });
         inputs.forEach(function(inp) {
-          // Hidden input carries the full E.164 value for submission; the
-          // visible one only holds the national number.
-          inp.value = inp.type === "hidden" ? value : parts.national;
+          // HubSpot's own widget: hidden input carries the full E.164 value
+          // for submission and the visible one only holds the national number.
+          // Our injected widget (see enhanceStudentPhoneField) has no hidden
+          // input — the visible input IS the submitted value, so it keeps the
+          // dial code.
+          if (inp.type === "hidden") {
+            inp.value = value;
+          } else {
+            inp.value = hasHidden ? parts.national : "+" + parts.dial + " " + parts.national;
+          }
           fireInputEvents(inp);
         });
         return;
@@ -1015,6 +1031,20 @@ var ContourForm1Logic = function() {
     el.dispatchEvent(new Event("blur", {
       bubbles: true
     }));
+  }
+  // Student Phone Number lives in the Contact Type dependent group, so it can
+  // still be absent when the prefetch response lands — same retry shape as
+  // setTextWhenPresent, but through the phone-aware setter.
+  function setPhoneValueWhenPresent(selector, value, tries) {
+    if (!value) return;
+    if (q(selector)) {
+      setPhoneValue(selector, value);
+      return;
+    }
+    if (tries <= 0) return;
+    setTimeout(function() {
+      setPhoneValueWhenPresent(selector, value, tries - 1);
+    }, 150);
   }
   function applyPrefill(contact, guardian, associatedStudent) {
     var contactType = contact.contact_type;
@@ -1036,12 +1066,12 @@ var ContourForm1Logic = function() {
         firstname: contact.student_first_name,
         lastname: contact.student_last_name,
         email: contact.student_email,
-        phone: contact.student_phone
+        phone: contact.student_phone_number || contact.student_phone
       };
       setTextWhenPresent('[name="student_first_name"]', s.firstname, 10);
       setTextWhenPresent('[name="student_last_name"]', s.lastname, 10);
       setTextWhenPresent('[name="student_email"]', s.email_2 || s.email, 10);
-      setTextWhenPresent('[name="student_phone"]', s.phone, 10);
+      setPhoneValueWhenPresent(FIELD_SELECTORS.studentPhone, s.phone, 10);
     } else {
       setSelectOrTextValue('[name="firstname"]', contact.firstname);
       setSelectOrTextValue('[name="lastname"]', contact.lastname);
@@ -1839,6 +1869,229 @@ var ContourForm1Logic = function() {
       }, true);
     }
   }
+  /* =========================================================
+     STUDENT PHONE NUMBER — country code + number segmentation
+     -----------------------------------------------------------
+     student_phone_number is a HubSpot "phone number" property, but the form
+     field carries no useCountryCodeSelect metaData (unlike the guardian
+     "phone" field, which also has a 7:20 digit-range validation configured),
+     so HubSpot renders it as one plain tel input with no country selector.
+
+     Rather than depend on that per-field toggle being flipped in the HubSpot
+     form editor, build the same two-part control here: a country <select>
+     plus the original input, which keeps carrying the submitted value in
+     "+<dial> <national>" form — the same shape HubSpot's own widget submits.
+     If the native toggle IS enabled later, HubSpot renders
+     .hs-fieldtype-intl-phone itself and enhanceStudentPhoneField() bails out,
+     leaving the native widget untouched.
+  ========================================================= */
+  // Injected rather than left to form1.css alone: that stylesheet lives in the
+  // Webflow page header, so a CSS-only change needs a Webflow edit + publish,
+  // while these ship with the form1.js push. Mirrors the "injected country-code
+  // selector" and "student/guardian field pairing" blocks in form1.css — keep
+  // the two in step. Appended after the header CSS, so it wins on order.
+  function injectStudentPhoneStyles() {
+    if (document.getElementById("contour-student-phone-styles")) return;
+    var style = document.createElement("style");
+    style.id = "contour-student-phone-styles";
+    // The half-width rule is listed twice, the second time at the same
+    // specificity as the header CSS's ".hs-dependent-field > .hs-form-field"
+    // full-width default, so it can't lose to it on specificity — only the
+    // first selector applies if HubSpot ever nests the field deeper.
+    style.textContent = ".hs-form .hs_student_phone_number, .hs-form .hs-dependent-field > .hs_student_phone_number { flex: 0 0 calc(50% - 0.375rem) !important; box-sizing: border-box; margin-bottom: 0 !important; }" + ".hs-form .contour-intl-phone { display: flex; align-items: stretch; gap: 0.5rem; width: 100%; box-sizing: border-box; }" + '.hs-form select.contour-intl-phone__country:not([type="checkbox"]):not([type="radio"]):not([type="file"]) { flex: 0 0 auto !important; width: auto !important; min-width: 90px; max-width: 130px; }' + '.hs-form input.contour-intl-phone__number:not([type="checkbox"]):not([type="radio"]):not([type="file"]) { flex: 1 1 auto !important; width: auto !important; min-width: 0; }' + "@media screen and (max-width: 767px) { .hs-form .hs_student_phone_number, .hs-form .hs-dependent-field > .hs_student_phone_number { flex: 0 0 100% !important; } }" + '@media screen and (max-width: 480px) { .hs-form .contour-intl-phone { flex-direction: column; } .hs-form select.contour-intl-phone__country:not([type="checkbox"]):not([type="radio"]):not([type="file"]) { max-width: 100%; width: 100% !important; } }';
+    document.head.appendChild(style);
+  }
+  var STUDENT_PHONE_DEFAULT_ISO = "au";
+  var STUDENT_PHONE_MIN_DIGITS = 7;
+  var STUDENT_PHONE_MAX_DIGITS = 20;
+  var studentPhoneCountries = null;
+  function getStudentPhoneCountries() {
+    if (studentPhoneCountries) return studentPhoneCountries;
+    // Intl.DisplayNames turns the ISO codes already in PHONE_DIAL_CODES into
+    // country names ("au" -> "Australia") without shipping a name table;
+    // falls back to the uppercased code where it isn't supported.
+    var display = null;
+    try {
+      if (typeof Intl !== "undefined" && Intl.DisplayNames) {
+        display = new Intl.DisplayNames([ "en" ], {
+          type: "region"
+        });
+      }
+    } catch (e) {
+      display = null;
+    }
+    studentPhoneCountries = PHONE_DIAL_CODES.map(function(entry) {
+      var upper = entry[1].toUpperCase();
+      var name = upper;
+      if (display) {
+        try {
+          name = display.of(upper) || upper;
+        } catch (e2) {
+          name = upper;
+        }
+      }
+      return {
+        iso: entry[1],
+        dial: entry[0],
+        name: name
+      };
+    }).sort(function(a, b) {
+      return a.name.localeCompare(b.name);
+    });
+    return studentPhoneCountries;
+  }
+  function studentPhoneDial(select) {
+    var opt = select.options[select.selectedIndex];
+    return opt ? opt.getAttribute("data-dial") || "" : "";
+  }
+  function selectStudentPhoneCountry(select, iso) {
+    var target = String(iso || "").toLowerCase();
+    for (var i = 0; i < select.options.length; i++) {
+      if (select.options[i].value === target) {
+        select.selectedIndex = i;
+        return;
+      }
+    }
+  }
+  function formatStudentPhone(dial, nationalDigits) {
+    // Leading zeros are trunk prefixes (0470… in AU, 07… in the UK) and are
+    // never part of the international number.
+    var national = String(nationalDigits || "").replace(/\D/g, "").replace(/^0+/, "");
+    if (national === "") return "";
+    return dial ? "+" + dial + " " + national : "+" + national;
+  }
+  function normalizeStudentPhoneInput(select, input) {
+    var value = (input.value || "").trim();
+    if (value === "") return;
+    // A pasted/prefilled international number wins over the current select —
+    // sync the dropdown to it instead of prefixing a second dial code.
+    var parts = value.charAt(0) === "+" ? splitE164(value) : null;
+    if (parts) {
+      selectStudentPhoneCountry(select, parts.iso);
+      input.value = formatStudentPhone(parts.dial, parts.national);
+      return;
+    }
+    input.value = formatStudentPhone(studentPhoneDial(select), value);
+  }
+  function enhanceStudentPhoneField() {
+    var input = q(FIELD_SELECTORS.studentPhone);
+    if (!input || input.type === "hidden") return;
+    if (input.closest(".contour-intl-phone")) return;
+    if (input.closest(".hs-fieldtype-intl-phone")) return;
+    var parent = input.parentElement;
+    if (!parent) return;
+    var group = document.createElement("div");
+    group.className = "contour-intl-phone";
+    var select = document.createElement("select");
+    select.className = "hs-input contour-intl-phone__country";
+    select.setAttribute("aria-label", "Student phone country");
+    getStudentPhoneCountries().forEach(function(country) {
+      var opt = document.createElement("option");
+      opt.value = country.iso;
+      opt.setAttribute("data-dial", country.dial);
+      opt.textContent = country.name;
+      select.appendChild(opt);
+    });
+    parent.insertBefore(group, input);
+    group.appendChild(select);
+    group.appendChild(input);
+    input.classList.add("contour-intl-phone__number");
+    input.type = "tel";
+    input.setAttribute("autocomplete", "tel");
+    var existing = (input.value || "").trim();
+    var existingParts = existing.charAt(0) === "+" ? splitE164(existing) : null;
+    selectStudentPhoneCountry(select, existingParts ? existingParts.iso : STUDENT_PHONE_DEFAULT_ISO);
+    if (existing !== "") normalizeStudentPhoneInput(select, input);
+    var previousDial = studentPhoneDial(select);
+    select.addEventListener("change", function() {
+      var digits = (input.value || "").replace(/\D/g, "");
+      if (previousDial && digits.indexOf(previousDial) === 0) {
+        digits = digits.slice(previousDial.length);
+      }
+      previousDial = studentPhoneDial(select);
+      input.value = formatStudentPhone(previousDial, digits);
+      fireInputEvents(input);
+      updateStudentPhoneError();
+    });
+    input.addEventListener("input", function() {
+      updateStudentPhoneError();
+    });
+    input.addEventListener("blur", function() {
+      normalizeStudentPhoneInput(select, input);
+      previousDial = studentPhoneDial(select);
+      fireInputEvents(input);
+      updateStudentPhoneError(true);
+    });
+  }
+  function watchStudentPhoneField() {
+    // The field sits inside the Contact Type dependent group, so it isn't in
+    // the DOM at init, and HubSpot re-renders it whenever native validation
+    // fires — the same behaviour watchSchoolFieldRerender() handles.
+    // enhanceStudentPhoneField() is idempotent, so the mutations it makes
+    // itself just no-op on the next observer callback.
+    var observer = new MutationObserver(function() {
+      enhanceStudentPhoneField();
+    });
+    observer.observe(formRoot, {
+      childList: true,
+      subtree: true
+    });
+  }
+  function studentPhoneIsValid() {
+    var input = q(FIELD_SELECTORS.studentPhone);
+    if (!input) return true;
+    var wrap = fieldWrapper(input);
+    if (wrap && !isFieldWrapVisible(wrap)) return true;
+    var digits = (input.value || "").replace(/\D/g, "");
+    // An empty required field is HubSpot's own error to raise, not ours.
+    if (digits === "") return true;
+    return digits.length >= STUDENT_PHONE_MIN_DIGITS && digits.length <= STUDENT_PHONE_MAX_DIGITS;
+  }
+  function ensureStudentPhoneError() {
+    var input = q(FIELD_SELECTORS.studentPhone);
+    if (!input) return null;
+    var wrap = fieldWrapper(input) || input.parentElement;
+    if (!wrap) return null;
+    var existing = wrap.querySelector(".contour-student-phone-error");
+    if (existing) return existing;
+    var errorList = document.createElement("ul");
+    errorList.className = "no-list hs-error-msgs inputs-list contour-student-phone-error";
+    errorList.setAttribute("role", "alert");
+    errorList.style.display = "none";
+    var errorItem = document.createElement("li");
+    var errorLabel = document.createElement("label");
+    errorLabel.className = "hs-error-msg hs-main-font-element";
+    errorLabel.textContent = "Please enter a valid phone number.";
+    errorItem.appendChild(errorLabel);
+    errorList.appendChild(errorItem);
+    wrap.appendChild(errorList);
+    return errorList;
+  }
+  function updateStudentPhoneError(showWhenInvalid) {
+    var input = q(FIELD_SELECTORS.studentPhone);
+    var errorList = ensureStudentPhoneError();
+    if (!input || !errorList) return;
+    if (studentPhoneIsValid()) {
+      input.classList.remove("invalid", "error");
+      errorList.style.display = "none";
+      return;
+    }
+    if (!showWhenInvalid) return;
+    input.classList.add("invalid", "error");
+    errorList.style.display = "";
+  }
+  function enforceStudentPhoneValidation() {
+    if (!formRoot) return;
+    formRoot.addEventListener("submit", function(e) {
+      if (studentPhoneIsValid()) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      updateStudentPhoneError(true);
+      var input = q(FIELD_SELECTORS.studentPhone);
+      scrollErrorIntoView(fieldWrapper(input) || input);
+      if (input) input.focus();
+    }, true);
+  }
   function ensureDividerBefore(fieldEl, id) {
     if (!fieldEl) return;
     var wrap = fieldWrapper(fieldEl);
@@ -1866,6 +2119,10 @@ var ContourForm1Logic = function() {
     enhanceContactTypeIllustrations();
     enforceEmailTempValidation();
     enhanceEmailPrefill();
+    injectStudentPhoneStyles();
+    enhanceStudentPhoneField();
+    watchStudentPhoneField();
+    enforceStudentPhoneValidation();
     enforceFieldRequiredValidation("programInterest", "Please select a program.", "contour-program-interest-error", anyProgramInterestOptionEligible);
     enforceFieldRequiredValidation("campus", "Please select a campus.", "contour-campus-error", isFieldWrapVisible);
     enforceFieldRequiredValidation("interestedSubjects", "Please select at least one subject.", "contour-subjects-error", isFieldWrapVisible);

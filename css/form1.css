@@ -625,7 +625,7 @@ form.hsForm {
 .hs-form .hs_student_first_name,
 .hs-form .hs_student_last_name,
 .hs-form .hs_student_email,
-.hs-form .hs_student_phone,
+.hs-form .hs_student_phone_number,
 .hs-form .hs_guardian_s_first_name,
 .hs-form .hs_guardian_s_last_name,
 .hs-form .hs_guardian_email,
@@ -639,7 +639,7 @@ form.hsForm {
   .hs-form .hs_student_first_name,
   .hs-form .hs_student_last_name,
   .hs-form .hs_student_email,
-  .hs-form .hs_student_phone,
+  .hs-form .hs_student_phone_number,
   .hs-form .hs_guardian_s_first_name,
   .hs-form .hs_guardian_s_last_name,
   .hs-form .hs_guardian_email,
@@ -1195,6 +1195,58 @@ form.hsForm {
     flex-direction: column !important;
   }
   .hs-form .hs-fieldtype-intl-phone select.hs-input:not([type="checkbox"]):not([type="radio"]):not([type="file"]) {
+    max-width: 100%;
+    width: 100% !important;
+  }
+}
+
+/**
+ * Contour Form 1 — injected country-code selector (Student Phone Number)
+ * =======================================================================
+ * Student Phone Number is a HubSpot phone-number property, but its form
+ * field has no country-code selector enabled, so HubSpot renders a single
+ * plain tel input. enhanceStudentPhoneField() in form1.js wraps that input
+ * together with an injected <select> in a .contour-intl-phone container —
+ * these rules give that pair the same side-by-side treatment as HubSpot's
+ * own .hs-fieldtype-intl-phone widget above.
+ *
+ * The container deliberately does NOT carry .hs-input (unlike HubSpot's own
+ * wrapper), so it doesn't inherit the sitewide bordered-box styling and
+ * needs no neutralising rules — only the select and input, which do keep
+ * .hs-input, need width overrides.
+ *
+ * These rules (plus the .hs_student_phone_number half-width pairing above)
+ * are ALSO injected at runtime by injectStudentPhoneStyles() in form1.js,
+ * because this stylesheet lives in the Webflow page header and only updates
+ * on a Webflow publish. Keep the two copies in step.
+ */
+
+.hs-form .contour-intl-phone {
+  display: flex;
+  align-items: stretch;
+  gap: 0.5rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.hs-form select.contour-intl-phone__country:not([type="checkbox"]):not([type="radio"]):not([type="file"]) {
+  flex: 0 0 auto !important;
+  width: auto !important;
+  min-width: 90px;
+  max-width: 130px;
+}
+
+.hs-form input.contour-intl-phone__number:not([type="checkbox"]):not([type="radio"]):not([type="file"]) {
+  flex: 1 1 auto !important;
+  width: auto !important;
+  min-width: 0;
+}
+
+@media screen and (max-width: 480px) {
+  .hs-form .contour-intl-phone {
+    flex-direction: column;
+  }
+  .hs-form select.contour-intl-phone__country:not([type="checkbox"]):not([type="radio"]):not([type="file"]) {
     max-width: 100%;
     width: 100% !important;
   }

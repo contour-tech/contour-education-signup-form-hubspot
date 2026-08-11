@@ -16,6 +16,7 @@ const CONTACT_PROPERTIES = [
   "student_first_name",
   "student_last_name",
   "student_email",
+  "student_phone_number",
   "student_phone",
   "email",
   "email_2",
@@ -31,6 +32,11 @@ const CONTACT_PROPERTIES = [
   "web_form__preferred_campuses",
   "referral"
 ];
+
+// Superseded by student_phone_number (single-line text -> phone number type).
+// Still read so contacts that only carry the old value keep prefilling, but
+// dropped from the request if HubSpot rejects it (i.e. once it's deleted).
+const LEGACY_CONTACT_PROPERTIES = ["student_phone"];
 
 const ALLOWED_ORIGINS = [
   "https://contour-staging.webflow.io",
@@ -108,6 +114,21 @@ async function associatedPeople(contactId) {
   return { guardian, student };
 }
 
+async function fetchContact(studentId) {
+  const path = (props) =>
+    `/crm/v3/objects/contacts/${studentId}?properties=${props.join(",")}`;
+  try {
+    return await hubspotGet(path(CONTACT_PROPERTIES));
+  } catch (err) {
+    // One removed property makes HubSpot reject the whole read — retry without
+    // the legacy ones rather than losing the prefill entirely.
+    console.warn("contact read failed, retrying without legacy properties:", err.message);
+    return hubspotGet(
+      path(CONTACT_PROPERTIES.filter((p) => !LEGACY_CONTACT_PROPERTIES.includes(p)))
+    );
+  }
+}
+
 async function associatedSubjectCodes(contactId, objectType) {
   const assoc = await hubspotGet(
     `/crm/v4/objects/contacts/${contactId}/associations/${objectType}?limit=100`
@@ -142,9 +163,7 @@ functions.http("prefetch", async (req, res) => {
   }
 
   try {
-    const contact = await hubspotGet(
-      `/crm/v3/objects/contacts/${studentId}?properties=${CONTACT_PROPERTIES.join(",")}`
-    );
+    const contact = await fetchContact(studentId);
     if (!contact) return res.json({ found: false });
 
     const [trialSubjectCodes, enrolledSubjectCodes, people] = await Promise.all([
