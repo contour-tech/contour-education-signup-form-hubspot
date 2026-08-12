@@ -55,6 +55,14 @@ var ContourForm1Logic = function() {
   // is bookable for VSE Core (Year 7) only - Foundation (Y6) and Mastery (Y8)
   // 2026 intakes go to waitlist, as do the Year 6 2027 VSE subjects.
   var WAITLIST_SUBJECT_CODES = ["VSE-FOEN", "VSE-FOMA", "VSE-FOWR", "VSE-MAEN", "VSE-MAMA", "VSE-MAWR", "VSE-EN06", "VSE-MA06", "VSE-WR06"];
+  // UCAT enrolments are closed until later in September 2026 (Ramodh via Luke,
+  // 12 Aug 2026). While closed, UCAT signups are waitlist registrations, not
+  // enrolments: the Welcome Consultation scheduler is hidden and a waitlist
+  // note takes its place. Flip UCAT_ENROLMENTS_OPEN back to true when
+  // enrolments reopen — nothing else needs changing.
+  var UCAT_ENROLMENTS_OPEN = false;
+  var UCAT_SUBJECT_CODES = ["UCAT-ANZ-CORE", "UCAT-ANZ-MAST", "UCAT-UK-CORE", "UCAT-UK-MAST"];
+  var UCAT_WAITLIST_NOTE = "UCAT enrolments are closed until later in September. Submitting this form joins the UCAT waitlist — it is not an enrolment, and no Welcome Consultation can be booked yet. Our team will contact you to book your consultation once enrolments reopen.";
   var CATEGORY_DISPLAY_ORDER = [ "Science", "Mathematics", "English", "TestPrep", "MedPrep", "Other" ];
   var CATEGORY_DISPLAY_NAMES = {
     TestPrep: "Selective Entry",
@@ -81,7 +89,11 @@ var ContourForm1Logic = function() {
     if (!codes) return false;
     return codes.indexOf(classification.code) !== -1;
   }
+  function isUcatSubject(classification) {
+    return !!classification.code && UCAT_SUBJECT_CODES.indexOf(classification.code) !== -1;
+  }
   function isWaitlistSubject(classification) {
+    if (!UCAT_ENROLMENTS_OPEN && isUcatSubject(classification)) return true;
     return !!classification.code && WAITLIST_SUBJECT_CODES.indexOf(classification.code) !== -1;
   }
   function subjectMatchesLocation(subjectState, selectedLocation) {
@@ -634,7 +646,7 @@ var ContourForm1Logic = function() {
     if (document.getElementById("contour-disabled-field-styles")) return;
     var style = document.createElement("style");
     style.id = "contour-disabled-field-styles";
-    style.textContent = ".hs-form select:disabled, .hs-form input:disabled { opacity: 0.55; background-color: #f1f0ec; cursor: not-allowed; }" + ".contour-prefill-offer { margin-top: 8px; padding: 12px; border: 1px solid #d8d5cc; border-radius: 8px; background: #faf9f6; }" + ".contour-prefill-offer__message { margin: 0 0 8px; font-size: 14px; }" + ".contour-prefill-offer__code-row { display: flex; gap: 8px; align-items: center; }" + ".contour-prefill-offer__code-input { max-width: 140px; }" + ".contour-prefill-offer__confirm { cursor: pointer; }" + ".contour-prefill-offer__error { margin: 8px 0 0; color: #b3261e; font-size: 13px; }" + ".contour-prefill-banner { display: flex; align-items: flex-start; gap: 14px; margin: 0 0 24px; padding: 18px 22px; border: 1px solid rgba(12, 49, 102, 0.12); border-radius: 16px; background: #FFFFFF; box-shadow: 0 1px 3px rgba(12, 49, 102, 0.06); }" + ".contour-prefill-banner__badge { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; background: #D7FC3D; color: #0C3166; font-size: 15px; font-weight: 700; }" + ".contour-prefill-banner__content { flex: 1; min-width: 0; }" + ".contour-prefill-banner__title { margin: 0 0 2px; font-size: 15px; font-weight: 700; color: #0C3166; }" + ".contour-prefill-banner__text { margin: 0 0 8px; font-size: 13.5px; line-height: 1.45; color: #6b7280; }" + ".contour-prefill-banner__reset { display: inline-block; font-size: 13px; font-weight: 600; color: #0C3166; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }" + ".contour-prefill-banner__reset:hover { color: #0540F2; }" + ".contour-subject-summary { margin: 24px 0; padding: 20px 22px; border: 1px solid rgba(12, 49, 102, 0.12); border-radius: 16px; background: #FFFFFF; box-shadow: 0 1px 3px rgba(12, 49, 102, 0.06); }" + ".contour-subject-summary__heading { font-size: 15px; font-weight: 700; color: #0C3166; margin-bottom: 14px; }" + ".contour-subject-summary__grid { display: flex; flex-wrap: wrap; gap: 24px; }" + ".contour-subject-summary__col { flex: 1 1 180px; min-width: 160px; }" + ".contour-subject-summary__col-title { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #6b7280; margin-bottom: 8px; }" + ".contour-subject-summary__chips { display: flex; flex-wrap: wrap; gap: 6px; }" + ".contour-subject-chip { display: inline-block; padding: 5px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 600; line-height: 1.3; }" + ".contour-subject-chip--navy { background: #092749; color: #FFFFFF; }" + ".contour-subject-chip--lime { background: #D7FC3D; color: #0C3166; }" + ".contour-subject-chip--blue { background: #007AFF; color: #FFFFFF; }" + ".contour-waitlist-badge { display: inline-block; margin-left: 8px; padding: 2px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: 0.03em; background: #FFF3D6; color: #8a5a00; border: 1px solid #f0d9a6; vertical-align: middle; }" + ".contour-form-loader { display: flex; flex-direction: column; align-items: center; padding: 60px 0; }" + ".contour-form-loader__spinner { width: 36px; height: 36px; border: 4px solid #e3e0d8; border-top-color: #1a1a2e; border-radius: 50%; animation: contour-spin 0.8s linear infinite; }" + "@keyframes contour-spin { to { transform: rotate(360deg); } }" + ".contour-form-loader__text { margin-top: 12px; font-size: 14px; }";
+    style.textContent = ".hs-form select:disabled, .hs-form input:disabled { opacity: 0.55; background-color: #f1f0ec; cursor: not-allowed; }" + ".contour-prefill-offer { margin-top: 8px; padding: 12px; border: 1px solid #d8d5cc; border-radius: 8px; background: #faf9f6; }" + ".contour-prefill-offer__message { margin: 0 0 8px; font-size: 14px; }" + ".contour-prefill-offer__code-row { display: flex; gap: 8px; align-items: center; }" + ".contour-prefill-offer__code-input { max-width: 140px; }" + ".contour-prefill-offer__confirm { cursor: pointer; }" + ".contour-prefill-offer__error { margin: 8px 0 0; color: #b3261e; font-size: 13px; }" + ".contour-prefill-banner { display: flex; align-items: flex-start; gap: 14px; margin: 0 0 24px; padding: 18px 22px; border: 1px solid rgba(12, 49, 102, 0.12); border-radius: 16px; background: #FFFFFF; box-shadow: 0 1px 3px rgba(12, 49, 102, 0.06); }" + ".contour-prefill-banner__badge { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; background: #D7FC3D; color: #0C3166; font-size: 15px; font-weight: 700; }" + ".contour-prefill-banner__content { flex: 1; min-width: 0; }" + ".contour-prefill-banner__title { margin: 0 0 2px; font-size: 15px; font-weight: 700; color: #0C3166; }" + ".contour-prefill-banner__text { margin: 0 0 8px; font-size: 13.5px; line-height: 1.45; color: #6b7280; }" + ".contour-prefill-banner__reset { display: inline-block; font-size: 13px; font-weight: 600; color: #0C3166; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }" + ".contour-prefill-banner__reset:hover { color: #0540F2; }" + ".contour-subject-summary { margin: 24px 0; padding: 20px 22px; border: 1px solid rgba(12, 49, 102, 0.12); border-radius: 16px; background: #FFFFFF; box-shadow: 0 1px 3px rgba(12, 49, 102, 0.06); }" + ".contour-subject-summary__heading { font-size: 15px; font-weight: 700; color: #0C3166; margin-bottom: 14px; }" + ".contour-subject-summary__grid { display: flex; flex-wrap: wrap; gap: 24px; }" + ".contour-subject-summary__col { flex: 1 1 180px; min-width: 160px; }" + ".contour-subject-summary__col-title { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #6b7280; margin-bottom: 8px; }" + ".contour-subject-summary__chips { display: flex; flex-wrap: wrap; gap: 6px; }" + ".contour-subject-chip { display: inline-block; padding: 5px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 600; line-height: 1.3; }" + ".contour-subject-chip--navy { background: #092749; color: #FFFFFF; }" + ".contour-subject-chip--lime { background: #D7FC3D; color: #0C3166; }" + ".contour-subject-chip--blue { background: #007AFF; color: #FFFFFF; }" + ".contour-waitlist-badge { display: inline-block; margin-left: 8px; padding: 2px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: 0.03em; background: #FFF3D6; color: #8a5a00; border: 1px solid #f0d9a6; vertical-align: middle; }" + ".contour-welcome-consultation__waitlist-note { margin: 0; padding: 14px 18px; border: 1px solid #f0d9a6; border-radius: 12px; background: #FFF3D6; color: #8a5a00; font-size: 14px; line-height: 1.5; font-weight: 600; }" +".contour-form-loader { display: flex; flex-direction: column; align-items: center; padding: 60px 0; }" + ".contour-form-loader__spinner { width: 36px; height: 36px; border: 4px solid #e3e0d8; border-top-color: #1a1a2e; border-radius: 50%; animation: contour-spin 0.8s linear infinite; }" + "@keyframes contour-spin { to { transform: rotate(360deg); } }" + ".contour-form-loader__text { margin-top: 12px; font-size: 14px; }";
     document.head.appendChild(style);
   }
   function getClassification(inputEl) {
@@ -1307,6 +1319,7 @@ var ContourForm1Logic = function() {
   function isUcatSelected() {
     var checkedSubjects = qAll(FIELD_SELECTORS.interestedSubjects + ":checked");
     for (var i = 0; i < checkedSubjects.length; i++) {
+      if (isUcatSubject(getClassification(checkedSubjects[i]))) return true;
       var labelText = optionLabelText(checkedSubjects[i]);
       if (UCAT_UK_PATTERN.test(labelText) || UCAT_ANZ_PATTERN.test(labelText)) return true;
     }
@@ -1343,6 +1356,10 @@ var ContourForm1Logic = function() {
     copy.className = "contour-welcome-consultation__copy";
     copy.textContent = "New UCAT students are required to book a Welcome Consultation before a trial can be booked. Please register your consultation below before completing the rest of this form.";
     wrapper.appendChild(copy);
+    var waitlistNote = document.createElement("p");
+    waitlistNote.className = "contour-welcome-consultation__waitlist-note";
+    waitlistNote.style.display = "none";
+    wrapper.appendChild(waitlistNote);
     var widgetContainer = document.createElement("div");
     widgetContainer.className = "contour-welcome-consultation__widget";
     wrapper.appendChild(widgetContainer);
@@ -1362,16 +1379,40 @@ var ContourForm1Logic = function() {
     var wrapper = ensureWelcomeConsultationContainer();
     var ucat = isUcatSelected();
     var testprep = isTestprepSelected();
-    if (!ucat && !testprep) {
+    // UCAT students can't book a consultation while enrolments are closed —
+    // they see the waitlist note instead. Selective Entry is unaffected, so
+    // both can be on screen at once when the two are selected together.
+    var ucatWaitlisted = ucat && !UCAT_ENROLMENTS_OPEN;
+    var audiences = [];
+    if (ucat && UCAT_ENROLMENTS_OPEN) audiences.push("UCAT");
+    if (testprep) audiences.push("Selective Entry");
+    var showScheduler = audiences.length > 0;
+    if (!showScheduler && !ucatWaitlisted) {
       wrapper.style.display = "none";
       return;
     }
     wrapper.style.display = "";
+    var headingEl = wrapper.querySelector(".contour-welcome-consultation__heading");
     var copyEl = wrapper.querySelector(".contour-welcome-consultation__copy");
-    if (copyEl) {
-      var audience = ucat && testprep ? "UCAT and Selective Entry" : ucat ? "UCAT" : "Selective Entry";
-      copyEl.textContent = "New " + audience + " students are required to book a Welcome Consultation before a trial can be booked. Please register your consultation below before completing the rest of this form.";
+    var noteEl = wrapper.querySelector(".contour-welcome-consultation__waitlist-note");
+    if (noteEl) {
+      noteEl.textContent = UCAT_WAITLIST_NOTE;
+      noteEl.style.display = ucatWaitlisted ? "" : "none";
     }
+    if (headingEl) headingEl.style.display = showScheduler ? "" : "none";
+    if (copyEl) {
+      copyEl.style.display = showScheduler ? "" : "none";
+      if (showScheduler) {
+        copyEl.textContent = "New " + audiences.join(" and ") + " students are required to book a Welcome Consultation before a trial can be booked. Please register your consultation below before completing the rest of this form.";
+      }
+    }
+    var schedulerContainer = wrapper.querySelector(".contour-welcome-consultation__widget");
+    if (!showScheduler) {
+      schedulerContainer.innerHTML = "";
+      schedulerContainer.style.display = "none";
+      return;
+    }
+    schedulerContainer.style.display = "";
     var location = getValue(FIELD_SELECTORS.location);
     var isUk = location === UK_TOKEN;
     var baseUrl = isUk ? CALENDLY_URLS.uk : CALENDLY_URLS.anz;
@@ -1384,12 +1425,11 @@ var ContourForm1Logic = function() {
     if (email) params.push("email=" + encodeURIComponent(email));
     var queryString = params.join("&");
     var fullUrl = baseUrl + (queryString ? "?" + queryString : "");
-    var widgetContainer = wrapper.querySelector(".contour-welcome-consultation__widget");
-    widgetContainer.innerHTML = "";
+    schedulerContainer.innerHTML = "";
     loadCalendlyScript(function() {
       Calendly.initInlineWidget({
         url: fullUrl,
-        parentElement: widgetContainer
+        parentElement: schedulerContainer
       });
     });
   }

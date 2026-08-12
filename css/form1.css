@@ -923,6 +923,18 @@ form.hsForm {
   margin: 0 0 1rem;
 }
 
+.contour-welcome-consultation__waitlist-note {
+  margin: 0;
+  padding: 14px 18px;
+  border: 1px solid #f0d9a6;
+  border-radius: 12px;
+  background: #FFF3D6;
+  color: #8a5a00;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  font-weight: 600;
+}
+
 .contour-welcome-consultation__widget {
   min-width: 320px;
   height: 1000px;
