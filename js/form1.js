@@ -69,6 +69,10 @@ var ContourForm1Logic = function() {
   function subjectMatchesMatrix(classification, location, yearLevel, selectedIntakeYear) {
     // Returns true/false when the matrix rules, null when the caller should
     // fall back to the structured-value logic.
+    // Test subjects (test:true) never appear in the planning matrix, so they
+    // always take the structured-value path — otherwise the matrix would hide
+    // them outright and every test round would need a code change here.
+    if (classification.test) return null;
     if (selectedIntakeYear !== SUBJECT_MATRIX_INTAKE) return null;
     if (!classification.code || !location || !yearLevel) return null;
     var byYear = SUBJECT_MATRIX[matrixLocationKey(location)];
@@ -92,6 +96,11 @@ var ContourForm1Logic = function() {
   }
   function subjectMatchesDelivery(classification) {
     return classification.delivery === "Term";
+  }
+  // Test subjects exist so staff can run signup rounds without touching a real
+  // offering. They must stay invisible to the public form.
+  function subjectMatchesAudience(classification) {
+    return !classification.test || isInternalMode();
   }
   function subjectMatchesIntake(classification, selectedIntakeYear) {
     if (!classification.intake) return true;
@@ -131,6 +140,7 @@ var ContourForm1Logic = function() {
       yearsShown: structuredYearListToLevels(parsed.year),
       delivery: parsed.delivery || "Term",
       intake: intake,
+      test: parsed.test === "true",
       code: parsed.code,
       subject: parsed.subject || null,
       structured: true
@@ -385,6 +395,7 @@ var ContourForm1Logic = function() {
     for (var i = 0; i < subjectInputs.length; i++) {
       var classification = getClassification(subjectInputs[i]);
       if (classification.program !== programValue) continue;
+      if (!subjectMatchesAudience(classification)) continue;
       var matrixVerdict = subjectMatchesMatrix(classification, location, yearLevel, intakeYear);
       if (matrixVerdict === false) continue;
       if (matrixVerdict === null) {
@@ -529,7 +540,9 @@ var ContourForm1Logic = function() {
     var location = getValue(FIELD_SELECTORS.location);
     var intakeYear = getValue(FIELD_SELECTORS.intakeYear);
     var year13Eligible = YEAR_13_LOCATIONS.indexOf(location) !== -1;
-    var year5Blocked = intakeYear === "2026";
+    // Year 5 has no 2026 offering publicly, but internal test rounds need it
+    // selectable so a test:true Year 5 subject can be reached in either intake.
+    var year5Blocked = intakeYear === "2026" && !isInternalMode();
     Array.prototype.forEach.call(select.options, function(opt) {
       if (opt.value === "Year 13") {
         opt.hidden = !year13Eligible;
@@ -641,6 +654,7 @@ var ContourForm1Logic = function() {
         yearsShown: null,
         delivery: "Term",
         intake: null,
+        test: false,
         code: null,
         subject: null,
         structured: false
@@ -702,7 +716,8 @@ var ContourForm1Logic = function() {
       var programOk = subjectMatchesPrograms(classification.program, selectedPrograms);
       var deliveryOk = subjectMatchesDelivery(classification);
       var intakeOk = subjectMatchesIntake(classification, selectedIntakeYear);
-      var shouldShow = !!location && selectedPrograms.length > 0 && locationOk && programOk && yearOk && deliveryOk && intakeOk;
+      var audienceOk = subjectMatchesAudience(classification);
+      var shouldShow = !!location && selectedPrograms.length > 0 && locationOk && programOk && yearOk && deliveryOk && intakeOk && audienceOk;
       shouldShow ? showOption(opt) : hideOption(opt);
       if (shouldShow) {
         updateWaitlistBadge(opt, classification);
