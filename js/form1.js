@@ -2238,7 +2238,9 @@ var ContourForm1Logic = function() {
     key: "signedUpBy",
     slug: "signed-up-by",
     publicValue: "",
-    errorText: "Please select who signed them up."
+    errorText: "Please select who signed them up.",
+    searchable: true,
+    searchPlaceholder: "Start typing a name"
   } ];
   INTERNAL_ONLY_FIELDS.forEach(function(config) {
     config.errorClass = "contour-" + config.slug + "-error";
@@ -2276,6 +2278,194 @@ var ContourForm1Logic = function() {
       bubbles: true
     }));
   }
+  /* ---------------------------------------------------------
+     Searchable dropdown
+     -----------------------------------------------------------
+     Turns a <select> into a type-to-filter combobox for lists too long to
+     scan by eye — the same interaction as the school field. The <select>
+     itself stays in the DOM as the value HubSpot submits, just visually
+     hidden, so the option list needs no duplicating here and grows
+     automatically as staff are added in HubSpot.
+
+     The class names are the school combobox's on purpose. The live CSS
+     lives in the Webflow page header (css/form1.css is only a reference
+     copy), so a fresh set of names would need a Webflow paste and publish
+     before it looked right.
+     --------------------------------------------------------- */
+  var COMBOBOX_CLASS = "contour-school-search";
+  var comboboxTargets = new WeakMap();
+  function comboboxWrapperOf(select) {
+    var previous = select.previousElementSibling;
+    if (!previous || !previous.classList.contains(COMBOBOX_CLASS)) return null;
+    // When HubSpot re-renders it swaps in a new <select> in the same position, so
+    // position alone doesn't prove the combobox belongs to it. A wrapper built
+    // for the old element still writes to that now-detached <select>, which would
+    // look like it worked while submitting nothing — treat it as absent so the
+    // caller rebuilds.
+    return comboboxTargets.get(previous) === select ? previous : null;
+  }
+  function selectableOptions(select) {
+    return selectOptions(select).filter(function(option) {
+      return option.value !== "" && !option.hidden && !option.disabled;
+    });
+  }
+  function optionLabelFor(select, value) {
+    if (!value) return "";
+    var chosen = selectOptions(select).filter(function(option) {
+      return option.value === value;
+    })[0];
+    return chosen ? chosen.textContent.trim() : "";
+  }
+  // Keeps the visible text honest when something else changes the select —
+  // evaluateInternalOnlyField() clearing it, or a HubSpot re-render. Skipped
+  // while the field has focus so it can't overwrite what is being typed.
+  function syncComboboxInput(select) {
+    var wrapper = comboboxWrapperOf(select);
+    if (!wrapper) return;
+    var input = wrapper.querySelector("input");
+    if (!input || document.activeElement === input) return;
+    input.value = optionLabelFor(select, select.value);
+  }
+  function enhanceSearchableSelect(select, config) {
+    if (comboboxWrapperOf(select)) return;
+    var fieldWrap = fieldWrapper(select);
+    // A HubSpot re-render can swap the <select> out from under an existing
+    // combobox, orphaning it next to an element no longer on the page. Clear any
+    // before building a fresh one, so the field never ends up with two.
+    if (fieldWrap) {
+      Array.prototype.forEach.call(fieldWrap.querySelectorAll("." + COMBOBOX_CLASS), function(stale) {
+        if (stale.parentNode) stale.parentNode.removeChild(stale);
+      });
+    }
+    select.style.display = "none";
+    var wrapper = document.createElement("div");
+    wrapper.className = COMBOBOX_CLASS;
+    comboboxTargets.set(wrapper, select);
+    // No name attribute: this input is a filter, never a submitted value.
+    var input = document.createElement("input");
+    input.type = "text";
+    input.className = "hs-input";
+    input.id = "contour-" + config.slug + "-search";
+    input.setAttribute("role", "combobox");
+    input.setAttribute("aria-autocomplete", "list");
+    input.setAttribute("aria-expanded", "false");
+    input.setAttribute("autocomplete", "off");
+    if (config.searchPlaceholder) input.placeholder = config.searchPlaceholder;
+    var listbox = document.createElement("ul");
+    listbox.className = COMBOBOX_CLASS + "__listbox";
+    listbox.id = "contour-" + config.slug + "-listbox";
+    listbox.setAttribute("role", "listbox");
+    listbox.hidden = true;
+    input.setAttribute("aria-controls", listbox.id);
+    wrapper.appendChild(input);
+    wrapper.appendChild(listbox);
+    select.parentNode.insertBefore(wrapper, select);
+    var label = fieldWrap ? fieldWrap.querySelector("label") : null;
+    if (label) label.setAttribute("for", input.id);
+    var matches = [];
+    var activeIndex = -1;
+    function close() {
+      listbox.hidden = true;
+      input.setAttribute("aria-expanded", "false");
+      input.removeAttribute("aria-activedescendant");
+      activeIndex = -1;
+    }
+    function setActive(index) {
+      var rendered = listbox.querySelectorAll("[role=option]");
+      if (rendered.length === 0) return;
+      if (index < 0) index = rendered.length - 1;
+      if (index >= rendered.length) index = 0;
+      activeIndex = index;
+      Array.prototype.forEach.call(rendered, function(li, i) {
+        li.setAttribute("aria-selected", i === index ? "true" : "false");
+      });
+      input.setAttribute("aria-activedescendant", rendered[index].id);
+      if (rendered[index].scrollIntoView) rendered[index].scrollIntoView({
+        block: "nearest"
+      });
+    }
+    function commit(option) {
+      select.value = option.value;
+      select.dispatchEvent(new Event("input", {
+        bubbles: true
+      }));
+      select.dispatchEvent(new Event("change", {
+        bubbles: true
+      }));
+      input.value = option.textContent.trim();
+      close();
+    }
+    function render(query) {
+      var normalized = query.trim().toLowerCase();
+      matches = selectableOptions(select).filter(function(option) {
+        return !normalized || option.textContent.toLowerCase().indexOf(normalized) !== -1;
+      });
+      listbox.innerHTML = "";
+      activeIndex = -1;
+      input.removeAttribute("aria-activedescendant");
+      if (matches.length === 0) {
+        var empty = document.createElement("li");
+        empty.className = COMBOBOX_CLASS + "__option";
+        empty.setAttribute("aria-disabled", "true");
+        empty.textContent = "No matches";
+        listbox.appendChild(empty);
+      } else {
+        matches.forEach(function(option, i) {
+          var li = document.createElement("li");
+          li.className = COMBOBOX_CLASS + "__option";
+          li.id = listbox.id + "-option-" + i;
+          li.setAttribute("role", "option");
+          li.setAttribute("aria-selected", "false");
+          li.textContent = option.textContent.trim();
+          li.addEventListener("mousedown", function(e) {
+            // Ahead of blur, so the click isn't lost to the field closing first.
+            e.preventDefault();
+            commit(option);
+          });
+          listbox.appendChild(li);
+        });
+      }
+      listbox.hidden = false;
+      input.setAttribute("aria-expanded", "true");
+    }
+    input.addEventListener("input", function() {
+      render(input.value);
+    });
+    input.addEventListener("focus", function() {
+      input.select();
+      render("");
+    });
+    input.addEventListener("blur", function() {
+      // Typing a name without picking it selects nothing, so drop the query
+      // rather than leave text that reads like an answer.
+      close();
+      input.value = optionLabelFor(select, select.value);
+    });
+    input.addEventListener("keydown", function(e) {
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault();
+        if (listbox.hidden) {
+          render(input.value);
+          setActive(0);
+          return;
+        }
+        setActive(activeIndex + (e.key === "ArrowDown" ? 1 : -1));
+        return;
+      }
+      if (e.key === "Enter") {
+        if (!listbox.hidden && activeIndex >= 0 && matches[activeIndex]) {
+          e.preventDefault();
+          commit(matches[activeIndex]);
+        }
+        return;
+      }
+      if (e.key === "Escape") {
+        close();
+        input.value = optionLabelFor(select, select.value);
+      }
+    });
+    input.value = optionLabelFor(select, select.value);
+  }
   function evaluateInternalOnlyField(config) {
     var select = q(FIELD_SELECTORS[config.key]);
     if (!select) return;
@@ -2308,6 +2498,12 @@ var ContourForm1Logic = function() {
     if (freshRender || !config.cleared || config.publicValue && select.value === config.publicValue) {
       clearSelectValue(select);
       config.cleared = true;
+    }
+    if (config.searchable) {
+      // Only built in internal mode — a hidden question needs no combobox, and
+      // building one would fight the wrapper being display:none.
+      enhanceSearchableSelect(select, config);
+      syncComboboxInput(select);
     }
   }
   function evaluateInternalOnlyFields() {
