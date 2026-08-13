@@ -16,7 +16,8 @@ var ContourForm1Logic = function() {
     studentPhone: '[name="student_phone_number"]',
     noProgramWaitlist: '[name="join_no_program_waitlist"]',
     referral: '[name="referral"]',
-    contactMethod: '[name="how_did_they_contact_us"]'
+    contactMethod: '[name="how_did_they_contact_us"]',
+    signedUpBy: '[name="signed_up_by"]'
   };
   var FIELD_WRAPPER_CLASS = "hs-form-field";
   var VALID_LOCATIONS = [ "VIC", "NSW", "QLD", "SA", "ACT", "TAS", "WA", "NT", "United Kingdom", "New Zealand", "Overseas" ];
@@ -1899,6 +1900,11 @@ var ContourForm1Logic = function() {
         }
       }, true);
     }
+    return {
+      isValid: isValid,
+      showError: showError,
+      clearError: clearError
+    };
   }
   function enforceEmailTempValidation() {
     var input = q(FIELD_SELECTORS.emailTemp);
@@ -2204,37 +2210,52 @@ var ContourForm1Logic = function() {
     }, true);
   }
   /* =========================================================
-     HOW DID THEY CONTACT US — internal-only question
+     INTERNAL-ONLY QUESTIONS
      -----------------------------------------------------------
-     Staff taking a signup on someone's behalf record how that person
-     reached us; public visitors must never see the question and are
-     recorded as "Website Sign-Ups" automatically. The two are split by
-     ?type=internal on the form URL.
+     Questions only staff answer, when they take a signup on someone's
+     behalf. Public visitors must never see them; ?type=internal on the
+     form URL reveals them and makes them required.
 
-     The field is deliberately NOT hidden in HubSpot: a hidden field is
+     Each field is deliberately NOT hidden in HubSpot: a hidden field is
      rendered as <input type="hidden"> with the <select> and every option
      dropped from the page (the embed bundle picks the component from the
      hidden flag before it consults the field type), leaving nothing to
-     reveal. It is also deliberately NOT required in HubSpot, because a
+     reveal. They are also deliberately NOT required in HubSpot, because a
      native required mark both blocks public visitors on a field they
      can't see and makes enforceFieldRequiredValidation() bail out.
      ========================================================= */
   var INTERNAL_TYPE_PARAM = "type";
   var INTERNAL_TYPE_VALUE = "internal";
-  var CONTACT_METHOD_DEFAULT_VALUE = "Website Sign-Ups";
-  var updateContactMethodRequiredMark = createRequiredMarkUpdater("contactMethod", "contour-contact-method-required");
-  var contactMethodCleared = false;
+  // publicValue is what a normal visitor's submission records while the
+  // question is hidden — "" leaves the property blank. A non-empty one is also
+  // taken off the menu in internal mode, so staff can't pick the public default.
+  var INTERNAL_ONLY_FIELDS = [ {
+    key: "contactMethod",
+    slug: "contact-method",
+    publicValue: "Website Sign-Ups",
+    errorText: "Please select how they contacted us."
+  }, {
+    key: "signedUpBy",
+    slug: "signed-up-by",
+    publicValue: "",
+    errorText: "Please select who signed them up."
+  } ];
+  INTERNAL_ONLY_FIELDS.forEach(function(config) {
+    config.errorClass = "contour-" + config.slug + "-error";
+    config.updateRequiredMark = createRequiredMarkUpdater(config.key, "contour-" + config.slug + "-required");
+    config.cleared = false;
+  });
   function isInternalMode() {
     return getUrlParam(INTERNAL_TYPE_PARAM).trim().toLowerCase() === INTERNAL_TYPE_VALUE;
   }
-  function contactMethodOptions(select) {
+  function selectOptions(select) {
     return Array.prototype.slice.call(select.options);
   }
   // Returns true when it had to create one, which also means HubSpot has just
   // rendered the <select> fresh — without a blank option the browser preselects
   // the first real one, so the caller has to clear that.
-  function ensureContactMethodPlaceholder(select) {
-    var existing = contactMethodOptions(select).some(function(option) {
+  function ensureBlankOption(select) {
+    var existing = selectOptions(select).some(function(option) {
       return option.value === "";
     });
     if (existing) return false;
@@ -2245,7 +2266,7 @@ var ContourForm1Logic = function() {
     return true;
   }
   // setSelectOrTextValue() ignores "" by design, so clearing needs its own path.
-  function clearContactMethodValue(select) {
+  function clearSelectValue(select) {
     if (select.value === "") return;
     select.value = "";
     select.dispatchEvent(new Event("input", {
@@ -2255,51 +2276,80 @@ var ContourForm1Logic = function() {
       bubbles: true
     }));
   }
-  function evaluateContactMethodField() {
-    var select = q(FIELD_SELECTORS.contactMethod);
+  function evaluateInternalOnlyField(config) {
+    var select = q(FIELD_SELECTORS[config.key]);
     if (!select) return;
     var internal = isInternalMode();
     toggleFieldWrapper(select, internal);
-    updateContactMethodRequiredMark(internal);
+    config.updateRequiredMark(internal);
     if (!internal) {
-      if (select.value !== CONTACT_METHOD_DEFAULT_VALUE) {
-        setSelectOrTextValue(FIELD_SELECTORS.contactMethod, CONTACT_METHOD_DEFAULT_VALUE);
+      // Force the public value even though the question is hidden: HubSpot
+      // preselects the first real option when it renders no blank one, which
+      // would otherwise submit a staff-only answer for a public visitor.
+      if (!config.publicValue) clearSelectValue(select); else if (select.value !== config.publicValue) {
+        setSelectOrTextValue(FIELD_SELECTORS[config.key], config.publicValue);
       }
       return;
     }
     // Take the public default off the menu so staff make a real choice.
     // Hidden + disabled rather than removed: the <select> is React-owned, and
     // detaching a child it still tracks can throw on its next re-render.
-    var freshRender = ensureContactMethodPlaceholder(select);
-    contactMethodOptions(select).forEach(function(option) {
-      if (option.value !== CONTACT_METHOD_DEFAULT_VALUE) return;
-      option.hidden = true;
-      option.disabled = true;
-    });
+    var freshRender = ensureBlankOption(select);
+    if (config.publicValue) {
+      selectOptions(select).forEach(function(option) {
+        if (option.value !== config.publicValue) return;
+        option.hidden = true;
+        option.disabled = true;
+      });
+    }
     // Nothing may arrive preselected. Clear on the first pass, on a fresh
     // HubSpot render, and any time the public default is showing — but leave a
     // staff member's own choice alone on subsequent observer callbacks.
-    if (freshRender || !contactMethodCleared || select.value === CONTACT_METHOD_DEFAULT_VALUE) {
-      clearContactMethodValue(select);
-      contactMethodCleared = true;
+    if (freshRender || !config.cleared || config.publicValue && select.value === config.publicValue) {
+      clearSelectValue(select);
+      config.cleared = true;
     }
   }
-  function watchContactMethodField() {
+  function evaluateInternalOnlyFields() {
+    INTERNAL_ONLY_FIELDS.forEach(evaluateInternalOnlyField);
+  }
+  function watchInternalOnlyFields() {
     // HubSpot re-renders the form after hydration and again when its own
     // validation fires, which restores the default option and the wrapper's
-    // display. evaluateContactMethodField() is idempotent, so the mutations it
+    // display. evaluateInternalOnlyField() is idempotent, so the mutations it
     // makes itself no-op on the next observer callback.
     var observer = new MutationObserver(function() {
-      evaluateContactMethodField();
+      evaluateInternalOnlyFields();
     });
     observer.observe(formRoot, {
       childList: true,
       subtree: true
     });
   }
-  function contactMethodSatisfied() {
-    var select = q(FIELD_SELECTORS.contactMethod);
-    return !!select && select.value.trim() !== "" && select.value !== CONTACT_METHOD_DEFAULT_VALUE;
+  function internalOnlyFieldSatisfied(config) {
+    return function() {
+      var select = q(FIELD_SELECTORS[config.key]);
+      if (!select || select.value.trim() === "") return false;
+      return !config.publicValue || select.value !== config.publicValue;
+    };
+  }
+  function enforceInternalOnlyFieldValidation() {
+    var controllers = [];
+    // Registered before the per-field validators below, so it still runs when
+    // the first unanswered one calls stopImmediatePropagation(). Staff hit both
+    // of these blank on every internal signup, so surfacing both errors at once
+    // beats one error per submit attempt.
+    if (formRoot) {
+      formRoot.addEventListener("submit", function() {
+        controllers.forEach(function(controller) {
+          if (!controller.isValid()) controller.showError();
+        });
+      }, true);
+    }
+    INTERNAL_ONLY_FIELDS.forEach(function(config) {
+      var controller = enforceFieldRequiredValidation(config.key, config.errorText, config.errorClass, isInternalMode, internalOnlyFieldSatisfied(config));
+      if (controller) controllers.push(controller);
+    });
   }
   function ensureDividerBefore(fieldEl, id) {
     if (!fieldEl) return;
@@ -2336,7 +2386,7 @@ var ContourForm1Logic = function() {
     enforceFieldRequiredValidation("campus", "Please select a campus.", "contour-campus-error", isFieldWrapVisible);
     enforceFieldRequiredValidation("interestedSubjects", "Please select at least one subject.", "contour-subjects-error", isFieldWrapVisible);
     enforceFieldRequiredValidation("schoolText", "Please enter your school.", "contour-school-error", isFieldWrapVisible, schoolFieldSatisfied);
-    enforceFieldRequiredValidation("contactMethod", "Please select how they contacted us.", "contour-contact-method-error", isInternalMode, contactMethodSatisfied);
+    enforceInternalOnlyFieldValidation();
     attachListeners();
     evaluateProgramInterestOptions();
     evaluateInterestedSubjectsOptions();
@@ -2344,8 +2394,8 @@ var ContourForm1Logic = function() {
     evaluateYearLevelOptions();
     evaluateSchoolFieldVisibility();
     evaluateIntakeYearDependents();
-    evaluateContactMethodField();
-    watchContactMethodField();
+    evaluateInternalOnlyFields();
+    watchInternalOnlyFields();
     renderWelcomeConsultation();
     renderSubjectSummary();
     initPrefetchFromUrl();
