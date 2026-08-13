@@ -2337,7 +2337,6 @@ var ContourForm1Logic = function() {
         if (stale.parentNode) stale.parentNode.removeChild(stale);
       });
     }
-    select.style.display = "none";
     var wrapper = document.createElement("div");
     wrapper.className = COMBOBOX_CLASS;
     comboboxTargets.set(wrapper, select);
@@ -2503,6 +2502,10 @@ var ContourForm1Logic = function() {
       // Only built in internal mode — a hidden question needs no combobox, and
       // building one would fight the wrapper being display:none.
       enhanceSearchableSelect(select, config);
+      // Re-asserted on every pass rather than once at build time: a re-render
+      // that keeps the same <select> node can still drop the inline style, which
+      // would leave the native dropdown showing beside the combobox.
+      select.style.display = "none";
       syncComboboxInput(select);
     }
   }
