@@ -28,7 +28,7 @@ var ContourForm1Logic = function() {
     logoUrl: "https://cdn.prod.website-files.com/696ed06d2e62378f0a51f2d4/6a0bbf0cd57f2b816bcc79fb_Final%20EDUCATION%20horizontal%20logo.svg"
   }, {
     match: /test\s*prep|selective/i,
-    title: "Selective Entry",
+    title: "Selective Entry & Scholarship",
     description: "Preparing junior students for selective school examinations",
     logoUrl: "https://cdn.prod.website-files.com/696ed06d2e62378f0a51f2d4/6a0bbed5fdbd2c829b5e4e7c_Final%20TESTPREP%20Charcoal%20horizontal%20logo.svg"
   }, {
@@ -60,7 +60,7 @@ var ContourForm1Logic = function() {
   var UCAT_WAITLIST_NOTE = "UCAT enrolments are closed until later in September. Submitting this form joins the UCAT waitlist — it is not an enrolment, and no Welcome Consultation can be booked yet. Our team will contact you to book your consultation once enrolments reopen.";
   var CATEGORY_DISPLAY_ORDER = [ "Science", "Mathematics", "English", "TestPrep", "MedPrep", "Other" ];
   var CATEGORY_DISPLAY_NAMES = {
-    TestPrep: "Selective Entry",
+    TestPrep: "Selective Entry & Scholarship",
     MedPrep: "Medical Entry"
   };
   function matrixLocationKey(location) {
@@ -1376,7 +1376,7 @@ var ContourForm1Logic = function() {
     var ucatWaitlisted = ucat && !UCAT_ENROLMENTS_OPEN;
     var audiences = [];
     if (ucat && UCAT_ENROLMENTS_OPEN) audiences.push("UCAT");
-    if (testprep) audiences.push("Selective Entry");
+    if (testprep) audiences.push("Selective Entry & Scholarship");
     var showScheduler = audiences.length > 0;
     if (!showScheduler && !ucatWaitlisted) {
       wrapper.style.display = "none";
