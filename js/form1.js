@@ -25,22 +25,16 @@ var ContourForm1Logic = function() {
     match: /education|tutoring/i,
     title: "Year 7 - 12 Tutoring",
     description: "Expert tutoring for in-depth understanding and results",
-    pillText: "Available all year levels",
-    pillClass: "contour-pill--blue",
     logoUrl: "https://cdn.prod.website-files.com/696ed06d2e62378f0a51f2d4/6a0bbf0cd57f2b816bcc79fb_Final%20EDUCATION%20horizontal%20logo.svg"
   }, {
     match: /test\s*prep|selective/i,
     title: "Selective Entry",
     description: "Preparing junior students for selective school examinations",
-    pillText: "Years 6–8 only",
-    pillClass: "contour-pill--green",
     logoUrl: "https://cdn.prod.website-files.com/696ed06d2e62378f0a51f2d4/6a0bbed5fdbd2c829b5e4e7c_Final%20TESTPREP%20Charcoal%20horizontal%20logo.svg"
   }, {
     match: /med\s*prep|ucat/i,
     title: "Medical Entry",
     description: "UCAT tutoring and medical interview coaching",
-    pillText: "Year 10+ & Graduated",
-    pillClass: "contour-pill--purple",
     logoUrl: "https://cdn.prod.website-files.com/696ed06d2e62378f0a51f2d4/6a0bbed5058c7ec65b1a454e_Final%20MEDPREP%20Charcoal%20horizontal%20logo.svg"
   } ];
   var UK_TOKEN = "United Kingdom";
@@ -315,10 +309,6 @@ var ContourForm1Logic = function() {
         descEl.className = "contour-program-card__description";
         descEl.textContent = config.description;
         body.appendChild(descEl);
-        var pillEl = document.createElement("span");
-        pillEl.className = "contour-program-card__pill " + config.pillClass;
-        pillEl.textContent = config.pillText;
-        body.appendChild(pillEl);
       }
       card.appendChild(body);
       card.insertBefore(inputEl, card.firstChild);
