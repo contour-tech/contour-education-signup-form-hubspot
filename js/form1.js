@@ -58,6 +58,13 @@ var ContourForm1Logic = function() {
   var UCAT_ENROLMENTS_OPEN = false;
   var UCAT_SUBJECT_CODES = ["UCAT-ANZ-CORE", "UCAT-ANZ-MAST", "UCAT-UK-CORE", "UCAT-UK-MAST"];
   var UCAT_WAITLIST_NOTE = "UCAT enrolments are closed until later in September. Submitting this form joins the UCAT waitlist — it is not an enrolment, and no Welcome Consultation can be booked yet. Our team will contact you to book your consultation once enrolments reopen.";
+  // Welcome Consultation bookings are switched off for the AY27 intake while
+  // consults are not live yet (Amitav, 16 Aug 2026). MedPrep and TestPrep
+  // students see the yellow "open soon" note instead of the Calendly
+  // scheduler. Flip WC_BOOKINGS_OPEN back to true to restore the scheduler —
+  // nothing else needs changing.
+  var WC_BOOKINGS_OPEN = false;
+  var WC_OPEN_SOON_NOTE = "Welcome Consultation bookings open soon. You can submit this form now — our team will contact you to book your Welcome Consultation once bookings open.";
   var CATEGORY_DISPLAY_ORDER = [ "Science", "Mathematics", "English", "TestPrep", "MedPrep", "Other" ];
   var CATEGORY_DISPLAY_NAMES = {
     TestPrep: "Selective Entry & Scholarship",
@@ -1367,6 +1374,10 @@ var ContourForm1Logic = function() {
     waitlistNote.className = "contour-welcome-consultation__waitlist-note";
     waitlistNote.style.display = "none";
     wrapper.appendChild(waitlistNote);
+    var openSoonNote = document.createElement("p");
+    openSoonNote.className = "contour-welcome-consultation__waitlist-note contour-welcome-consultation__open-soon-note";
+    openSoonNote.style.display = "none";
+    wrapper.appendChild(openSoonNote);
     var widgetContainer = document.createElement("div");
     widgetContainer.className = "contour-welcome-consultation__widget";
     wrapper.appendChild(widgetContainer);
@@ -1393,15 +1404,21 @@ var ContourForm1Logic = function() {
     var audiences = [];
     if (ucat && UCAT_ENROLMENTS_OPEN) audiences.push("UCAT");
     if (testprep) audiences.push("Selective Entry & Scholarship");
-    var showScheduler = audiences.length > 0;
-    if (!showScheduler && !ucatWaitlisted) {
+    var showScheduler = audiences.length > 0 && WC_BOOKINGS_OPEN;
+    var showOpenSoonNote = audiences.length > 0 && !WC_BOOKINGS_OPEN;
+    if (!showScheduler && !showOpenSoonNote && !ucatWaitlisted) {
       wrapper.style.display = "none";
       return;
     }
     wrapper.style.display = "";
     var headingEl = wrapper.querySelector(".contour-welcome-consultation__heading");
     var copyEl = wrapper.querySelector(".contour-welcome-consultation__copy");
-    var noteEl = wrapper.querySelector(".contour-welcome-consultation__waitlist-note");
+    var noteEl = wrapper.querySelector(".contour-welcome-consultation__open-soon-note");
+    if (noteEl) {
+      noteEl.textContent = WC_OPEN_SOON_NOTE;
+      noteEl.style.display = showOpenSoonNote ? "" : "none";
+    }
+    noteEl = wrapper.querySelector(".contour-welcome-consultation__waitlist-note:not(.contour-welcome-consultation__open-soon-note)");
     if (noteEl) {
       noteEl.textContent = UCAT_WAITLIST_NOTE;
       noteEl.style.display = ucatWaitlisted ? "" : "none";
