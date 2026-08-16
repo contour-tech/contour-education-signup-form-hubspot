@@ -700,6 +700,19 @@ var ContourForm1Logic = function() {
       if (!buckets[category]) buckets[category] = [];
       buckets[category].push(optionWrapper(inputEl));
     });
+    // 3/4 subjects sit above their 1/2 counterparts (Amitav's request).
+    // Stable partition per category: level-3/4 options (codes ending in 34)
+    // first, everything else after in HubSpot order.
+    Object.keys(buckets).forEach(function(category) {
+      var level34 = [];
+      var otherLevels = [];
+      buckets[category].forEach(function(li) {
+        var input = li ? li.querySelector("input") : null;
+        var code = input ? getClassification(input).code : null;
+        (code && /34$/.test(code) ? level34 : otherLevels).push(li);
+      });
+      buckets[category] = level34.concat(otherLevels);
+    });
     // UCAT leads the Medical Entry list, ahead of Medical & Dental
     // Interviews and GAMSAT (Nick's request). Stable partition so the rest
     // keep their HubSpot order.
