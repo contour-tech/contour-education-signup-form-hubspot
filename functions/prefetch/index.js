@@ -38,6 +38,13 @@ const CONTACT_PROPERTIES = [
 // dropped from the request if HubSpot rejects it (i.e. once it's deleted).
 const LEGACY_CONTACT_PROPERTIES = ["student_phone"];
 
+// Loose shape check only — HubSpot search does the authoritative matching.
+const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// Properties the form can write an email into; a hit on any of them means
+// this address already has an entry.
+const EMAIL_MATCH_PROPERTIES = ["email", "email_2", "student_email"];
+
 const ALLOWED_ORIGINS = [
   "https://contour-staging.webflow.io",
   "https://www.contoureducation.com.au",
@@ -142,6 +149,26 @@ async function associatedSubjectCodes(contactId, objectType) {
   return [...new Set(codes)];
 }
 
+async function contactExistsByEmail(email) {
+  const res = await fetch(`${HUBSPOT_BASE}/crm/v3/objects/contacts/search`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${HUBSPOT_TOKEN}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      filterGroups: EMAIL_MATCH_PROPERTIES.map((propertyName) => ({
+        filters: [{ propertyName, operator: "EQ", value: email }]
+      })),
+      properties: ["email"],
+      limit: 1
+    })
+  });
+  if (!res.ok) throw new Error(`HubSpot search ${res.status}`);
+  const data = await res.json();
+  return (data.total || 0) > 0;
+}
+
 functions.http("prefetch", async (req, res) => {
   const origin = req.headers.origin || "";
   if (ALLOWED_ORIGINS.includes(origin)) {
@@ -155,6 +182,19 @@ functions.http("prefetch", async (req, res) => {
   const ip = req.headers["x-forwarded-for"] || req.ip || "unknown";
   if (rateLimited(String(ip).split(",")[0].trim())) {
     return res.status(429).json({ error: "too many requests" });
+  }
+
+  if (req.path && req.path.endsWith("/exists")) {
+    const email = String(req.query.email || "").trim().toLowerCase();
+    if (email.length > 254 || !EMAIL_SHAPE.test(email)) {
+      return res.status(400).json({ error: "invalid email" });
+    }
+    try {
+      return res.json({ exists: await contactExistsByEmail(email) });
+    } catch (err) {
+      console.error("exists error:", err.message);
+      return res.status(500).json({ error: "internal error" });
+    }
   }
 
   const studentId = String(req.query.studentId || "").trim();

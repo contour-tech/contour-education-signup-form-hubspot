@@ -2130,6 +2130,116 @@ var ContourForm1Logic = function() {
     }
   }
   /* =========================================================
+     DUPLICATE EMAIL GUARD — block re-signup with a known email
+     -----------------------------------------------------------
+     On blur (i.e. as soon as the user moves to the next field) the entered
+     email is checked against the prefetch cloud function's /exists route,
+     which searches HubSpot contacts across email, email_2 and student_email.
+     A hit shows an error under the email box and blocks submission. Results
+     are cached per address so blur + submit never double-hit the endpoint.
+     Network failures fail open — an outage of the check must never lock
+     legitimate signups out.
+     ========================================================= */
+  function enforceDuplicateEmailValidation() {
+    if (!PREFETCH_ENDPOINT) return;
+    var input = q(FIELD_SELECTORS.emailTemp);
+    if (!input) return;
+    var wrapper = fieldWrapper(input) || input.parentElement;
+    var errorList = document.createElement("ul");
+    errorList.className = "no-list hs-error-msgs inputs-list contour-duplicate-email-error";
+    errorList.setAttribute("role", "alert");
+    errorList.style.display = "none";
+    var errorItem = document.createElement("li");
+    var errorLabel = document.createElement("label");
+    errorLabel.className = "hs-error-msg hs-main-font-element";
+    errorLabel.textContent = "Looks like this email address has already been used to sign up. Please contact our team to update your details instead of submitting again.";
+    errorItem.appendChild(errorLabel);
+    errorList.appendChild(errorItem);
+    wrapper.appendChild(errorList);
+    function showError() {
+      input.classList.add("invalid", "error");
+      errorList.style.display = "";
+    }
+    function clearError() {
+      input.classList.remove("invalid", "error");
+      errorList.style.display = "none";
+    }
+    var results = {};
+    var pending = {};
+    function checkEmail(email) {
+      if (Object.prototype.hasOwnProperty.call(results, email)) {
+        return Promise.resolve(results[email]);
+      }
+      if (pending[email]) return pending[email];
+      var request = fetch(PREFETCH_ENDPOINT + "/exists?email=" + encodeURIComponent(email)).then(function(res) {
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        return res.json();
+      }).then(function(data) {
+        results[email] = !!(data && data.exists);
+        return results[email];
+      }).catch(function(err) {
+        console.warn("Contour Form 1 logic: duplicate email check failed —", err);
+        results[email] = false;
+        return false;
+      }).then(function(exists) {
+        delete pending[email];
+        return exists;
+      });
+      pending[email] = request;
+      return request;
+    }
+    function currentEmail() {
+      return input.value.trim().toLowerCase();
+    }
+    function reflectResult(email, exists) {
+      if (currentEmail() !== email) return;
+      if (exists) showError(); else clearError();
+    }
+    input.addEventListener("blur", function() {
+      var email = currentEmail();
+      if (!EMAIL_SHAPE.test(email)) return;
+      checkEmail(email).then(function(exists) {
+        reflectResult(email, exists);
+      });
+    });
+    input.addEventListener("input", function() {
+      clearError();
+    });
+    if (formRoot) {
+      formRoot.addEventListener("submit", function(e) {
+        var email = currentEmail();
+        if (!EMAIL_SHAPE.test(email)) return;
+        if (results[email] === false) return;
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        if (results[email] === true) {
+          showError();
+          scrollErrorIntoView(fieldWrapper(input) || input);
+          input.focus();
+          return;
+        }
+        // Verdict still in flight (or blur never fired) — resolve it, then
+        // either surface the duplicate error or re-submit; the cached result
+        // lets the re-submission pass straight through this gate.
+        checkEmail(email).then(function(exists) {
+          if (currentEmail() !== email) return;
+          if (exists) {
+            showError();
+            scrollErrorIntoView(fieldWrapper(input) || input);
+            input.focus();
+            return;
+          }
+          if (typeof formRoot.requestSubmit === "function") {
+            formRoot.requestSubmit();
+          } else {
+            var submitButton = formRoot.querySelector('input[type="submit"], button[type="submit"]');
+            if (submitButton) submitButton.click();
+          }
+        });
+      }, true);
+    }
+  }
+  /* =========================================================
      STUDENT PHONE NUMBER — country code + number segmentation
      -----------------------------------------------------------
      student_phone_number is a HubSpot "phone number" property, but the form
@@ -2767,6 +2877,7 @@ var ContourForm1Logic = function() {
     enforceContactTypeLayoutIfPresent();
     enhanceContactTypeIllustrations();
     enforceEmailTempValidation();
+    enforceDuplicateEmailValidation();
     enhanceEmailPrefill();
     injectStudentPhoneStyles();
     enhanceStudentPhoneField();
