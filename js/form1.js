@@ -735,6 +735,7 @@ var ContourForm1Logic = function() {
     options.forEach(function(opt) {
       var classification = getClassification(opt);
       relabelScholarshipSubject(opt, classification);
+      stripStateSuffixFromLabel(opt, classification);
       var matrixVerdict = subjectMatchesMatrix(classification, location, yearLevel, selectedIntakeYear);
       var locationOk;
       var yearOk;
@@ -764,6 +765,22 @@ var ContourForm1Logic = function() {
     toggleFieldWrapper(q(FIELD_SELECTORS.interestedSubjects), anyVisible);
     updateSubjectsRequiredMark(anyVisible);
     evaluateSubjectExclusions();
+  }
+  function stripStateSuffixFromLabel(opt, classification) {
+    // Subjects only ever show to students in a matching location, so the
+    // trailing state tag in the HubSpot option label ("Year 8 Science (VIC)")
+    // is redundant on screen (Amitav's request). Display-only: the submitted
+    // structured value is untouched. Only the leading text node is edited so
+    // other injected spans survive.
+    if (!classification.state) return;
+    var wrap = optionWrapper(opt);
+    if (!wrap) return;
+    var span = wrap.querySelector("input + span") || wrap;
+    var textNode = span.firstChild;
+    if (!textNode || textNode.nodeType !== 3) return;
+    var pattern = new RegExp("\\s*\\(" + classification.state + "\\)\\s*$");
+    var stripped = textNode.nodeValue.replace(pattern, "");
+    if (stripped !== textNode.nodeValue) textNode.nodeValue = stripped;
   }
   function relabelScholarshipSubject(opt, classification) {
     // Year 5 Scholarship options (VSC-* codes) only ever show to Year 5
