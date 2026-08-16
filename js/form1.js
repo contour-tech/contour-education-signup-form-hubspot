@@ -2540,6 +2540,20 @@ var ContourForm1Logic = function() {
       if (controller) controllers.push(controller);
     });
   }
+  // Grey helper note under the intake year dropdown clarifying when the
+  // 2027 program actually starts (Amitav's request).
+  var INTAKE_YEAR_NOTE_TEXT = "Our 2027 program begins in November with a two-week free trial.";
+  function ensureIntakeYearNote() {
+    var fieldEl = q(FIELD_SELECTORS.intakeYear);
+    if (!fieldEl) return;
+    var wrap = fieldWrapper(fieldEl);
+    if (!wrap) return;
+    if (wrap.querySelector(".contour-intake-year-note")) return;
+    var note = document.createElement("div");
+    note.className = "hs-field-desc contour-intake-year-note";
+    note.textContent = INTAKE_YEAR_NOTE_TEXT;
+    wrap.appendChild(note);
+  }
   function ensureDividerBefore(fieldEl, id) {
     if (!fieldEl) return;
     var wrap = fieldWrapper(fieldEl);
@@ -2558,6 +2572,7 @@ var ContourForm1Logic = function() {
     enhanceSchoolSearch();
     watchSchoolFieldRerender();
     enhanceCampusLabels();
+    ensureIntakeYearNote();
     ensureDividerBefore(q(FIELD_SELECTORS.programInterest), "contour-divider-program-interest");
     ensureDividerBefore(q(FIELD_SELECTORS.referral), "contour-divider-referral");
     fixRadioCardClickArea();

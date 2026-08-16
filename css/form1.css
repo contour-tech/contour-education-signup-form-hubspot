@@ -66,6 +66,13 @@ form.hsForm {
   margin-bottom: 0.5rem;
 }
 
+/* Injected note under the intake year dropdown; sits below the select
+   rather than between label and input like native field descriptions. */
+.hs-form .contour-intake-year-note {
+  margin-top: 0.4rem;
+  margin-bottom: 0;
+}
+
 /* =========================================================
    SECTION HEADINGS
 ========================================================= */
