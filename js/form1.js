@@ -700,6 +700,19 @@ var ContourForm1Logic = function() {
       if (!buckets[category]) buckets[category] = [];
       buckets[category].push(optionWrapper(inputEl));
     });
+    // UCAT leads the Medical Entry list, ahead of Medical & Dental
+    // Interviews and GAMSAT (Nick's request). Stable partition so the rest
+    // keep their HubSpot order.
+    if (buckets.MedPrep) {
+      var ucatItems = [];
+      var otherMedItems = [];
+      buckets.MedPrep.forEach(function(li) {
+        var input = li ? li.querySelector("input") : null;
+        var isUcat = input && isUcatSubject(getClassification(input));
+        (isUcat ? ucatItems : otherMedItems).push(li);
+      });
+      buckets.MedPrep = ucatItems.concat(otherMedItems);
+    }
     var orderedCategories = CATEGORY_DISPLAY_ORDER.concat(Object.keys(buckets).filter(function(c) {
       return CATEGORY_DISPLAY_ORDER.indexOf(c) === -1;
     }));
