@@ -63,7 +63,6 @@ var ContourForm1Logic = function() {
   var WC_OPEN_SOON_NOTE = "Welcome Consultation bookings open soon. You can submit this form now — our team will contact you to book your Welcome Consultation once bookings open.";
   var CATEGORY_DISPLAY_ORDER = [ "Mathematics", "Science", "English", "TestPrep", "MedPrep", "Other" ];
   var CATEGORY_DISPLAY_NAMES = {
-    Mathematics: "Maths",
     TestPrep: "Selective Entry & Scholarship",
     MedPrep: "Medical Entry"
   };
