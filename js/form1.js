@@ -46,10 +46,6 @@ var ContourForm1Logic = function() {
   // subjects like VSE Core).
   var SUBJECT_MATRIX_INTAKE = "2027";
   var SUBJECT_MATRIX = {"VIC":{"Year 5":["VSC-EN05","VSC-MA05","VSC-WR05"],"Year 6":["VIC-EN07","VIC-EN08","VIC-MA07","VIC-MA08","VIC-SC07","VIC-SC08","VSE-EN06","VSE-MA06","VSE-WR06"],"Year 7":["VIC-EN07","VIC-EN08","VIC-EN09","VIC-MA07","VIC-MA08","VIC-MA09","VIC-SC07","VIC-SC08","VIC-SC09","VSE-EN07","VSE-MA07","VSE-WR07"],"Year 8":["VIC-EN08","VIC-EN09","VIC-EN10","VIC-MA08","VIC-MA09","VIC-MA1A","VIC-SC08","VIC-SC09","VIC-SC10","VSE-EN08","VSE-MA08","VSE-WR08"],"Year 9":["VCE-BI12","VCE-CH12","VCE-EL12","VCE-EN12","VCE-MM12","VCE-PH12","VCE-SM12","VIC-EN09","VIC-EN10","VIC-MA09","VIC-MA1A","VIC-SC09","VIC-SC10"],"Year 10":["MD-INT","UCAT-ANZ-CORE","VCE-BI12","VCE-BI34","VCE-CH12","VCE-CH34","VCE-EL12","VCE-EL34","VCE-EN12","VCE-EN34","VCE-MM12","VCE-MM34","VCE-PH12","VCE-PH34","VCE-SM12","VCE-SM34","VIC-EN10","VIC-MA1A","VIC-SC10"],"Year 11":["MD-INT","UCAT-ANZ-CORE","VCE-BI12","VCE-BI34","VCE-CH12","VCE-CH34","VCE-EL12","VCE-EL34","VCE-EN12","VCE-EN34","VCE-MM12","VCE-MM34","VCE-PH12","VCE-PH34","VCE-SM12","VCE-SM34"],"Year 12":["MD-INT","UCAT-ANZ-MAST","VCE-BI12","VCE-BI34","VCE-CH12","VCE-CH34","VCE-EL12","VCE-EL34","VCE-EN12","VCE-EN34","VCE-MM12","VCE-MM34","VCE-PH12","VCE-PH34","VCE-SM12","VCE-SM34"],"Graduated":["GAMSAT","MD-INT","UCAT-ANZ-MAST"]},"QLD":{"Year 6":["QLD-EN07","QLD-EN08","QLD-MA07","QLD-MA08","QLD-SC07","QLD-SC08"],"Year 7":["QLD-EN07","QLD-EN08","QLD-EN09","QLD-MA07","QLD-MA08","QLD-MA09","QLD-SC07","QLD-SC08","QLD-SC09"],"Year 8":["QLD-EN08","QLD-EN09","QLD-EN10","QLD-MA08","QLD-MA09","QLD-MA1A","QLD-SC08","QLD-SC09","QLD-SC10"],"Year 9":["QCE-BI12","QCE-CH12","QCE-MM12","QCE-PH12","QCE-SM12","QLD-EN09","QLD-EN10","QLD-MA09","QLD-MA1A","QLD-SC09","QLD-SC10"],"Year 10":["MD-INT","QCE-BI12","QCE-BI34","QCE-CH12","QCE-CH34","QCE-MM12","QCE-MM34","QCE-PH12","QCE-PH34","QCE-SM12","QCE-SM34","QLD-EN10","QLD-MA1A","QLD-SC10","UCAT-ANZ-CORE"],"Year 11":["MD-INT","QCE-BI12","QCE-BI34","QCE-CH12","QCE-CH34","QCE-MM12","QCE-MM34","QCE-PH12","QCE-PH34","QCE-SM12","QCE-SM34","UCAT-ANZ-CORE"],"Year 12":["MD-INT","QCE-BI12","QCE-BI34","QCE-CH12","QCE-CH34","QCE-MM12","QCE-MM34","QCE-PH12","QCE-PH34","QCE-SM12","QCE-SM34","UCAT-ANZ-MAST"],"Graduated":["GAMSAT","MD-INT","UCAT-ANZ-MAST"]},"WA":{"Year 10":["MD-INT","UCAT-ANZ-CORE"],"Year 11":["MD-INT","UCAT-ANZ-CORE"],"Year 12":["MD-INT","UCAT-ANZ-MAST"],"Graduated":["GAMSAT","MD-INT","UCAT-ANZ-MAST"]},"SA":{"Year 10":["MD-INT","UCAT-ANZ-CORE"],"Year 11":["MD-INT","UCAT-ANZ-CORE"],"Year 12":["MD-INT","UCAT-ANZ-MAST"],"Graduated":["GAMSAT","MD-INT","UCAT-ANZ-MAST"]},"NSW":{"Year 6":["NSW-EN07","NSW-EN08","NSW-MA07","NSW-MA08","NSW-SC07","NSW-SC08"],"Year 7":["NSW-EN08","NSW-EN09","NSW-EN10","NSW-MA07","NSW-MA08","NSW-MA09","NSW-SC08","NSW-SC09","NSW-SC10"],"Year 8":["NSW-EN08","NSW-EN09","NSW-EN10","NSW-MA08","NSW-MA09","NSW-MA10","NSW-SC08","NSW-SC09","NSW-SC10"],"Year 9":["NSW-EN09","NSW-EN10","NSW-MA09","NSW-MA10","NSW-SC09","NSW-SC10","PRE-BIOL","PRE-CHEM","PRE-MADV","PRE-MAE1","PRE-PHYS"],"Year 10":["HSC-BIOL","HSC-CHEM","HSC-MADV","HSC-MAE1","HSC-MAE2","HSC-PHYS","MD-INT","NSW-EN10","NSW-MA10","NSW-SC10","PRE-BIOL","PRE-CHEM","PRE-MADV","PRE-MAE1","PRE-PHYS","UCAT-ANZ-CORE"],"Year 11":["HSC-BIOL","HSC-CHEM","HSC-MADV","HSC-MAE1","HSC-MAE2","HSC-PHYS","MD-INT","PRE-BIOL","PRE-CHEM","PRE-MADV","PRE-MAE1","PRE-PHYS","UCAT-ANZ-CORE"],"Year 12":["HSC-BIOL","HSC-CHEM","HSC-MADV","HSC-MAE1","HSC-MAE2","HSC-PHYS","MD-INT","PRE-BIOL","PRE-CHEM","PRE-MADV","PRE-MAE1","PRE-PHYS","UCAT-ANZ-MAST"],"Graduated":["GAMSAT","MD-INT","UCAT-ANZ-MAST"]},"TAS":{"Year 10":["MD-INT","UCAT-ANZ-CORE"],"Year 11":["MD-INT","UCAT-ANZ-CORE"],"Year 12":["MD-INT","UCAT-ANZ-MAST"],"Graduated":["GAMSAT","MD-INT","UCAT-ANZ-MAST"]},"ACT":{"Year 10":["MD-INT","UCAT-ANZ-CORE"],"Year 11":["MD-INT","UCAT-ANZ-CORE"],"Year 12":["MD-INT","UCAT-ANZ-MAST"],"Graduated":["GAMSAT","MD-INT","UCAT-ANZ-MAST"]},"NT":{"Year 10":["MD-INT","UCAT-ANZ-CORE"],"Year 11":["MD-INT","UCAT-ANZ-CORE"],"Year 12":["MD-INT","UCAT-ANZ-MAST"],"Graduated":["GAMSAT","MD-INT","UCAT-ANZ-MAST"]},"NZ":{"Year 11":["MD-INT","UCAT-ANZ-CORE"],"Year 12":["MD-INT","UCAT-ANZ-CORE"],"Year 13":["MD-INT","UCAT-ANZ-MAST"],"Graduated":["GAMSAT","MD-INT","UCAT-ANZ-MAST"]},"UK":{"Year 10":["MD-INT","UCAT-UK-MAST"],"Year 11":["MD-INT","UCAT-UK-MAST"],"Year 12":["MD-INT","UCAT-UK-MAST"],"Year 13":["MD-INT","UCAT-UK-MAST"],"Graduated":["GAMSAT","MD-INT","UCAT-UK-MAST"]},"INTERNATIONAL":{"Year 10":["MD-INT","UCAT-ANZ-CORE"],"Year 11":["MD-INT","UCAT-ANZ-CORE"],"Year 12":["MD-INT","UCAT-ANZ-MAST"],"Year 13":["MD-INT","UCAT-ANZ-MAST"],"Graduated":["GAMSAT","MD-INT","UCAT-ANZ-MAST"]}};
-  // Waitlist-only subjects (Amitav call + Wassim, 7 Aug 2026): 2026 TestPrep
-  // is bookable for VSE Core (Year 7) only - Foundation (Y6) and Mastery (Y8)
-  // 2026 intakes go to waitlist, as do the Year 6 2027 VSE subjects.
-  var WAITLIST_SUBJECT_CODES = ["VSE-FOEN", "VSE-FOMA", "VSE-FOWR", "VSE-MAEN", "VSE-MAMA", "VSE-MAWR", "VSE-EN06", "VSE-MA06", "VSE-WR06"];
   // UCAT enrolments are closed until later in September 2026 (Ramodh via Luke,
   // 12 Aug 2026). While closed, UCAT signups are waitlist registrations, not
   // enrolments: the Welcome Consultation scheduler is hidden and a waitlist
@@ -104,10 +100,6 @@ var ContourForm1Logic = function() {
   function ucatBlockedForIntake(classification, selectedIntakeYear) {
     if (selectedIntakeYear !== UCAT_BLOCKED_INTAKE) return false;
     return !!classification.code && UCAT_BLOCKED_CODES.indexOf(classification.code) !== -1;
-  }
-  function isWaitlistSubject(classification) {
-    if (!UCAT_ENROLMENTS_OPEN && isUcatSubject(classification)) return true;
-    return !!classification.code && WAITLIST_SUBJECT_CODES.indexOf(classification.code) !== -1;
   }
   function subjectMatchesLocation(subjectState, selectedLocation) {
     if (!subjectState) return true;
@@ -239,7 +231,7 @@ var ContourForm1Logic = function() {
     // its stale text after unblocking — so injected UI must be stripped or it
     // leaks into the subject summary chips and label matching.
     var clone = wrap.cloneNode(true);
-    var injected = clone.querySelectorAll(".contour-subject-exclusion-note, .contour-waitlist-badge");
+    var injected = clone.querySelectorAll(".contour-subject-exclusion-note");
     for (var i = 0; i < injected.length; i++) {
       injected[i].parentNode.removeChild(injected[i]);
     }
@@ -665,7 +657,7 @@ var ContourForm1Logic = function() {
     if (document.getElementById("contour-disabled-field-styles")) return;
     var style = document.createElement("style");
     style.id = "contour-disabled-field-styles";
-    style.textContent = ".hs-form select:disabled, .hs-form input:disabled { opacity: 0.55; background-color: #f1f0ec; cursor: not-allowed; }" + ".contour-prefill-offer { margin-top: 8px; padding: 12px; border: 1px solid #d8d5cc; border-radius: 8px; background: #faf9f6; }" + ".contour-prefill-offer__message { margin: 0 0 8px; font-size: 14px; }" + ".contour-prefill-offer__code-row { display: flex; gap: 8px; align-items: center; }" + ".contour-prefill-offer__code-input { max-width: 140px; }" + ".contour-prefill-offer__confirm { cursor: pointer; }" + ".contour-prefill-offer__error { margin: 8px 0 0; color: #b3261e; font-size: 13px; }" + ".contour-prefill-banner { display: flex; align-items: flex-start; gap: 14px; margin: 0 0 24px; padding: 18px 22px; border: 1px solid rgba(12, 49, 102, 0.12); border-radius: 16px; background: #FFFFFF; box-shadow: 0 1px 3px rgba(12, 49, 102, 0.06); }" + ".contour-prefill-banner__badge { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; background: #D7FC3D; color: #0C3166; font-size: 15px; font-weight: 700; }" + ".contour-prefill-banner__content { flex: 1; min-width: 0; }" + ".contour-prefill-banner__title { margin: 0 0 2px; font-size: 15px; font-weight: 700; color: #0C3166; }" + ".contour-prefill-banner__text { margin: 0 0 8px; font-size: 13.5px; line-height: 1.45; color: #6b7280; }" + ".contour-prefill-banner__reset { display: inline-block; font-size: 13px; font-weight: 600; color: #0C3166; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }" + ".contour-prefill-banner__reset:hover { color: #0540F2; }" + ".contour-subject-summary { margin: 24px 0; padding: 20px 22px; border: 1px solid rgba(12, 49, 102, 0.12); border-radius: 16px; background: #FFFFFF; box-shadow: 0 1px 3px rgba(12, 49, 102, 0.06); }" + ".contour-subject-summary__heading { font-size: 15px; font-weight: 700; color: #0C3166; margin-bottom: 14px; }" + ".contour-subject-summary__grid { display: flex; flex-wrap: wrap; gap: 24px; }" + ".contour-subject-summary__col { flex: 1 1 180px; min-width: 160px; }" + ".contour-subject-summary__col-title { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #6b7280; margin-bottom: 8px; }" + ".contour-subject-summary__chips { display: flex; flex-wrap: wrap; gap: 6px; }" + ".contour-subject-chip { display: inline-block; padding: 5px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 600; line-height: 1.3; }" + ".contour-subject-chip--navy { background: #092749; color: #FFFFFF; }" + ".contour-subject-chip--lime { background: #D7FC3D; color: #0C3166; }" + ".contour-subject-chip--blue { background: #007AFF; color: #FFFFFF; }" + ".contour-waitlist-badge { display: inline-block; margin-left: 8px; padding: 2px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: 0.03em; background: #FFF3D6; color: #8a5a00; border: 1px solid #f0d9a6; vertical-align: middle; }" + ".contour-welcome-consultation__waitlist-note { margin: 0; padding: 14px 18px; border: 1px solid #f0d9a6; border-radius: 12px; background: #FFF3D6; color: #8a5a00; font-size: 14px; line-height: 1.5; font-weight: 600; }" +".contour-form-loader { display: flex; flex-direction: column; align-items: center; padding: 60px 0; }" + ".contour-form-loader__spinner { width: 36px; height: 36px; border: 4px solid #e3e0d8; border-top-color: #1a1a2e; border-radius: 50%; animation: contour-spin 0.8s linear infinite; }" + "@keyframes contour-spin { to { transform: rotate(360deg); } }" + ".contour-form-loader__text { margin-top: 12px; font-size: 14px; }";
+    style.textContent = ".hs-form select:disabled, .hs-form input:disabled { opacity: 0.55; background-color: #f1f0ec; cursor: not-allowed; }" + ".contour-prefill-offer { margin-top: 8px; padding: 12px; border: 1px solid #d8d5cc; border-radius: 8px; background: #faf9f6; }" + ".contour-prefill-offer__message { margin: 0 0 8px; font-size: 14px; }" + ".contour-prefill-offer__code-row { display: flex; gap: 8px; align-items: center; }" + ".contour-prefill-offer__code-input { max-width: 140px; }" + ".contour-prefill-offer__confirm { cursor: pointer; }" + ".contour-prefill-offer__error { margin: 8px 0 0; color: #b3261e; font-size: 13px; }" + ".contour-prefill-banner { display: flex; align-items: flex-start; gap: 14px; margin: 0 0 24px; padding: 18px 22px; border: 1px solid rgba(12, 49, 102, 0.12); border-radius: 16px; background: #FFFFFF; box-shadow: 0 1px 3px rgba(12, 49, 102, 0.06); }" + ".contour-prefill-banner__badge { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; background: #D7FC3D; color: #0C3166; font-size: 15px; font-weight: 700; }" + ".contour-prefill-banner__content { flex: 1; min-width: 0; }" + ".contour-prefill-banner__title { margin: 0 0 2px; font-size: 15px; font-weight: 700; color: #0C3166; }" + ".contour-prefill-banner__text { margin: 0 0 8px; font-size: 13.5px; line-height: 1.45; color: #6b7280; }" + ".contour-prefill-banner__reset { display: inline-block; font-size: 13px; font-weight: 600; color: #0C3166; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }" + ".contour-prefill-banner__reset:hover { color: #0540F2; }" + ".contour-subject-summary { margin: 24px 0; padding: 20px 22px; border: 1px solid rgba(12, 49, 102, 0.12); border-radius: 16px; background: #FFFFFF; box-shadow: 0 1px 3px rgba(12, 49, 102, 0.06); }" + ".contour-subject-summary__heading { font-size: 15px; font-weight: 700; color: #0C3166; margin-bottom: 14px; }" + ".contour-subject-summary__grid { display: flex; flex-wrap: wrap; gap: 24px; }" + ".contour-subject-summary__col { flex: 1 1 180px; min-width: 160px; }" + ".contour-subject-summary__col-title { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #6b7280; margin-bottom: 8px; }" + ".contour-subject-summary__chips { display: flex; flex-wrap: wrap; gap: 6px; }" + ".contour-subject-chip { display: inline-block; padding: 5px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 600; line-height: 1.3; }" + ".contour-subject-chip--navy { background: #092749; color: #FFFFFF; }" + ".contour-subject-chip--lime { background: #D7FC3D; color: #0C3166; }" + ".contour-subject-chip--blue { background: #007AFF; color: #FFFFFF; }" + ".contour-welcome-consultation__waitlist-note { margin: 0; padding: 14px 18px; border: 1px solid #f0d9a6; border-radius: 12px; background: #FFF3D6; color: #8a5a00; font-size: 14px; line-height: 1.5; font-weight: 600; }" +".contour-form-loader { display: flex; flex-direction: column; align-items: center; padding: 60px 0; }" + ".contour-form-loader__spinner { width: 36px; height: 36px; border: 4px solid #e3e0d8; border-top-color: #1a1a2e; border-radius: 50%; animation: contour-spin 0.8s linear infinite; }" + "@keyframes contour-spin { to { transform: rotate(360deg); } }" + ".contour-form-loader__text { margin-top: 12px; font-size: 14px; }";
     document.head.appendChild(style);
   }
   function getClassification(inputEl) {
@@ -734,7 +726,7 @@ var ContourForm1Logic = function() {
     var anyVisibleByCategory = {};
     options.forEach(function(opt) {
       var classification = getClassification(opt);
-      relabelScholarshipSubject(opt, classification);
+      relabelTestPrepSubject(opt, classification);
       stripStateSuffixFromLabel(opt, classification);
       var matrixVerdict = subjectMatchesMatrix(classification, location, yearLevel, selectedIntakeYear);
       var locationOk;
@@ -753,7 +745,6 @@ var ContourForm1Logic = function() {
       var shouldShow = !!location && selectedPrograms.length > 0 && locationOk && programOk && yearOk && deliveryOk && intakeOk && audienceOk && !ucatBlockedForIntake(classification, selectedIntakeYear);
       shouldShow ? showOption(opt) : hideOption(opt);
       if (shouldShow) {
-        updateWaitlistBadge(opt, classification);
         anyVisible = true;
         var category = classification.category || "Other";
         anyVisibleByCategory[category] = true;
@@ -782,37 +773,31 @@ var ContourForm1Logic = function() {
     var stripped = textNode.nodeValue.replace(pattern, "");
     if (stripped !== textNode.nodeValue) textNode.nodeValue = stripped;
   }
-  function relabelScholarshipSubject(opt, classification) {
-    // Year 5 Scholarship options (VSC-* codes) only ever show to Year 5
-    // students, so the "Year 5" prefix in the HubSpot option label is
-    // redundant on screen (Amitav's request). Display-only: the submitted
-    // structured value is untouched. Only the leading text node is edited so
-    // the waitlist badge span, if present, survives.
-    if (!classification.code || classification.code.indexOf("VSC-") !== 0) return;
+  function relabelTestPrepSubject(opt, classification) {
+    // TestPrep options only ever show to students of the matching year level,
+    // so the "Year N" in the HubSpot option label is redundant on screen
+    // (Amitav's request): "Year 5 Scholarship English" reads "Scholarship
+    // English" and "Selective Entry Year 6 English" reads "Selective Entry
+    // English". Display-only: the submitted structured value is untouched.
+    // Only the leading text node is edited so other injected spans survive.
+    if (!classification.code) return;
+    var pattern, replacement;
+    if (classification.code.indexOf("VSC-") === 0) {
+      pattern = /^\s*Year\s+\d+\s+(?=Scholarship\b)/;
+      replacement = "";
+    } else if (classification.code.indexOf("VSE-") === 0) {
+      pattern = /^(\s*Selective Entry)\s+Year\s+\d+\s+/;
+      replacement = "$1 ";
+    } else {
+      return;
+    }
     var wrap = optionWrapper(opt);
     if (!wrap) return;
     var span = wrap.querySelector("input + span") || wrap;
     var textNode = span.firstChild;
     if (!textNode || textNode.nodeType !== 3) return;
-    var stripped = textNode.nodeValue.replace(/^\s*Year\s+\d+\s+(?=Scholarship\b)/, "");
+    var stripped = textNode.nodeValue.replace(pattern, replacement);
     if (stripped !== textNode.nodeValue) textNode.nodeValue = stripped;
-  }
-  function updateWaitlistBadge(opt, classification) {
-    var wrap = optionWrapper(opt);
-    if (!wrap) return;
-    var badge = wrap.querySelector(".contour-waitlist-badge");
-    if (isWaitlistSubject(classification)) {
-      if (!badge) {
-        badge = document.createElement("span");
-        badge.className = "contour-waitlist-badge";
-        badge.textContent = "Waitlist";
-        var span = wrap.querySelector("input + span") || wrap;
-        span.appendChild(badge);
-      }
-      badge.style.display = "";
-    } else if (badge) {
-      badge.style.display = "none";
-    }
   }
   function subjectExclusionKey(classification) {
     if (classification.program !== "Education") return null;
