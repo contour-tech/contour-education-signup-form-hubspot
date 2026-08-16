@@ -728,6 +728,7 @@ var ContourForm1Logic = function() {
       var classification = getClassification(opt);
       relabelTestPrepSubject(opt, classification);
       stripStateSuffixFromLabel(opt, classification);
+      relabelUcatSubject(opt, classification);
       var matrixVerdict = subjectMatchesMatrix(classification, location, yearLevel, selectedIntakeYear);
       var locationOk;
       var yearOk;
@@ -756,6 +757,21 @@ var ContourForm1Logic = function() {
     toggleFieldWrapper(q(FIELD_SELECTORS.interestedSubjects), anyVisible);
     updateSubjectsRequiredMark(anyVisible);
     evaluateSubjectExclusions();
+  }
+  function relabelUcatSubject(opt, classification) {
+    // UCAT options carry region and year info in the HubSpot label
+    // ("UCAT (ANZ) - Year 10 / Year 11"), but location and year filtering
+    // mean a student only ever sees one, so the frontend just says "UCAT"
+    // (Amitav's request). Display-only: the submitted structured value is
+    // untouched. Only the leading text node is edited so other injected
+    // spans survive.
+    if (!isUcatSubject(classification)) return;
+    var wrap = optionWrapper(opt);
+    if (!wrap) return;
+    var span = wrap.querySelector("input + span") || wrap;
+    var textNode = span.firstChild;
+    if (!textNode || textNode.nodeType !== 3) return;
+    if (textNode.nodeValue !== "UCAT") textNode.nodeValue = "UCAT";
   }
   function stripStateSuffixFromLabel(opt, classification) {
     // Subjects only ever show to students in a matching location, so the
