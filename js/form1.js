@@ -742,7 +742,7 @@ var ContourForm1Logic = function() {
       relabelTestPrepSubject(opt, classification);
       stripStateSuffixFromLabel(opt, classification);
       relabelUcatSubject(opt, classification);
-      relabelMathematicsToMaths(opt);
+      relabelMathematicsToMaths(opt, classification);
       var matrixVerdict = subjectMatchesMatrix(classification, location, yearLevel, selectedIntakeYear);
       var locationOk;
       var yearOk;
@@ -772,12 +772,14 @@ var ContourForm1Logic = function() {
     updateSubjectsRequiredMark(anyVisible);
     evaluateSubjectExclusions();
   }
-  function relabelMathematicsToMaths(opt) {
-    // Subject names spell out "Mathematics" ("Year 10 Advanced Mathematics",
-    // "VCE Specialist Mathematics 3/4") but the frontend says "Maths"
-    // everywhere (Amitav's request, same as the category header). Display-only:
-    // the submitted structured value is untouched. Only the leading text node
-    // is edited so other injected spans survive.
+  function relabelMathematicsToMaths(opt, classification) {
+    // Education subject names spell out "Mathematics" ("Year 10 Advanced
+    // Mathematics", "VCE Specialist Mathematics 3/4") but the frontend says
+    // "Maths" for those (Amitav's request). TestPrep's "Selective Entry
+    // Mathematics" keeps its full name. Display-only: the submitted
+    // structured value is untouched. Only the leading text node is edited so
+    // other injected spans survive.
+    if (classification.program !== "Education") return;
     var wrap = optionWrapper(opt);
     if (!wrap) return;
     var span = wrap.querySelector("input + span") || wrap;
