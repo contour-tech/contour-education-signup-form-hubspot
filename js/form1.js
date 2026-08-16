@@ -1984,6 +1984,71 @@ var ContourForm1Logic = function() {
       clearError: clearError
     };
   }
+  // Every selected program card must be backed by at least one selected
+  // subject from that program, otherwise submission is blocked (Amitav,
+  // 16 Aug 2026): picking Education + MedPrep but only a UCAT subject used
+  // to submit with an empty Education signup.
+  var PROGRAM_DISPLAY_NAMES = {
+    Education: "Year 7 - 12 Tutoring",
+    TestPrep: "Selective Entry & Scholarship",
+    MedPrep: "Medical Entry"
+  };
+  function enforceProgramSubjectCoverageValidation() {
+    var subjectOptions = qAll(FIELD_SELECTORS.interestedSubjects);
+    if (subjectOptions.length === 0) return;
+    var fieldWrap = fieldWrapper(subjectOptions[0]);
+    if (!fieldWrap) return;
+    function missingPrograms() {
+      var selectedPrograms = getCheckedValues(FIELD_SELECTORS.programInterest);
+      if (selectedPrograms.length === 0) return [];
+      var covered = {};
+      qAll(FIELD_SELECTORS.interestedSubjects + ":checked").forEach(function(opt) {
+        var program = getClassification(opt).program;
+        if (program) covered[program] = true;
+      });
+      return selectedPrograms.filter(function(programValue) {
+        return !covered[programValue];
+      });
+    }
+    function isValid() {
+      return missingPrograms().length === 0;
+    }
+    var errorList = document.createElement("ul");
+    errorList.className = "no-list hs-error-msgs inputs-list contour-program-coverage-error";
+    errorList.setAttribute("role", "alert");
+    errorList.style.display = "none";
+    var errorItem = document.createElement("li");
+    var errorLabel = document.createElement("label");
+    errorLabel.className = "hs-error-msg hs-main-font-element";
+    errorItem.appendChild(errorLabel);
+    errorList.appendChild(errorItem);
+    fieldWrap.appendChild(errorList);
+    function showError() {
+      var names = missingPrograms().map(function(programValue) {
+        return PROGRAM_DISPLAY_NAMES[programValue] || programValue;
+      });
+      errorLabel.textContent = "Please select at least one " + names.join(" and ") + " subject, or deselect the program.";
+      errorList.style.display = "";
+      scrollErrorIntoView(fieldWrap);
+    }
+    function clearError() {
+      errorList.style.display = "none";
+    }
+    qAll(FIELD_SELECTORS.interestedSubjects).concat(qAll(FIELD_SELECTORS.programInterest)).forEach(function(opt) {
+      opt.addEventListener("change", function() {
+        if (isValid()) clearError();
+      });
+    });
+    if (formRoot) {
+      formRoot.addEventListener("submit", function(e) {
+        if (!isValid()) {
+          e.preventDefault();
+          e.stopImmediatePropagation();
+          showError();
+        }
+      }, true);
+    }
+  }
   function enforceEmailTempValidation() {
     var input = q(FIELD_SELECTORS.emailTemp);
     if (!input) return;
@@ -2677,6 +2742,7 @@ var ContourForm1Logic = function() {
     enforceFieldRequiredValidation("programInterest", "Please select a program.", "contour-program-interest-error", anyProgramInterestOptionEligible);
     enforceFieldRequiredValidation("campus", "Please select a campus.", "contour-campus-error", isFieldWrapVisible);
     enforceFieldRequiredValidation("interestedSubjects", "Please select at least one subject.", "contour-subjects-error", isFieldWrapVisible);
+    enforceProgramSubjectCoverageValidation();
     enforceFieldRequiredValidation("schoolText", "Please enter your school.", "contour-school-error", isFieldWrapVisible, schoolFieldSatisfied);
     enforceInternalOnlyFieldValidation();
     attachListeners();
