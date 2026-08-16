@@ -43,7 +43,7 @@ const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // Properties the form can write an email into; a hit on any of them means
 // this address already has an entry.
-const EMAIL_MATCH_PROPERTIES = ["email", "email_2", "student_email"];
+const EMAIL_MATCH_PROPERTIES = ["email", "email_2"];
 
 const ALLOWED_ORIGINS = [
   "https://contour-staging.webflow.io",

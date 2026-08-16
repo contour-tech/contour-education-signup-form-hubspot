@@ -2152,7 +2152,7 @@ var ContourForm1Logic = function() {
     var errorItem = document.createElement("li");
     var errorLabel = document.createElement("label");
     errorLabel.className = "hs-error-msg hs-main-font-element";
-    errorLabel.textContent = "Looks like this email address has already been used to sign up. Please contact our team to update your details instead of submitting again.";
+    errorLabel.textContent = "This email is already registered. Please contact our team to update your details.";
     errorItem.appendChild(errorLabel);
     errorList.appendChild(errorItem);
     wrapper.appendChild(errorList);
