@@ -94,6 +94,17 @@ var ContourForm1Logic = function() {
   function isUcatSubject(classification) {
     return !!classification.code && UCAT_SUBJECT_CODES.indexOf(classification.code) !== -1;
   }
+  // AY26 UCAT rules (Amitav, 16 Aug 2026): students sitting UCAT in 2026 —
+  // the Mastery cohort (Year 12/13/Graduated depending on region) — can no
+  // longer sign up for the 2026 intake, so the MAST subjects are blocked
+  // there. Year-11-and-younger AY26 UCAT signups (Core cohort) stay open and
+  // are treated as AY27 signups downstream — no form change needed for them.
+  var UCAT_BLOCKED_INTAKE = "2026";
+  var UCAT_BLOCKED_CODES = ["UCAT-ANZ-MAST", "UCAT-UK-MAST"];
+  function ucatBlockedForIntake(classification, selectedIntakeYear) {
+    if (selectedIntakeYear !== UCAT_BLOCKED_INTAKE) return false;
+    return !!classification.code && UCAT_BLOCKED_CODES.indexOf(classification.code) !== -1;
+  }
   function isWaitlistSubject(classification) {
     if (!UCAT_ENROLMENTS_OPEN && isUcatSubject(classification)) return true;
     return !!classification.code && WAITLIST_SUBJECT_CODES.indexOf(classification.code) !== -1;
@@ -223,7 +234,16 @@ var ContourForm1Logic = function() {
   }
   function optionLabelText(inputEl) {
     var wrap = optionWrapper(inputEl);
-    return wrap ? wrap.textContent.trim() : "";
+    if (!wrap) return "";
+    // textContent includes display:none elements, and the exclusion note keeps
+    // its stale text after unblocking — so injected UI must be stripped or it
+    // leaks into the subject summary chips and label matching.
+    var clone = wrap.cloneNode(true);
+    var injected = clone.querySelectorAll(".contour-subject-exclusion-note, .contour-waitlist-badge");
+    for (var i = 0; i < injected.length; i++) {
+      injected[i].parentNode.removeChild(injected[i]);
+    }
+    return clone.textContent.trim();
   }
   function showOption(inputEl) {
     var wrap = optionWrapper(inputEl);
@@ -414,6 +434,7 @@ var ContourForm1Logic = function() {
       }
       if (!subjectMatchesDelivery(classification)) continue;
       if (!subjectMatchesIntake(classification, intakeYear)) continue;
+      if (ucatBlockedForIntake(classification, intakeYear)) continue;
       return true;
     }
     return false;
@@ -728,7 +749,7 @@ var ContourForm1Logic = function() {
       var deliveryOk = subjectMatchesDelivery(classification);
       var intakeOk = subjectMatchesIntake(classification, selectedIntakeYear);
       var audienceOk = subjectMatchesAudience(classification);
-      var shouldShow = !!location && selectedPrograms.length > 0 && locationOk && programOk && yearOk && deliveryOk && intakeOk && audienceOk;
+      var shouldShow = !!location && selectedPrograms.length > 0 && locationOk && programOk && yearOk && deliveryOk && intakeOk && audienceOk && !ucatBlockedForIntake(classification, selectedIntakeYear);
       shouldShow ? showOption(opt) : hideOption(opt);
       if (shouldShow) {
         updateWaitlistBadge(opt, classification);
