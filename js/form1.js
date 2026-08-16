@@ -743,6 +743,7 @@ var ContourForm1Logic = function() {
       relabelTestPrepSubject(opt, classification);
       stripStateSuffixFromLabel(opt, classification);
       relabelUcatSubject(opt, classification);
+      relabelMathematicsToMaths(opt);
       var matrixVerdict = subjectMatchesMatrix(classification, location, yearLevel, selectedIntakeYear);
       var locationOk;
       var yearOk;
@@ -771,6 +772,20 @@ var ContourForm1Logic = function() {
     toggleFieldWrapper(q(FIELD_SELECTORS.interestedSubjects), anyVisible);
     updateSubjectsRequiredMark(anyVisible);
     evaluateSubjectExclusions();
+  }
+  function relabelMathematicsToMaths(opt) {
+    // Subject names spell out "Mathematics" ("Year 10 Advanced Mathematics",
+    // "VCE Specialist Mathematics 3/4") but the frontend says "Maths"
+    // everywhere (Amitav's request, same as the category header). Display-only:
+    // the submitted structured value is untouched. Only the leading text node
+    // is edited so other injected spans survive.
+    var wrap = optionWrapper(opt);
+    if (!wrap) return;
+    var span = wrap.querySelector("input + span") || wrap;
+    var textNode = span.firstChild;
+    if (!textNode || textNode.nodeType !== 3) return;
+    var renamed = textNode.nodeValue.replace(/\bMathematics\b/g, "Maths");
+    if (renamed !== textNode.nodeValue) textNode.nodeValue = renamed;
   }
   function relabelUcatSubject(opt, classification) {
     // UCAT options carry region and year info in the HubSpot label
@@ -1996,7 +2011,11 @@ var ContourForm1Logic = function() {
   function enforceProgramSubjectCoverageValidation() {
     var subjectOptions = qAll(FIELD_SELECTORS.interestedSubjects);
     if (subjectOptions.length === 0) return;
-    var fieldWrap = fieldWrapper(subjectOptions[0]);
+    // The error renders as a single line under the program cards (brand
+    // section), not inside the subjects list (Amitav's request).
+    var programOptions = qAll(FIELD_SELECTORS.programInterest);
+    if (programOptions.length === 0) return;
+    var fieldWrap = fieldWrapper(programOptions[0]);
     if (!fieldWrap) return;
     function missingPrograms() {
       var selectedPrograms = getCheckedValues(FIELD_SELECTORS.programInterest);
