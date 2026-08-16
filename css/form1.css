@@ -73,6 +73,18 @@ form.hsForm {
   margin-bottom: 0;
 }
 
+/* Program coverage error renders as a single line under the brand cards;
+   phones get normal wrapping so it never overflows. */
+.hs-form .contour-program-coverage-error .hs-error-msg {
+  white-space: nowrap;
+}
+
+@media (max-width: 767px) {
+  .hs-form .contour-program-coverage-error .hs-error-msg {
+    white-space: normal;
+  }
+}
+
 /* =========================================================
    SECTION HEADINGS
 ========================================================= */

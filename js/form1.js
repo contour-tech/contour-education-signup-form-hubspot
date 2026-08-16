@@ -2060,7 +2060,7 @@ var ContourForm1Logic = function() {
       var names = missingPrograms().map(function(programValue) {
         return PROGRAM_DISPLAY_NAMES[programValue] || programValue;
       });
-      errorLabel.textContent = "Please select at least one " + names.join(" and ") + " subject, or deselect the program.";
+      errorLabel.textContent = "Please select a " + names.join(" and ") + " subject, or deselect the program.";
       errorList.style.display = "";
       scrollErrorIntoView(fieldWrap);
     }
