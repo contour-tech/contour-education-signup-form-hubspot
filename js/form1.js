@@ -774,12 +774,14 @@ var ContourForm1Logic = function() {
     if (stripped !== textNode.nodeValue) textNode.nodeValue = stripped;
   }
   function relabelTestPrepSubject(opt, classification) {
-    // TestPrep options only ever show to students of the matching year level,
-    // so the "Year N" in the HubSpot option label is redundant on screen
-    // (Amitav's request): "Year 5 Scholarship English" reads "Scholarship
-    // English" and "Selective Entry Year 6 English" reads "Selective Entry
-    // English". Display-only: the submitted structured value is untouched.
-    // Only the leading text node is edited so other injected spans survive.
+    // TestPrep options only ever show to students of the matching year level
+    // and selected intake year, so the "Year N" and "(2027)" in the HubSpot
+    // option label are redundant on screen (Amitav's request): "Selective
+    // Entry Year 8 English (2027)" reads "Selective Entry English" — the
+    // year-level filter still picks the right code (VSE-EN08 for Year 8,
+    // VSE-EN07 for Year 7, etc.). Display-only: the submitted structured
+    // value is untouched. Only the leading text node is edited so other
+    // injected spans survive.
     if (!classification.code) return;
     var pattern, replacement;
     if (classification.code.indexOf("VSC-") === 0) {
@@ -796,7 +798,7 @@ var ContourForm1Logic = function() {
     var span = wrap.querySelector("input + span") || wrap;
     var textNode = span.firstChild;
     if (!textNode || textNode.nodeType !== 3) return;
-    var stripped = textNode.nodeValue.replace(pattern, replacement);
+    var stripped = textNode.nodeValue.replace(pattern, replacement).replace(/\s*\(\d{4}\)\s*$/, "");
     if (stripped !== textNode.nodeValue) textNode.nodeValue = stripped;
   }
   function subjectExclusionKey(classification) {
