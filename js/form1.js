@@ -706,6 +706,7 @@ var ContourForm1Logic = function() {
     var anyVisibleByCategory = {};
     options.forEach(function(opt) {
       var classification = getClassification(opt);
+      relabelScholarshipSubject(opt, classification);
       var matrixVerdict = subjectMatchesMatrix(classification, location, yearLevel, selectedIntakeYear);
       var locationOk;
       var yearOk;
@@ -735,6 +736,21 @@ var ContourForm1Logic = function() {
     toggleFieldWrapper(q(FIELD_SELECTORS.interestedSubjects), anyVisible);
     updateSubjectsRequiredMark(anyVisible);
     evaluateSubjectExclusions();
+  }
+  function relabelScholarshipSubject(opt, classification) {
+    // Year 5 Scholarship options (VSC-* codes) only ever show to Year 5
+    // students, so the "Year 5" prefix in the HubSpot option label is
+    // redundant on screen (Amitav's request). Display-only: the submitted
+    // structured value is untouched. Only the leading text node is edited so
+    // the waitlist badge span, if present, survives.
+    if (!classification.code || classification.code.indexOf("VSC-") !== 0) return;
+    var wrap = optionWrapper(opt);
+    if (!wrap) return;
+    var span = wrap.querySelector("input + span") || wrap;
+    var textNode = span.firstChild;
+    if (!textNode || textNode.nodeType !== 3) return;
+    var stripped = textNode.nodeValue.replace(/^\s*Year\s+\d+\s+(?=Scholarship\b)/, "");
+    if (stripped !== textNode.nodeValue) textNode.nodeValue = stripped;
   }
   function updateWaitlistBadge(opt, classification) {
     var wrap = optionWrapper(opt);
