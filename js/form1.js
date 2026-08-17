@@ -21,21 +21,34 @@ var ContourForm1Logic = function() {
   };
   var FIELD_WRAPPER_CLASS = "hs-form-field";
   var VALID_LOCATIONS = [ "VIC", "NSW", "QLD", "SA", "ACT", "TAS", "WA", "NT", "United Kingdom", "New Zealand", "Overseas" ];
+  // accent/accentSoft/accentContrast reuse the retired pill palette per
+  // brand: hover wipes in the soft tint, selection keeps the accent on the
+  // border, ring and badge. accentContrast is the badge tick colour (navy on
+  // the lime TestPrep accent, white elsewhere).
   var PROGRAM_CARD_CONFIG = [ {
     match: /education|tutoring/i,
     title: "High School Tutoring",
     description: "Expert tutoring for in-depth understanding and results",
-    logoUrl: "https://cdn.prod.website-files.com/696ed06d2e62378f0a51f2d4/6a0bbf0cd57f2b816bcc79fb_Final%20EDUCATION%20horizontal%20logo.svg"
+    logoUrl: "https://cdn.prod.website-files.com/696ed06d2e62378f0a51f2d4/6a0bbf0cd57f2b816bcc79fb_Final%20EDUCATION%20horizontal%20logo.svg",
+    accent: "#092749",
+    accentSoft: "rgba(9, 39, 73, 0.07)",
+    accentContrast: "#FFFFFF"
   }, {
     match: /test\s*prep|selective/i,
     title: "Selective Entry & Scholarship",
     description: "Preparing junior students for selective school examinations",
-    logoUrl: "https://cdn.prod.website-files.com/696ed06d2e62378f0a51f2d4/6a0bbed5fdbd2c829b5e4e7c_Final%20TESTPREP%20Charcoal%20horizontal%20logo.svg"
+    logoUrl: "https://cdn.prod.website-files.com/696ed06d2e62378f0a51f2d4/6a0bbed5fdbd2c829b5e4e7c_Final%20TESTPREP%20Charcoal%20horizontal%20logo.svg",
+    accent: "#D7FC3D",
+    accentSoft: "rgba(215, 252, 61, 0.28)",
+    accentContrast: "#0C3166"
   }, {
     match: /med\s*prep|ucat/i,
     title: "Medical Entry",
     description: "UCAT tutoring and medical interview coaching",
-    logoUrl: "https://cdn.prod.website-files.com/696ed06d2e62378f0a51f2d4/6a0bbed5058c7ec65b1a454e_Final%20MEDPREP%20Charcoal%20horizontal%20logo.svg"
+    logoUrl: "https://cdn.prod.website-files.com/696ed06d2e62378f0a51f2d4/6a0bbed5058c7ec65b1a454e_Final%20MEDPREP%20Charcoal%20horizontal%20logo.svg",
+    accent: "#007AFF",
+    accentSoft: "rgba(0, 122, 255, 0.08)",
+    accentContrast: "#FFFFFF"
   } ];
   var UK_TOKEN = "United Kingdom";
   var UCAT_UK_PATTERN = /UCAT\s*\(UK\)/i;
@@ -290,7 +303,27 @@ var ContourForm1Logic = function() {
       span.appendChild(addressSpan);
     });
   }
+  function injectProgramCardAccentStyles() {
+    // The live page can't take stylesheet updates, so the brand-accent
+    // hover/selection styling ships from JS. Accent values come from each
+    // card's inline CSS variables (set in enhanceProgramInterestCards); the
+    // ::before layer wipes the soft tint in slowly from the left on hover
+    // and stays put while selected. Injected after the page styles, so ties
+    // on specificity resolve in favour of these rules.
+    if (document.getElementById("contour-program-card-accent-styles")) return;
+    var style = document.createElement("style");
+    style.id = "contour-program-card-accent-styles";
+    style.textContent = "" +
+      ".hs-form .contour-program-card { position: relative; overflow: hidden; }" +
+      ".hs-form .contour-program-card::before { content: \"\"; position: absolute; inset: 0; border-radius: inherit; background: var(--contour-card-accent-soft, transparent); opacity: 0; transform: scaleX(0); transform-origin: left center; transition: opacity 0.7s ease, transform 0.7s ease; pointer-events: none; }" +
+      ".hs-form .contour-program-card:hover::before, .hs-form .contour-program-card--selected::before { opacity: 1; transform: scaleX(1); }" +
+      ".hs-form .contour-program-card:hover { border-color: var(--contour-card-accent, #9aa5b1); }" +
+      ".hs-form .contour-program-card--selected { border-color: var(--contour-card-accent, #0C3166); box-shadow: 0 0 0 1px var(--contour-card-accent, #0C3166); }" +
+      ".hs-form .contour-program-card .contour-program-card__badge { background-color: var(--contour-card-accent, #0C3166); color: var(--contour-card-accent-contrast, #FFFFFF); }";
+    document.head.appendChild(style);
+  }
   function enhanceProgramInterestCards() {
+    injectProgramCardAccentStyles();
     var checkboxes = qAll(FIELD_SELECTORS.programInterest);
     var gridApplied = false;
     checkboxes.forEach(function(inputEl, index) {
@@ -300,6 +333,11 @@ var ContourForm1Logic = function() {
       var sharedParent = nativeWrapper.parentNode;
       var card = document.createElement("label");
       card.className = "contour-program-card";
+      if (config && config.accent) {
+        card.style.setProperty("--contour-card-accent", config.accent);
+        card.style.setProperty("--contour-card-accent-soft", config.accentSoft);
+        card.style.setProperty("--contour-card-accent-contrast", config.accentContrast);
+      }
       var badge = document.createElement("span");
       badge.className = "contour-program-card__badge";
       badge.setAttribute("aria-hidden", "true");
