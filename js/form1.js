@@ -23,7 +23,7 @@ var ContourForm1Logic = function() {
   var VALID_LOCATIONS = [ "VIC", "NSW", "QLD", "SA", "ACT", "TAS", "WA", "NT", "United Kingdom", "New Zealand", "Overseas" ];
   var PROGRAM_CARD_CONFIG = [ {
     match: /education|tutoring/i,
-    title: "Year 7 - 12 Tutoring",
+    title: "High School Tutoring",
     description: "Expert tutoring for in-depth understanding and results",
     logoUrl: "https://cdn.prod.website-files.com/696ed06d2e62378f0a51f2d4/6a0bbf0cd57f2b816bcc79fb_Final%20EDUCATION%20horizontal%20logo.svg"
   }, {
@@ -2018,7 +2018,7 @@ var ContourForm1Logic = function() {
   // 16 Aug 2026): picking Education + MedPrep but only a UCAT subject used
   // to submit with an empty Education signup.
   var PROGRAM_DISPLAY_NAMES = {
-    Education: "Year 7 - 12 Tutoring",
+    Education: "High School Tutoring",
     TestPrep: "Selective Entry & Scholarship",
     MedPrep: "Medical Entry"
   };
