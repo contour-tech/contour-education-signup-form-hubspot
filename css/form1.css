@@ -434,8 +434,11 @@ form.hsForm {
 }
  
 .contour-program-card--selected {
-  border-color: #2f6f3e;
-  box-shadow: 0 0 0 1px #2f6f3e;
+  /* Navy highlight on selection (Amitav's request) — soft navy tint keeps
+     the charcoal brand logos legible, unlike a full navy fill. */
+  border-color: #0C3166;
+  box-shadow: 0 0 0 1px #0C3166;
+  background-color: rgba(12, 49, 102, 0.06);
 }
 
 /* Greyed out / unselectable — region-ineligible for the current Location.
@@ -468,7 +471,7 @@ form.hsForm {
   width: 22px;
   height: 22px;
   border-radius: 999px;
-  background-color: #2f6f3e;
+  background-color: #0C3166;
   color: #fff;
   font-size: 12px;
   font-weight: 700;
