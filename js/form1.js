@@ -713,18 +713,26 @@ var ContourForm1Logic = function() {
       });
       buckets[category] = level34.concat(otherLevels);
     });
-    // UCAT leads the Medical Entry list, ahead of Medical & Dental
-    // Interviews and GAMSAT (Nick's request). Stable partition so the rest
-    // keep their HubSpot order.
+    // Medical Entry list order is UCAT, then Medical & Dental Interviews,
+    // then GAMSAT (Nick's request) — HubSpot serves them roughly reversed.
+    // Rank sort keeps unknown future codes between Interviews and GAMSAT.
     if (buckets.MedPrep) {
-      var ucatItems = [];
-      var otherMedItems = [];
-      buckets.MedPrep.forEach(function(li) {
+      var medRank = function(li) {
         var input = li ? li.querySelector("input") : null;
-        var isUcat = input && isUcatSubject(getClassification(input));
-        (isUcat ? ucatItems : otherMedItems).push(li);
+        if (!input) return 2;
+        var classification = getClassification(input);
+        if (isUcatSubject(classification)) return 0;
+        if (classification.code === "MD-INT") return 1;
+        if (classification.code === "GAMSAT") return 3;
+        return 2;
+      };
+      buckets.MedPrep = buckets.MedPrep.map(function(li, index) {
+        return { li: li, rank: medRank(li), index: index };
+      }).sort(function(a, b) {
+        return a.rank - b.rank || a.index - b.index;
+      }).map(function(entry) {
+        return entry.li;
       });
-      buckets.MedPrep = ucatItems.concat(otherMedItems);
     }
     var orderedCategories = CATEGORY_DISPLAY_ORDER.concat(Object.keys(buckets).filter(function(c) {
       return CATEGORY_DISPLAY_ORDER.indexOf(c) === -1;
