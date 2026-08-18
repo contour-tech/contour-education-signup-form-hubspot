@@ -321,7 +321,8 @@ var ContourForm1Logic = function () {
     var style = document.createElement("style");
     style.id = "contour-program-card-accent-styles";
     style.textContent = "" +
-      ".hs-form .contour-program-card { position: relative; overflow: hidden; }" +
+      // overflow stays visible so the corner badge can straddle the outline.
+      ".hs-form .contour-program-card { position: relative; }" +
       // Card background: transparent on hover — the translucent blue tint
       // fades in only while the card is selected.
       ".hs-form .contour-program-card::before { content: \"\"; position: absolute; inset: 0; border-radius: inherit; background: var(--contour-card-accent-soft, transparent); opacity: 0; transition: opacity 0.5s ease; pointer-events: none; }" +
@@ -330,7 +331,11 @@ var ContourForm1Logic = function () {
       ".hs-form .contour-program-card:hover { border-color: var(--contour-card-accent, #3478F7); }" +
       // Selected: bolder border (2px ring on top of the 1px border).
       ".hs-form .contour-program-card--selected { border-color: var(--contour-card-accent, #3478F7); box-shadow: 0 0 0 2px var(--contour-card-accent, #3478F7); }" +
-      ".hs-form .contour-program-card .contour-program-card__badge { background-color: var(--contour-card-accent, #3478F7); color: var(--contour-card-accent-contrast, #FFFFFF); }" +
+      // Badge: always green, centred SVG tick, pinned half-out on the
+      // top-right corner of the outline with a white ring so it never
+      // overlaps the card content.
+      ".hs-form .contour-program-card .contour-program-card__badge { top: -9px; right: -9px; width: 22px; height: 22px; background-color: #2f9e44; color: #FFFFFF; box-shadow: 0 0 0 2px #FFFFFF; z-index: 1; }" +
+      ".hs-form .contour-program-card .contour-program-card__badge svg { display: block; }" +
       // Logo: Contour-blue copy stacked on the charcoal original, wiped in
       // from the left via clip-path. Filter chain recolours the charcoal SVG
       // to #3478F7 (brightness(0) first, then rotate to the blue).
@@ -361,7 +366,9 @@ var ContourForm1Logic = function () {
       var badge = document.createElement("span");
       badge.className = "contour-program-card__badge";
       badge.setAttribute("aria-hidden", "true");
-      badge.textContent = "✓";
+      // Proper geometric tick (SVG polyline) instead of the ✓ text glyph —
+      // renders identically everywhere and centres exactly in the circle.
+      badge.innerHTML = '<svg viewBox="0 0 24 24" width="12" height="12" focusable="false"><path d="M20 6L9 17l-5-5" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
       card.appendChild(badge);
       var body = document.createElement("span");
       body.className = "contour-program-card__body";
