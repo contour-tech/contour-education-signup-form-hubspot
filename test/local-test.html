@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Contour Form 1 — Local Test</title>
+
+  <!--
+    Local testing harness — mirrors the Webflow Free Trial page setup:
+      - css/form1.css loaded directly (on Webflow it lives in the page
+        header code; the repo copy may be ahead of what's published)
+      - js/form1.js loaded from the LOCAL repo, not GitHub Pages, so
+        uncommitted changes are testable immediately
+      - same HubSpot portal/form IDs as production — submissions here
+        create REAL contacts/submissions in HubSpot. Fill freely, but
+        only submit with obvious test data (e.g. test+localdev@...).
+
+    Serve over http (HubSpot embed script dislikes file://):
+      ./test/serve.sh start    — serves the repo root, opens this page
+      ./test/serve.sh stop
+  -->
+
+  <link rel="stylesheet" href="../css/form1.css">
+
+  <style>
+    /* Rough stand-in for the Webflow page's own base styles so the form
+       doesn't render on browser defaults. Not part of the form package. */
+    body {
+      font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #FFF9F1;
+      color: #212121;
+      margin: 0;
+      padding: 2rem 1rem 4rem;
+    }
+    .test-page-container {
+      max-width: 960px;
+      margin: 0 auto;
+    }
+    .test-page-banner {
+      max-width: 880px;
+      margin: 0 auto 1rem;
+      padding: 0.625rem 1rem;
+      border: 1px solid #f0d9a6;
+      border-radius: 8px;
+      background: #FFF3D6;
+      color: #8a5a00;
+      font-size: 0.85rem;
+      line-height: 1.4;
+    }
+  </style>
+</head>
+<body>
+  <div class="test-page-container">
+    <div class="test-page-banner">
+      <strong>Local test page.</strong> Uses local <code>css/form1.css</code> +
+      <code>js/form1.js</code>, but the LIVE HubSpot form — submitting creates a
+      real submission. Use obvious test data if you submit.
+    </div>
+
+    <div id="contour-form1"></div>
+  </div>
+
+  <script charset="utf-8" type="text/javascript" src="https://js-ap1.hsforms.net/forms/embed/v2.js"></script>
+
+  <script src="../js/form1.js"></script>
+
+  <script>
+    hbspt.forms.create({
+      portalId: "441696810",
+      formId: "b9c413c9-b520-4d4a-85d8-78934dc948bb",
+      region: "ap1",
+      target: "#contour-form1",
+      onFormReady: function ($form) {
+        if (window.ContourForm1Logic) {
+          ContourForm1Logic.init($form[0]);
+        }
+      }
+    });
+  </script>
+</body>
+</html>
