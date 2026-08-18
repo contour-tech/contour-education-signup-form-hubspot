@@ -767,11 +767,14 @@ var ContourForm1Logic = function () {
   // HubSpot ships the school helper text as two sentences: how to search, then
   // what to do when the school is missing. Showing both up front made the
   // second one easy to miss (Amitav), so it is split — the lead stays under the
-  // field, and a hint urging the school's full name surfaces above the input
-  // once a search actually comes back empty. The trailing sentence is matched
-  // on "can't find" rather than by index, so a reworded description degrades to
-  // lead-only rather than mangled text.
-  var SCHOOL_NOT_FOUND_HINT = "Can't find your school? Type its full name and continue.";
+  // field, and a hint below the input coaches the student through the search:
+  // "keep typing" until there is enough to search on, then — if nothing matched
+  // — keep typing the full name and continue with it. Stopping at a few
+  // characters and leaving a partial name is the case this prevents. The
+  // trailing sentence is matched on "can't find" rather than by index, so a
+  // reworded description degrades to lead-only rather than mangled text.
+  var SCHOOL_TYPE_MORE_HINT = "Keep typing your school's name to search the list.";
+  var SCHOOL_NOT_FOUND_HINT = "Keep typing your school's full name — if it never appears in the list, leave the full name typed and continue.";
   function splitSchoolDesc(text) {
     var full = (text || "").trim();
     var match = full.match(/^(.*?[.!?])\s*([^.!?]*can't find[^]*)$/i);
@@ -2062,7 +2065,7 @@ var ContourForm1Logic = function () {
     if (!document.getElementById("contour-school-hint-styles")) {
       var style = document.createElement("style");
       style.id = "contour-school-hint-styles";
-      style.textContent = ".hs-form .contour-school-not-found { display: flex; align-items: flex-start; gap: 8px; margin: 0 0 8px; padding: 10px 12px; border: 1px solid #cfe0ff; border-radius: 10px; background: #F2F7FF; color: #0C3166; font-size: 13px; line-height: 1.45; font-weight: 600; }" +
+      style.textContent = ".hs-form .contour-school-not-found { display: flex; align-items: flex-start; gap: 8px; margin: 8px 0 0; padding: 10px 12px; border: 1px solid #cfe0ff; border-radius: 10px; background: #F2F7FF; color: #0C3166; font-size: 13px; line-height: 1.45; font-weight: 600; }" +
         ".hs-form .contour-school-not-found__icon { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; width: 16px; height: 16px; margin-top: 1px; border-radius: 50%; background: #3478F7; color: #FFFFFF; font-size: 11px; font-weight: 700; line-height: 1; }";
       document.head.appendChild(style);
     }
@@ -2084,20 +2087,22 @@ var ContourForm1Logic = function () {
     hint.appendChild(text);
     var searchWrap = input.closest(".contour-school-search");
     var anchor = searchWrap || input;
-    if (anchor.parentNode) anchor.parentNode.insertBefore(hint, anchor);
+    if (anchor.parentNode) anchor.parentNode.insertBefore(hint, anchor.nextSibling);
     else wrap.appendChild(hint);
     return hint;
   }
-  function setSchoolNotFoundHint(show) {
+  // mode: "typing" while the query is too short to search, "notfound" once a
+  // search came back empty, false to hide. Both messages push the student to
+  // keep typing — stopping at a few characters and giving up is the case this
+  // is here to prevent.
+  function setSchoolNotFoundHint(mode) {
     var hint = ensureSchoolNotFoundHint();
     if (!hint) return;
-    if (show) {
-      // Our own wording, not HubSpot's: it asks for the school's FULL name,
-      // and a half-typed name is what leaves the record unmatchable downstream.
+    if (mode) {
       hint.querySelector(".contour-school-not-found__text").textContent =
-        SCHOOL_NOT_FOUND_HINT;
+        mode === "notfound" ? SCHOOL_NOT_FOUND_HINT : SCHOOL_TYPE_MORE_HINT;
     }
-    hint.style.display = show ? "" : "none";
+    hint.style.display = mode ? "" : "none";
   }
   function enhanceSchoolSearch() {
     var input = q(FIELD_SELECTORS.schoolText);
@@ -2220,7 +2225,7 @@ var ContourForm1Logic = function () {
         input.setAttribute("aria-expanded", "false");
         // Nothing matched — this is the moment the fallback instruction is
         // actually useful, so surface it under the field.
-        setSchoolNotFoundHint(true);
+        setSchoolNotFoundHint("notfound");
         return;
       }
       setSchoolNotFoundHint(false);
@@ -2291,7 +2296,7 @@ var ContourForm1Logic = function () {
       var query = normalize(input.value);
       if (query.length < MIN_CHARS) {
         closeListbox();
-        setSchoolNotFoundHint(false);
+        setSchoolNotFoundHint(query.length > 0 ? "typing" : false);
         if (codeInput && codeInput.value) setHiddenField(codeInput, "");
         if (acaraInput && acaraInput.value) setHiddenField(acaraInput, "");
         return;
