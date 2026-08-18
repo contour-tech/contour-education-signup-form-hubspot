@@ -21,33 +21,32 @@ var ContourForm1Logic = function() {
   };
   var FIELD_WRAPPER_CLASS = "hs-form-field";
   var VALID_LOCATIONS = [ "VIC", "NSW", "QLD", "SA", "ACT", "TAS", "WA", "NT", "United Kingdom", "New Zealand", "Overseas" ];
-  // accent/accentSoft/accentContrast reuse the retired pill palette per
-  // brand: hover wipes in the soft tint, selection keeps the accent on the
-  // border, ring and badge. accentContrast is the badge tick colour (navy on
-  // the lime TestPrep accent, white elsewhere).
+  // All three brands share the single Contour navy accent (Amrit, 18 Aug
+  // 2026): hover fades in the soft tint and wipes the navy colour across the
+  // logo; selection keeps the accent on the border, ring and badge.
   var PROGRAM_CARD_CONFIG = [ {
     match: /education|tutoring/i,
     title: "High School Tutoring",
     description: "Expert tutoring for in-depth understanding and results",
     logoUrl: "https://cdn.prod.website-files.com/696ed06d2e62378f0a51f2d4/6a0bbf0cd57f2b816bcc79fb_Final%20EDUCATION%20horizontal%20logo.svg",
-    accent: "#092749",
-    accentSoft: "rgba(9, 39, 73, 0.07)",
+    accent: "#0C3166",
+    accentSoft: "rgba(12, 49, 102, 0.06)",
     accentContrast: "#FFFFFF"
   }, {
     match: /test\s*prep|selective/i,
     title: "Selective Entry & Scholarship",
     description: "Preparing junior students for selective school examinations",
     logoUrl: "https://cdn.prod.website-files.com/696ed06d2e62378f0a51f2d4/6a0bbed5fdbd2c829b5e4e7c_Final%20TESTPREP%20Charcoal%20horizontal%20logo.svg",
-    accent: "#D7FC3D",
-    accentSoft: "rgba(215, 252, 61, 0.28)",
-    accentContrast: "#0C3166"
+    accent: "#0C3166",
+    accentSoft: "rgba(12, 49, 102, 0.06)",
+    accentContrast: "#FFFFFF"
   }, {
     match: /med\s*prep|ucat/i,
     title: "Medical Entry",
     description: "UCAT tutoring and medical interview coaching",
     logoUrl: "https://cdn.prod.website-files.com/696ed06d2e62378f0a51f2d4/6a0bbed5058c7ec65b1a454e_Final%20MEDPREP%20Charcoal%20horizontal%20logo.svg",
-    accent: "#007AFF",
-    accentSoft: "rgba(0, 122, 255, 0.08)",
+    accent: "#0C3166",
+    accentSoft: "rgba(12, 49, 102, 0.06)",
     accentContrast: "#FFFFFF"
   } ];
   var UK_TOKEN = "United Kingdom";
@@ -315,11 +314,18 @@ var ContourForm1Logic = function() {
     style.id = "contour-program-card-accent-styles";
     style.textContent = "" +
       ".hs-form .contour-program-card { position: relative; overflow: hidden; }" +
-      ".hs-form .contour-program-card::before { content: \"\"; position: absolute; inset: 0; border-radius: inherit; background: var(--contour-card-accent-soft, transparent); opacity: 0; transform: scaleX(0); transform-origin: left center; transition: opacity 0.7s ease, transform 0.7s ease; pointer-events: none; }" +
-      ".hs-form .contour-program-card:hover::before, .hs-form .contour-program-card--selected::before { opacity: 1; transform: scaleX(1); }" +
-      ".hs-form .contour-program-card:hover { border-color: var(--contour-card-accent, #9aa5b1); }" +
+      // Card background: plain slow fade of the soft navy tint.
+      ".hs-form .contour-program-card::before { content: \"\"; position: absolute; inset: 0; border-radius: inherit; background: var(--contour-card-accent-soft, transparent); opacity: 0; transition: opacity 0.7s ease; pointer-events: none; }" +
+      ".hs-form .contour-program-card:hover::before, .hs-form .contour-program-card--selected::before { opacity: 1; }" +
+      ".hs-form .contour-program-card:hover { border-color: var(--contour-card-accent, #0C3166); }" +
       ".hs-form .contour-program-card--selected { border-color: var(--contour-card-accent, #0C3166); box-shadow: 0 0 0 1px var(--contour-card-accent, #0C3166); }" +
-      ".hs-form .contour-program-card .contour-program-card__badge { background-color: var(--contour-card-accent, #0C3166); color: var(--contour-card-accent-contrast, #FFFFFF); }";
+      ".hs-form .contour-program-card .contour-program-card__badge { background-color: var(--contour-card-accent, #0C3166); color: var(--contour-card-accent-contrast, #FFFFFF); }" +
+      // Logo: navy copy stacked on the charcoal original, wiped in from the
+      // left via clip-path. Filter chain recolours the charcoal SVG to navy
+      // (brightness(0) first, then rotate to #0C3166).
+      ".hs-form .contour-program-card__logo-placeholder--has-logo { position: relative; }" +
+      ".hs-form .contour-program-card__logo-tint { position: absolute; top: 0; left: 0; height: 100%; width: auto; max-width: 100%; object-fit: contain; pointer-events: none; filter: brightness(0) saturate(100%) invert(14%) sepia(48%) saturate(2408%) hue-rotate(203deg) brightness(94%) contrast(96%); clip-path: inset(0 100% 0 0); transition: clip-path 0.7s ease; }" +
+      ".hs-form .contour-program-card:hover .contour-program-card__logo-tint, .hs-form .contour-program-card--selected .contour-program-card__logo-tint { clip-path: inset(0 0 0 0); }";
     document.head.appendChild(style);
   }
   function enhanceProgramInterestCards() {
@@ -355,6 +361,14 @@ var ContourForm1Logic = function() {
         logoImg.src = config.logoUrl;
         logoImg.alt = "";
         logoPlaceholder.appendChild(logoImg);
+        // Navy-tinted copy of the logo, clipped to zero width until hover
+        // wipes it across the charcoal original (see the injected styles).
+        var logoTint = document.createElement("img");
+        logoTint.className = "contour-program-card__logo-tint";
+        logoTint.src = config.logoUrl;
+        logoTint.alt = "";
+        logoTint.setAttribute("aria-hidden", "true");
+        logoPlaceholder.appendChild(logoTint);
       }
       body.appendChild(logoPlaceholder);
       var titleEl = document.createElement("span");
