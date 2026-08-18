@@ -676,6 +676,7 @@ var ContourForm1Logic = function () {
     var shouldHide = YEAR_13_LOCATIONS.indexOf(location) !== -1;
     toggleFieldWrapper(input, !shouldHide);
     updateSchoolRequiredMark(!shouldHide);
+    if (shouldHide) setSchoolNotFoundHint(false);
     if (shouldHide) {
       var codeInput = q(FIELD_SELECTORS.schoolCode);
       var acaraInput = q(FIELD_SELECTORS.acaraId);
@@ -763,6 +764,20 @@ var ContourForm1Logic = function () {
     if (acaraInput && acaraInput.value) setHiddenValue(FIELD_SELECTORS.acaraId, "");
   }
   var schoolDescDefault = null;
+  var schoolDescFallback = null;
+  // HubSpot ships the school helper text as two sentences: how to search, then
+  // what to do when the school is missing. Showing both up front made the
+  // second one easy to miss (Amitav), so it is split — the lead stays under the
+  // field and the fallback only surfaces once a search actually comes back
+  // empty. The fallback is matched on "can't find" rather than by index so a
+  // reworded description degrades to lead-only instead of mangled text.
+  var SCHOOL_NOT_FOUND_HINT = "Can't find your school? Just enter its name and continue.";
+  function splitSchoolDesc(text) {
+    var full = (text || "").trim();
+    var match = full.match(/^(.*?[.!?])\s*([^.!?]*can't find[^]*)$/i);
+    if (!match) return { lead: full, fallback: "" };
+    return { lead: match[1].trim(), fallback: match[2].trim() };
+  }
   function updateSchoolFieldGraduateMode() {
     var input = q(FIELD_SELECTORS.schoolText);
     if (!input) return;
@@ -773,7 +788,11 @@ var ContourForm1Logic = function () {
     setFieldLabelText("schoolText", isGraduated ? (intake ? "University in " + intake : "Current University") : intake ? "School in " + intake : "Current School");
     var desc = wrap.querySelector(".hs-field-desc");
     if (!desc) return;
-    if (schoolDescDefault === null) schoolDescDefault = desc.textContent;
+    if (schoolDescDefault === null) {
+      var parts = splitSchoolDesc(desc.textContent);
+      schoolDescDefault = parts.lead;
+      schoolDescFallback = parts.fallback;
+    }
     if (!isGraduated) {
       desc.textContent = schoolDescDefault;
       if (GRAD_QUICK_LEGACY_VALUES.indexOf(input.value) !== -1) {
@@ -2038,6 +2057,53 @@ var ContourForm1Logic = function () {
     });
     return schoolListPromise;
   }
+  function ensureSchoolNotFoundHint() {
+    var input = q(FIELD_SELECTORS.schoolText);
+    var wrap = input ? fieldWrapper(input) : null;
+    if (!wrap) return null;
+    var existing = wrap.querySelector("#contour-school-not-found");
+    if (existing) return existing;
+    if (!document.getElementById("contour-school-hint-styles")) {
+      var style = document.createElement("style");
+      style.id = "contour-school-hint-styles";
+      style.textContent = ".hs-form .contour-school-not-found { display: flex; align-items: flex-start; gap: 8px; margin-top: 8px; padding: 10px 12px; border: 1px solid #cfe0ff; border-radius: 10px; background: #F2F7FF; color: #0C3166; font-size: 13px; line-height: 1.45; font-weight: 600; }" +
+        ".hs-form .contour-school-not-found__icon { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; width: 16px; height: 16px; margin-top: 1px; border-radius: 50%; background: #3478F7; color: #FFFFFF; font-size: 11px; font-weight: 700; line-height: 1; }";
+      document.head.appendChild(style);
+    }
+    var hint = document.createElement("p");
+    hint.id = "contour-school-not-found";
+    hint.className = "contour-school-not-found";
+    hint.style.display = "none";
+    // Announced politely so a screen reader hears it when a search dead-ends,
+    // without stealing focus from the input mid-typing.
+    hint.setAttribute("role", "status");
+    hint.setAttribute("aria-live", "polite");
+    var icon = document.createElement("span");
+    icon.className = "contour-school-not-found__icon";
+    icon.setAttribute("aria-hidden", "true");
+    icon.textContent = "i";
+    hint.appendChild(icon);
+    var text = document.createElement("span");
+    text.className = "contour-school-not-found__text";
+    hint.appendChild(text);
+    var searchWrap = input.closest(".contour-school-search");
+    var anchor = searchWrap || input;
+    if (anchor.parentNode) anchor.parentNode.insertBefore(hint, anchor.nextSibling);
+    else wrap.appendChild(hint);
+    return hint;
+  }
+  function setSchoolNotFoundHint(show) {
+    var hint = ensureSchoolNotFoundHint();
+    if (!hint) return;
+    if (show) {
+      // Prefer HubSpot's own fallback sentence, captured before the
+      // description was trimmed to its lead, so the copy stays editable in
+      // HubSpot; fall back to our wording if the description is reworded.
+      hint.querySelector(".contour-school-not-found__text").textContent =
+        schoolDescFallback || SCHOOL_NOT_FOUND_HINT;
+    }
+    hint.style.display = show ? "" : "none";
+  }
   function enhanceSchoolSearch() {
     var input = q(FIELD_SELECTORS.schoolText);
     if (!input) return;
@@ -2157,8 +2223,12 @@ var ContourForm1Logic = function () {
       if (matches.length === 0) {
         listbox.hidden = true;
         input.setAttribute("aria-expanded", "false");
+        // Nothing matched — this is the moment the fallback instruction is
+        // actually useful, so surface it under the field.
+        setSchoolNotFoundHint(true);
         return;
       }
+      setSchoolNotFoundHint(false);
       matches.forEach(function (school, i) {
         var li = document.createElement("li");
         li.className = "contour-school-search__option";
@@ -2197,6 +2267,7 @@ var ContourForm1Logic = function () {
       setHiddenField(acaraInput, school.acara_id);
       setHiddenField(codeInput, school.school_code);
       closeListbox();
+      setSchoolNotFoundHint(false);
       suppressNextInputEvent = true;
       input.dispatchEvent(new Event("input", {
         bubbles: true
@@ -2225,6 +2296,7 @@ var ContourForm1Logic = function () {
       var query = normalize(input.value);
       if (query.length < MIN_CHARS) {
         closeListbox();
+        setSchoolNotFoundHint(false);
         if (codeInput && codeInput.value) setHiddenField(codeInput, "");
         if (acaraInput && acaraInput.value) setHiddenField(acaraInput, "");
         return;
