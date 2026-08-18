@@ -86,7 +86,6 @@ var ContourForm1Logic = function () {
     TestPrep: "Selective Entry & Scholarship",
     MedPrep: "Medical Entry"
   };
-  var CATEGORIES_WITHOUT_HEADER = ["TestPrep", "MedPrep"];
   function matrixLocationKey(location) {
     if (location === "United Kingdom") return "UK";
     if (location === "New Zealand") return "NZ";
@@ -850,7 +849,24 @@ var ContourForm1Logic = function () {
     return classification;
   }
   var categoryHeaderMap = {};
+  function hideInterestedSubjectsFieldLabel() {
+    // The "Interested Subjects *" field label is not rendered at all
+    // (Amitav's request) — the category headers underneath carry the
+    // structure. Injected CSS survives HubSpot re-renders; the inline hide
+    // covers wrappers without the hs_<fieldname> class.
+    if (!document.getElementById("contour-subjects-label-styles")) {
+      var style = document.createElement("style");
+      style.id = "contour-subjects-label-styles";
+      style.textContent = ".hs-form .hs_web_form__interested_subject > label { display: none; }";
+      document.head.appendChild(style);
+    }
+    var field = q(FIELD_SELECTORS.interestedSubjects);
+    var wrap = field ? fieldWrapper(field) : null;
+    var label = wrap ? wrap.querySelector("label") : null;
+    if (label) label.style.display = "none";
+  }
   function enhanceInterestedSubjectsCategories() {
+    hideInterestedSubjectsFieldLabel();
     var checkboxes = qAll(FIELD_SELECTORS.interestedSubjects);
     if (checkboxes.length === 0) return;
     var firstWrapper = optionWrapper(checkboxes[0]);
@@ -903,16 +919,11 @@ var ContourForm1Logic = function () {
     orderedCategories.forEach(function (category) {
       var items = buckets[category];
       if (!items || items.length === 0) return;
-      // TestPrep and MedPrep get no header (Amitav's request) — the program
-      // card and the subject names already carry that context. Education
-      // categories keep theirs to group the long subject list.
-      if (CATEGORIES_WITHOUT_HEADER.indexOf(category) === -1) {
-        var header = document.createElement("li");
-        header.className = "contour-subject-category-header";
-        header.textContent = CATEGORY_DISPLAY_NAMES[category] || category;
-        listParent.appendChild(header);
-        categoryHeaderMap[category] = header;
-      }
+      var header = document.createElement("li");
+      header.className = "contour-subject-category-header";
+      header.textContent = CATEGORY_DISPLAY_NAMES[category] || category;
+      listParent.appendChild(header);
+      categoryHeaderMap[category] = header;
       items.forEach(function (li) {
         listParent.appendChild(li);
       });
