@@ -764,14 +764,14 @@ var ContourForm1Logic = function () {
     if (acaraInput && acaraInput.value) setHiddenValue(FIELD_SELECTORS.acaraId, "");
   }
   var schoolDescDefault = null;
-  var schoolDescFallback = null;
   // HubSpot ships the school helper text as two sentences: how to search, then
   // what to do when the school is missing. Showing both up front made the
   // second one easy to miss (Amitav), so it is split — the lead stays under the
-  // field and the fallback only surfaces once a search actually comes back
-  // empty. The fallback is matched on "can't find" rather than by index so a
-  // reworded description degrades to lead-only instead of mangled text.
-  var SCHOOL_NOT_FOUND_HINT = "Can't find your school? Just enter its name and continue.";
+  // field, and a hint urging the school's full name surfaces above the input
+  // once a search actually comes back empty. The trailing sentence is matched
+  // on "can't find" rather than by index, so a reworded description degrades to
+  // lead-only rather than mangled text.
+  var SCHOOL_NOT_FOUND_HINT = "Can't find your school? Type its full name and continue.";
   function splitSchoolDesc(text) {
     var full = (text || "").trim();
     var match = full.match(/^(.*?[.!?])\s*([^.!?]*can't find[^]*)$/i);
@@ -788,11 +788,7 @@ var ContourForm1Logic = function () {
     setFieldLabelText("schoolText", isGraduated ? (intake ? "University in " + intake : "Current University") : intake ? "School in " + intake : "Current School");
     var desc = wrap.querySelector(".hs-field-desc");
     if (!desc) return;
-    if (schoolDescDefault === null) {
-      var parts = splitSchoolDesc(desc.textContent);
-      schoolDescDefault = parts.lead;
-      schoolDescFallback = parts.fallback;
-    }
+    if (schoolDescDefault === null) schoolDescDefault = splitSchoolDesc(desc.textContent).lead;
     if (!isGraduated) {
       desc.textContent = schoolDescDefault;
       if (GRAD_QUICK_LEGACY_VALUES.indexOf(input.value) !== -1) {
@@ -2066,7 +2062,7 @@ var ContourForm1Logic = function () {
     if (!document.getElementById("contour-school-hint-styles")) {
       var style = document.createElement("style");
       style.id = "contour-school-hint-styles";
-      style.textContent = ".hs-form .contour-school-not-found { display: flex; align-items: flex-start; gap: 8px; margin-top: 8px; padding: 10px 12px; border: 1px solid #cfe0ff; border-radius: 10px; background: #F2F7FF; color: #0C3166; font-size: 13px; line-height: 1.45; font-weight: 600; }" +
+      style.textContent = ".hs-form .contour-school-not-found { display: flex; align-items: flex-start; gap: 8px; margin: 0 0 8px; padding: 10px 12px; border: 1px solid #cfe0ff; border-radius: 10px; background: #F2F7FF; color: #0C3166; font-size: 13px; line-height: 1.45; font-weight: 600; }" +
         ".hs-form .contour-school-not-found__icon { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; width: 16px; height: 16px; margin-top: 1px; border-radius: 50%; background: #3478F7; color: #FFFFFF; font-size: 11px; font-weight: 700; line-height: 1; }";
       document.head.appendChild(style);
     }
@@ -2088,7 +2084,7 @@ var ContourForm1Logic = function () {
     hint.appendChild(text);
     var searchWrap = input.closest(".contour-school-search");
     var anchor = searchWrap || input;
-    if (anchor.parentNode) anchor.parentNode.insertBefore(hint, anchor.nextSibling);
+    if (anchor.parentNode) anchor.parentNode.insertBefore(hint, anchor);
     else wrap.appendChild(hint);
     return hint;
   }
@@ -2096,11 +2092,10 @@ var ContourForm1Logic = function () {
     var hint = ensureSchoolNotFoundHint();
     if (!hint) return;
     if (show) {
-      // Prefer HubSpot's own fallback sentence, captured before the
-      // description was trimmed to its lead, so the copy stays editable in
-      // HubSpot; fall back to our wording if the description is reworded.
+      // Our own wording, not HubSpot's: it asks for the school's FULL name,
+      // and a half-typed name is what leaves the record unmatchable downstream.
       hint.querySelector(".contour-school-not-found__text").textContent =
-        schoolDescFallback || SCHOOL_NOT_FOUND_HINT;
+        SCHOOL_NOT_FOUND_HINT;
     }
     hint.style.display = show ? "" : "none";
   }
