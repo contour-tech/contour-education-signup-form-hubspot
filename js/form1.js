@@ -768,22 +768,22 @@ var ContourForm1Logic = function () {
   // what to do when the school is missing. Showing both up front made the
   // second one easy to miss (Amitav), so it is split — the lead stays under the
   // field, and a hint below the input coaches the student through the search:
-  // "keep typing" until there is enough to search on, then — if nothing matched
-  // — keep typing the full name and continue with it. Stopping at a few
-  // characters and leaving a partial name is the case this prevents. The
-  // trailing sentence is matched on "can't find" rather than by index, so a
-  // reworded description degrades to lead-only rather than mangled text.
+  // keep typing until there is enough to search on, then, if nothing matched,
+  // type the full name and keep it. Stopping at a few characters and leaving a
+  // partial name is the case this prevents. The trailing sentence is matched on
+  // "can't find" rather than by index, so a reworded description degrades to
+  // lead-only rather than mangled text.
   // Added to the always-on helper text so the advice is there before anyone
   // gets stuck, not only after a search comes back empty.
-  var SCHOOL_LEAD_EXTRA = "Keep typing the full name and we'll find it.";
+  var SCHOOL_LEAD_EXTRA = "Type the full name so we can find it.";
   function schoolNoun() {
     return isGraduatedSelected() ? "university" : "school";
   }
   function schoolTypeMoreHint() {
-    return "Keep typing — we'll show matching " + (isGraduatedSelected() ? "universities" : "schools") + " as you go.";
+    return "Keep typing to see your " + schoolNoun() + ".";
   }
   function schoolNotFoundHint() {
-    return "No match yet — keep typing the full " + schoolNoun() + " name. Can't see it? No problem, just leave the full name here and carry on.";
+    return "Nothing yet. Try typing the full " + schoolNoun() + " name. If it's still not there, just leave it as you've typed it.";
   }
   function splitSchoolDesc(text) {
     var full = (text || "").trim();
