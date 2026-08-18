@@ -2551,19 +2551,54 @@ var ContourForm1Logic = function () {
      Network failures fail open — an outage of the check must never lock
      legitimate signups out.
      ========================================================= */
-  function enforceDuplicateEmailValidation() {
+  // Duplicate checking covers both people the form collects: the student's
+  // email and phone, and the guardian's (Amitav). Each field gets its own
+  // independent check against HubSpot; the endpoint takes either ?email= or
+  // ?phone=.
+  var DUPLICATE_CHECK_FIELDS = [
+    {
+      selector: '[name="email_2"]',
+      param: "email",
+      message: "This email is already registered. Please contact our team to update your details.",
+      errorClass: "contour-duplicate-email-error"
+    },
+    {
+      selector: '[name="student_email"]',
+      param: "email",
+      message: "This student email is already registered. Please contact our team to update your details.",
+      errorClass: "contour-duplicate-student-email-error"
+    },
+    {
+      selector: '[name="phone"]',
+      param: "phone",
+      message: "This phone number is already registered. Please contact our team to update your details.",
+      errorClass: "contour-duplicate-phone-error"
+    },
+    {
+      selector: '[name="student_phone_number"]',
+      param: "phone",
+      message: "This student phone number is already registered. Please contact our team to update your details.",
+      errorClass: "contour-duplicate-student-phone-error"
+    }
+  ];
+  function enforceAllDuplicateValidation() {
+    DUPLICATE_CHECK_FIELDS.forEach(function (config) {
+      enforceDuplicateFieldValidation(config);
+    });
+  }
+  function enforceDuplicateFieldValidation(config) {
     if (!PREFETCH_ENDPOINT) return;
-    var input = q(FIELD_SELECTORS.emailTemp);
+    var input = q(config.selector);
     if (!input) return;
     var wrapper = fieldWrapper(input) || input.parentElement;
     var errorList = document.createElement("ul");
-    errorList.className = "no-list hs-error-msgs inputs-list contour-duplicate-email-error";
+    errorList.className = "no-list hs-error-msgs inputs-list " + config.errorClass;
     errorList.setAttribute("role", "alert");
     errorList.style.display = "none";
     var errorItem = document.createElement("li");
     var errorLabel = document.createElement("label");
     errorLabel.className = "hs-error-msg hs-main-font-element";
-    errorLabel.textContent = "This email is already registered. Please contact our team to update your details.";
+    errorLabel.textContent = config.message;
     errorItem.appendChild(errorLabel);
     errorList.appendChild(errorItem);
     wrapper.appendChild(errorList);
@@ -2577,19 +2612,19 @@ var ContourForm1Logic = function () {
     }
     var results = {};
     var pending = {};
-    function checkEmail(email) {
+    function checkValue(email) {
       if (Object.prototype.hasOwnProperty.call(results, email)) {
         return Promise.resolve(results[email]);
       }
       if (pending[email]) return pending[email];
-      var request = fetch(PREFETCH_ENDPOINT + "/exists?email=" + encodeURIComponent(email)).then(function (res) {
+      var request = fetch(PREFETCH_ENDPOINT + "/exists?" + config.param + "=" + encodeURIComponent(email)).then(function (res) {
         if (!res.ok) throw new Error("HTTP " + res.status);
         return res.json();
       }).then(function (data) {
         results[email] = !!(data && data.exists);
         return results[email];
       }).catch(function (err) {
-        console.warn("Contour Form 1 logic: duplicate email check failed —", err);
+        console.warn("Contour Form 1 logic: duplicate " + config.param + " check failed:", err);
         results[email] = false;
         return false;
       }).then(function (exists) {
@@ -2599,17 +2634,23 @@ var ContourForm1Logic = function () {
       pending[email] = request;
       return request;
     }
-    function currentEmail() {
-      return input.value.trim().toLowerCase();
+    function currentValue() {
+      var raw = input.value.trim();
+      return config.param === "email" ? raw.toLowerCase() : raw;
+    }
+    function isCheckable(value) {
+      if (config.param === "email") return EMAIL_SHAPE.test(value);
+      // Phone: enough digits to be a real number, not a half-typed one.
+      return value.replace(/[^\d]/g, "").length >= 8;
     }
     function reflectResult(email, exists) {
-      if (currentEmail() !== email) return;
+      if (currentValue() !== email) return;
       if (exists) showError(); else clearError();
     }
     input.addEventListener("blur", function () {
-      var email = currentEmail();
-      if (!EMAIL_SHAPE.test(email)) return;
-      checkEmail(email).then(function (exists) {
+      var email = currentValue();
+      if (!isCheckable(email)) return;
+      checkValue(email).then(function (exists) {
         reflectResult(email, exists);
       });
     });
@@ -2618,8 +2659,8 @@ var ContourForm1Logic = function () {
     });
     if (formRoot) {
       formRoot.addEventListener("submit", function (e) {
-        var email = currentEmail();
-        if (!EMAIL_SHAPE.test(email)) return;
+        var email = currentValue();
+        if (!isCheckable(email)) return;
         if (results[email] === false) return;
         e.preventDefault();
         e.stopImmediatePropagation();
@@ -2632,8 +2673,8 @@ var ContourForm1Logic = function () {
         // Verdict still in flight (or blur never fired) — resolve it, then
         // either surface the duplicate error or re-submit; the cached result
         // lets the re-submission pass straight through this gate.
-        checkEmail(email).then(function (exists) {
-          if (currentEmail() !== email) return;
+        checkValue(email).then(function (exists) {
+          if (currentValue() !== email) return;
           if (exists) {
             showError();
             scrollErrorIntoView(fieldWrapper(input) || input);
@@ -3296,11 +3337,13 @@ var ContourForm1Logic = function () {
       radio.addEventListener("change", updateGuardianFieldLabels);
     });
     enforceEmailTempValidation();
-    enforceDuplicateEmailValidation();
     injectStudentPhoneStyles();
     enhanceStudentPhoneField();
     watchStudentPhoneField();
     enforceStudentPhoneValidation();
+    // After enhanceStudentPhoneField(): it rebuilds the student phone control,
+    // and binding earlier would attach the check to a discarded input.
+    enforceAllDuplicateValidation();
     enforceFieldRequiredValidation("programInterest", "Please select a program.", "contour-program-interest-error", anyProgramInterestOptionEligible);
     enforceFieldRequiredValidation("campus", "Please select a campus.", "contour-campus-error", isFieldWrapVisible);
     enforceFieldRequiredValidation("interestedSubjects", "Please select at least one subject.", "contour-subjects-error", isFieldWrapVisible);

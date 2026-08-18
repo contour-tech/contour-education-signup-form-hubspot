@@ -43,7 +43,10 @@ const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // Properties the form can write an email into; a hit on any of them means
 // this address already has an entry.
-const EMAIL_MATCH_PROPERTIES = ["email", "email_2"];
+const EMAIL_MATCH_PROPERTIES = ["email", "email_2", "student_email"];
+// Phone lives on several properties depending on who signed up and when, so a
+// duplicate has to be looked for across all of them.
+const PHONE_MATCH_PROPERTIES = ["phone", "student_phone_number", "student_phone"];
 
 const ALLOWED_ORIGINS = [
   "https://contour-staging.webflow.io",
@@ -149,7 +152,16 @@ async function associatedSubjectCodes(contactId, objectType) {
   return [...new Set(codes)];
 }
 
-async function contactExistsByEmail(email) {
+async function contactExistsByProperties(propertyNames, values) {
+  // filterGroups are OR-ed, so one group per property/value pair matches a
+  // contact carrying the value on any of them.
+  const filterGroups = [];
+  propertyNames.forEach((propertyName) => {
+    values.forEach((value) => {
+      filterGroups.push({ filters: [{ propertyName, operator: "EQ", value }] });
+    });
+  });
+  if (filterGroups.length === 0) return false;
   const res = await fetch(`${HUBSPOT_BASE}/crm/v3/objects/contacts/search`, {
     method: "POST",
     headers: {
@@ -157,9 +169,7 @@ async function contactExistsByEmail(email) {
       "Content-Type": "application/json"
     },
     body: JSON.stringify({
-      filterGroups: EMAIL_MATCH_PROPERTIES.map((propertyName) => ({
-        filters: [{ propertyName, operator: "EQ", value: email }]
-      })),
+      filterGroups,
       properties: ["email"],
       limit: 1
     })
@@ -167,6 +177,39 @@ async function contactExistsByEmail(email) {
   if (!res.ok) throw new Error(`HubSpot search ${res.status}`);
   const data = await res.json();
   return (data.total || 0) > 0;
+}
+
+async function contactExistsByEmail(email) {
+  return contactExistsByProperties(EMAIL_MATCH_PROPERTIES, [email]);
+}
+
+// HubSpot stores phone numbers inconsistently: "+61 412345678", "0412345678",
+// "+61412345678". Searching only the typed form misses the same number stored
+// another way, so the likely variants are searched together.
+function phoneVariants(raw) {
+  const digits = String(raw).replace(/[^\d]/g, "");
+  if (digits.length < 6) return [];
+  const variants = new Set([String(raw).trim()]);
+  variants.add(`+${digits}`);
+  variants.add(digits);
+  // Australian mobiles: +61412345678 <-> 0412345678.
+  if (digits.startsWith("61") && digits.length >= 10) {
+    const national = digits.slice(2);
+    variants.add(`0${national}`);
+    variants.add(national);
+    variants.add(`+61 ${national}`);
+  } else if (digits.startsWith("0")) {
+    const national = digits.slice(1);
+    variants.add(`+61${national}`);
+    variants.add(`+61 ${national}`);
+  }
+  return [...variants].filter((v) => v.length >= 6).slice(0, 12);
+}
+
+async function contactExistsByPhone(phone) {
+  const variants = phoneVariants(phone);
+  if (variants.length === 0) return false;
+  return contactExistsByProperties(PHONE_MATCH_PROPERTIES, variants);
 }
 
 functions.http("prefetch", async (req, res) => {
@@ -185,12 +228,24 @@ functions.http("prefetch", async (req, res) => {
   }
 
   if (req.path && req.path.endsWith("/exists")) {
+    // ?email= and ?phone= are both accepted so one endpoint serves the four
+    // duplicate-checked fields (student/guardian email and phone).
     const email = String(req.query.email || "").trim().toLowerCase();
-    if (email.length > 254 || !EMAIL_SHAPE.test(email)) {
+    const phone = String(req.query.phone || "").trim();
+    if (!email && !phone) {
+      return res.status(400).json({ error: "email or phone required" });
+    }
+    if (email && (email.length > 254 || !EMAIL_SHAPE.test(email))) {
       return res.status(400).json({ error: "invalid email" });
     }
+    if (phone && (phone.length > 32 || String(phone).replace(/[^\d]/g, "").length < 6)) {
+      return res.status(400).json({ error: "invalid phone" });
+    }
     try {
-      return res.json({ exists: await contactExistsByEmail(email) });
+      const exists = email
+        ? await contactExistsByEmail(email)
+        : await contactExistsByPhone(phone);
+      return res.json({ exists });
     } catch (err) {
       console.error("exists error:", err.message);
       return res.status(500).json({ error: "internal error" });
