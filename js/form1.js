@@ -30,24 +30,24 @@ var ContourForm1Logic = function () {
     title: "High School Tutoring",
     description: "Expert tutoring for in-depth understanding and results",
     logoUrl: "https://cdn.prod.website-files.com/696ed06d2e62378f0a51f2d4/6a0bbf0cd57f2b816bcc79fb_Final%20EDUCATION%20horizontal%20logo.svg",
-    accent: "#0C3166",
-    accentSoft: "rgba(12, 49, 102, 0.06)",
+    accent: "#3478F7",
+    accentSoft: "rgba(52, 120, 247, 0.08)",
     accentContrast: "#FFFFFF"
   }, {
     match: /test\s*prep|selective/i,
     title: "Selective Entry & Scholarship",
     description: "Preparing junior students for selective school examinations",
     logoUrl: "https://cdn.prod.website-files.com/696ed06d2e62378f0a51f2d4/6a0bbed5fdbd2c829b5e4e7c_Final%20TESTPREP%20Charcoal%20horizontal%20logo.svg",
-    accent: "#0C3166",
-    accentSoft: "rgba(12, 49, 102, 0.06)",
+    accent: "#3478F7",
+    accentSoft: "rgba(52, 120, 247, 0.08)",
     accentContrast: "#FFFFFF"
   }, {
     match: /med\s*prep|ucat/i,
     title: "Medical Entry",
     description: "UCAT tutoring and medical interview coaching",
     logoUrl: "https://cdn.prod.website-files.com/696ed06d2e62378f0a51f2d4/6a0bbed5058c7ec65b1a454e_Final%20MEDPREP%20Charcoal%20horizontal%20logo.svg",
-    accent: "#0C3166",
-    accentSoft: "rgba(12, 49, 102, 0.06)",
+    accent: "#3478F7",
+    accentSoft: "rgba(52, 120, 247, 0.08)",
     accentContrast: "#FFFFFF"
   }];
   var UK_TOKEN = "United Kingdom";
@@ -315,17 +315,20 @@ var ContourForm1Logic = function () {
     style.id = "contour-program-card-accent-styles";
     style.textContent = "" +
       ".hs-form .contour-program-card { position: relative; overflow: hidden; }" +
-      // Card background: plain slow fade of the soft navy tint.
-      ".hs-form .contour-program-card::before { content: \"\"; position: absolute; inset: 0; border-radius: inherit; background: var(--contour-card-accent-soft, transparent); opacity: 0; transition: opacity 0.7s ease; pointer-events: none; }" +
-      ".hs-form .contour-program-card:hover::before, .hs-form .contour-program-card--selected::before { opacity: 1; }" +
-      ".hs-form .contour-program-card:hover { border-color: var(--contour-card-accent, #0C3166); }" +
-      ".hs-form .contour-program-card--selected { border-color: var(--contour-card-accent, #0C3166); box-shadow: 0 0 0 1px var(--contour-card-accent, #0C3166); }" +
-      ".hs-form .contour-program-card .contour-program-card__badge { background-color: var(--contour-card-accent, #0C3166); color: var(--contour-card-accent-contrast, #FFFFFF); }" +
-      // Logo: navy copy stacked on the charcoal original, wiped in from the
-      // left via clip-path. Filter chain recolours the charcoal SVG to navy
-      // (brightness(0) first, then rotate to #0C3166).
+      // Card background: transparent on hover — the translucent blue tint
+      // fades in only while the card is selected.
+      ".hs-form .contour-program-card::before { content: \"\"; position: absolute; inset: 0; border-radius: inherit; background: var(--contour-card-accent-soft, transparent); opacity: 0; transition: opacity 0.5s ease; pointer-events: none; }" +
+      ".hs-form .contour-program-card--selected::before { opacity: 1; }" +
+      // Hover: just the logo and the outline light up in Contour blue.
+      ".hs-form .contour-program-card:hover { border-color: var(--contour-card-accent, #3478F7); }" +
+      // Selected: bolder border (2px ring on top of the 1px border).
+      ".hs-form .contour-program-card--selected { border-color: var(--contour-card-accent, #3478F7); box-shadow: 0 0 0 2px var(--contour-card-accent, #3478F7); }" +
+      ".hs-form .contour-program-card .contour-program-card__badge { background-color: var(--contour-card-accent, #3478F7); color: var(--contour-card-accent-contrast, #FFFFFF); }" +
+      // Logo: Contour-blue copy stacked on the charcoal original, wiped in
+      // from the left via clip-path. Filter chain recolours the charcoal SVG
+      // to #3478F7 (brightness(0) first, then rotate to the blue).
       ".hs-form .contour-program-card__logo-placeholder--has-logo { position: relative; }" +
-      ".hs-form .contour-program-card__logo-tint { position: absolute; top: 0; left: 0; height: 100%; width: auto; max-width: 100%; object-fit: contain; pointer-events: none; filter: brightness(0) saturate(100%) invert(14%) sepia(48%) saturate(2408%) hue-rotate(203deg) brightness(94%) contrast(96%); clip-path: inset(0 100% 0 0); transition: clip-path 0.7s ease; }" +
+      ".hs-form .contour-program-card__logo-tint { position: absolute; top: 0; left: 0; height: 100%; width: auto; max-width: 100%; object-fit: contain; pointer-events: none; filter: brightness(0) saturate(100%) invert(42%) sepia(85%) saturate(3550%) hue-rotate(211deg) brightness(100%) contrast(94%); clip-path: inset(0 100% 0 0); transition: clip-path 0.7s ease; }" +
       ".hs-form .contour-program-card:hover .contour-program-card__logo-tint, .hs-form .contour-program-card--selected .contour-program-card__logo-tint { clip-path: inset(0 0 0 0); }";
     document.head.appendChild(style);
   }
