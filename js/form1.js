@@ -30,8 +30,8 @@ var ContourForm1Logic = function () {
     title: "High School Tutoring",
     description: "Expert tutoring for in-depth understanding and results",
     logoUrl: "https://cdn.prod.website-files.com/696ed06d2e62378f0a51f2d4/6a0bbf0cd57f2b816bcc79fb_Final%20EDUCATION%20horizontal%20logo.svg",
-    accent: "#0C3166",
-    accentSoft: "rgba(12, 49, 102, 0.06)",
+    accent: "#3478F7",
+    accentSoft: "#3478f706",
     accentContrast: "#FFFFFF"
   }, {
     match: /test\s*prep|selective/i,
