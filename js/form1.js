@@ -773,8 +773,18 @@ var ContourForm1Logic = function () {
   // characters and leaving a partial name is the case this prevents. The
   // trailing sentence is matched on "can't find" rather than by index, so a
   // reworded description degrades to lead-only rather than mangled text.
-  var SCHOOL_TYPE_MORE_HINT = "Keep typing your school's name to search the list.";
-  var SCHOOL_NOT_FOUND_HINT = "Keep typing your school's full name — if it never appears in the list, leave the full name typed and continue.";
+  // Added to the always-on helper text so the advice is there before anyone
+  // gets stuck, not only after a search comes back empty.
+  var SCHOOL_LEAD_EXTRA = "Keep typing the full name and we'll find it.";
+  function schoolNoun() {
+    return isGraduatedSelected() ? "university" : "school";
+  }
+  function schoolTypeMoreHint() {
+    return "Keep typing — we'll show matching " + (isGraduatedSelected() ? "universities" : "schools") + " as you go.";
+  }
+  function schoolNotFoundHint() {
+    return "No match yet — keep typing the full " + schoolNoun() + " name. Can't see it? No problem, just leave the full name here and carry on.";
+  }
   function splitSchoolDesc(text) {
     var full = (text || "").trim();
     var match = full.match(/^(.*?[.!?])\s*([^.!?]*can't find[^]*)$/i);
@@ -791,7 +801,9 @@ var ContourForm1Logic = function () {
     setFieldLabelText("schoolText", isGraduated ? (intake ? "University in " + intake : "Current University") : intake ? "School in " + intake : "Current School");
     var desc = wrap.querySelector(".hs-field-desc");
     if (!desc) return;
-    if (schoolDescDefault === null) schoolDescDefault = splitSchoolDesc(desc.textContent).lead;
+    if (schoolDescDefault === null) {
+      schoolDescDefault = splitSchoolDesc(desc.textContent).lead + " " + SCHOOL_LEAD_EXTRA;
+    }
     if (!isGraduated) {
       desc.textContent = schoolDescDefault;
       if (GRAD_QUICK_LEGACY_VALUES.indexOf(input.value) !== -1) {
@@ -2100,7 +2112,7 @@ var ContourForm1Logic = function () {
     if (!hint) return;
     if (mode) {
       hint.querySelector(".contour-school-not-found__text").textContent =
-        mode === "notfound" ? SCHOOL_NOT_FOUND_HINT : SCHOOL_TYPE_MORE_HINT;
+        mode === "notfound" ? schoolNotFoundHint() : schoolTypeMoreHint();
     }
     hint.style.display = mode ? "" : "none";
   }
