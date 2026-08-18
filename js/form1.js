@@ -251,7 +251,7 @@ var ContourForm1Logic = function () {
     // its stale text after unblocking — so injected UI must be stripped or it
     // leaks into the subject summary chips and label matching.
     var clone = wrap.cloneNode(true);
-    var injected = clone.querySelectorAll(".contour-subject-exclusion-note");
+    var injected = clone.querySelectorAll(".contour-subject-exclusion-note, .contour-interview-program-note");
     for (var i = 0; i < injected.length; i++) {
       injected[i].parentNode.removeChild(injected[i]);
     }
@@ -960,6 +960,7 @@ var ContourForm1Logic = function () {
       var audienceOk = subjectMatchesAudience(classification);
       var shouldShow = !!location && selectedPrograms.length > 0 && locationOk && programOk && yearOk && deliveryOk && intakeOk && audienceOk && !ucatBlockedForIntake(classification, selectedIntakeYear);
       shouldShow ? showOption(opt) : hideOption(opt);
+      updateInterviewProgramNote(opt, classification, yearLevel, shouldShow);
       if (shouldShow) {
         anyVisible = true;
         var category = classification.category || "Other";
@@ -1070,6 +1071,34 @@ var ContourForm1Logic = function () {
     if (!textNode || textNode.nodeType !== 3) return;
     var stripped = textNode.nodeValue.replace(pattern, replacement).replace(/\s*\(\d{4}\)\s*$/, "");
     if (stripped !== textNode.nodeValue) textNode.nodeValue = stripped;
+  }
+  // Year 10-11 students can pick Medical & Dental Interviews, but the
+  // program only starts for them at the end of Year 12 — a small explainer
+  // under the option says so (Amitav/Luke, 18 Aug 2026). Needs its own class
+  // and style: the exclusion-note machinery owns
+  // .contour-subject-exclusion-note and would hide anything wearing it.
+  var INTERVIEW_NOTE_TEXT = "Interview Program will start at the end of Year 12 - we will contact you in Year 12.";
+  var INTERVIEW_NOTE_YEAR_LEVELS = ["Year 10", "Year 11"];
+  function updateInterviewProgramNote(opt, classification, yearLevel, optionVisible) {
+    if (classification.code !== "MD-INT") return;
+    var wrap = optionWrapper(opt);
+    if (!wrap) return;
+    var show = optionVisible && INTERVIEW_NOTE_YEAR_LEVELS.indexOf(yearLevel) !== -1;
+    var note = wrap.querySelector(".contour-interview-program-note");
+    if (!note) {
+      if (!show) return;
+      if (!document.getElementById("contour-interview-note-styles")) {
+        var style = document.createElement("style");
+        style.id = "contour-interview-note-styles";
+        style.textContent = ".hs-form .contour-interview-program-note { display: block; font-size: 0.75rem; font-weight: 400; color: #6b7280; margin-top: 0.125rem; margin-left: 1.6rem; }";
+        document.head.appendChild(style);
+      }
+      note = document.createElement("span");
+      note.className = "contour-interview-program-note";
+      note.textContent = INTERVIEW_NOTE_TEXT;
+      wrap.appendChild(note);
+    }
+    note.style.display = show ? "" : "none";
   }
   function subjectExclusionKey(classification) {
     if (classification.program !== "Education") return null;
