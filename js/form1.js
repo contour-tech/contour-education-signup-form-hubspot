@@ -891,7 +891,7 @@ var ContourForm1Logic = function () {
     if (document.getElementById("contour-disabled-field-styles")) return;
     var style = document.createElement("style");
     style.id = "contour-disabled-field-styles";
-    style.textContent = ".hs-form select:disabled, .hs-form input:disabled { opacity: 0.55; background-color: #f1f0ec; cursor: not-allowed; }" + ".contour-prefill-offer { margin-top: 8px; padding: 12px; border: 1px solid #d8d5cc; border-radius: 8px; background: #faf9f6; }" + ".contour-prefill-offer__message { margin: 0 0 8px; font-size: 14px; }" + ".contour-prefill-offer__code-row { display: flex; gap: 8px; align-items: center; }" + ".contour-prefill-offer__code-input { max-width: 140px; }" + ".contour-prefill-offer__confirm { cursor: pointer; }" + ".contour-prefill-offer__error { margin: 8px 0 0; color: #b3261e; font-size: 13px; }" + ".contour-prefill-banner { display: flex; align-items: flex-start; gap: 14px; margin: 0 0 24px; padding: 18px 22px; border: 1px solid rgba(12, 49, 102, 0.12); border-radius: 16px; background: #FFFFFF; box-shadow: 0 1px 3px rgba(12, 49, 102, 0.06); }" + ".contour-prefill-banner__badge { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; background: #D7FC3D; color: #0C3166; font-size: 15px; font-weight: 700; }" + ".contour-prefill-banner__content { flex: 1; min-width: 0; }" + ".contour-prefill-banner__title { margin: 0 0 2px; font-size: 15px; font-weight: 700; color: #0C3166; }" + ".contour-prefill-banner__text { margin: 0 0 8px; font-size: 13.5px; line-height: 1.45; color: #6b7280; }" + ".contour-prefill-banner__reset { display: inline-block; font-size: 13px; font-weight: 600; color: #0C3166; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }" + ".contour-prefill-banner__reset:hover { color: #0540F2; }" + ".contour-subject-summary { margin: 24px 0; padding: 20px 22px; border: 1px solid rgba(12, 49, 102, 0.12); border-radius: 16px; background: #FFFFFF; box-shadow: 0 1px 3px rgba(12, 49, 102, 0.06); }" + ".contour-subject-summary__heading { font-size: 15px; font-weight: 700; color: #0C3166; margin-bottom: 14px; }" + ".contour-subject-summary__grid { display: flex; flex-wrap: wrap; gap: 24px; }" + ".contour-subject-summary__col { flex: 1 1 180px; min-width: 160px; }" + ".contour-subject-summary__col-title { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #6b7280; margin-bottom: 8px; }" + ".contour-subject-summary__chips { display: flex; flex-wrap: wrap; gap: 6px; }" + ".contour-subject-chip { display: inline-block; padding: 5px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 600; line-height: 1.3; }" + ".contour-subject-chip--navy { background: #092749; color: #FFFFFF; }" + ".contour-subject-chip--lime { background: #D7FC3D; color: #0C3166; }" + ".contour-subject-chip--blue { background: #007AFF; color: #FFFFFF; }" + ".contour-ucat-waitlist-note { margin: 24px 0; }" + ".contour-welcome-consultation__waitlist-note { margin: 0; padding: 14px 18px; border: 1px solid #f0d9a6; border-radius: 12px; background: #FFF3D6; color: #8a5a00; font-size: 14px; line-height: 1.5; font-weight: 600; }" + ".contour-form-loader { display: flex; flex-direction: column; align-items: center; padding: 60px 0; }" + ".contour-form-loader__spinner { width: 36px; height: 36px; border: 4px solid #e3e0d8; border-top-color: #1a1a2e; border-radius: 50%; animation: contour-spin 0.8s linear infinite; }" + "@keyframes contour-spin { to { transform: rotate(360deg); } }" + ".contour-form-loader__text { margin-top: 12px; font-size: 14px; }";
+    style.textContent = ".hs-form select:disabled, .hs-form input:disabled { opacity: 0.55; background-color: #f1f0ec; cursor: not-allowed; }" + ".contour-prefill-banner { display: flex; align-items: flex-start; gap: 14px; margin: 0 0 24px; padding: 18px 22px; border: 1px solid rgba(12, 49, 102, 0.12); border-radius: 16px; background: #FFFFFF; box-shadow: 0 1px 3px rgba(12, 49, 102, 0.06); }" + ".contour-prefill-banner__badge { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; background: #D7FC3D; color: #0C3166; font-size: 15px; font-weight: 700; }" + ".contour-prefill-banner__content { flex: 1; min-width: 0; }" + ".contour-prefill-banner__title { margin: 0 0 2px; font-size: 15px; font-weight: 700; color: #0C3166; }" + ".contour-prefill-banner__text { margin: 0 0 8px; font-size: 13.5px; line-height: 1.45; color: #6b7280; }" + ".contour-prefill-banner__reset { display: inline-block; font-size: 13px; font-weight: 600; color: #0C3166; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }" + ".contour-prefill-banner__reset:hover { color: #0540F2; }" + ".contour-subject-summary { margin: 24px 0; padding: 20px 22px; border: 1px solid rgba(12, 49, 102, 0.12); border-radius: 16px; background: #FFFFFF; box-shadow: 0 1px 3px rgba(12, 49, 102, 0.06); }" + ".contour-subject-summary__heading { font-size: 15px; font-weight: 700; color: #0C3166; margin-bottom: 14px; }" + ".contour-subject-summary__grid { display: flex; flex-wrap: wrap; gap: 24px; }" + ".contour-subject-summary__col { flex: 1 1 180px; min-width: 160px; }" + ".contour-subject-summary__col-title { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #6b7280; margin-bottom: 8px; }" + ".contour-subject-summary__chips { display: flex; flex-wrap: wrap; gap: 6px; }" + ".contour-subject-chip { display: inline-block; padding: 5px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 600; line-height: 1.3; }" + ".contour-subject-chip--navy { background: #092749; color: #FFFFFF; }" + ".contour-subject-chip--lime { background: #D7FC3D; color: #0C3166; }" + ".contour-subject-chip--blue { background: #007AFF; color: #FFFFFF; }" + ".contour-ucat-waitlist-note { margin: 24px 0; }" + ".contour-welcome-consultation__waitlist-note { margin: 0; padding: 14px 18px; border: 1px solid #f0d9a6; border-radius: 12px; background: #FFF3D6; color: #8a5a00; font-size: 14px; line-height: 1.5; font-weight: 600; }" + ".contour-form-loader { display: flex; flex-direction: column; align-items: center; padding: 60px 0; }" + ".contour-form-loader__spinner { width: 36px; height: 36px; border: 4px solid #e3e0d8; border-top-color: #1a1a2e; border-radius: 50%; animation: contour-spin 0.8s linear infinite; }" + "@keyframes contour-spin { to { transform: rotate(360deg); } }" + ".contour-form-loader__text { margin-top: 12px; font-size: 14px; }";
     document.head.appendChild(style);
   }
   function getClassification(inputEl) {
@@ -1384,7 +1384,6 @@ var ContourForm1Logic = function () {
     });
   }
   var PREFETCH_ENDPOINT = "https://australia-southeast1-hubspot-signup-form.cloudfunctions.net/contour-form1-prefetch";
-  var PREFETCH_OTP_ENABLED = false;
   var STUDENT_ID_PARAM = "student_id";
   var EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   var prefetchedTrialSubjectCodes = [];
@@ -1712,105 +1711,6 @@ var ContourForm1Logic = function () {
       // anything else — no record, unknown contact_type — defaults to Student.
       defaultContactTypeToStudent();
       hideFormLoader();
-    });
-  }
-  function prefetchPost(path, payload) {
-    return fetch(PREFETCH_ENDPOINT + path, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(payload)
-    }).then(function (res) {
-      if (!res.ok) throw new Error("HTTP " + res.status);
-      return res.json();
-    });
-  }
-  function enhanceEmailPrefill() {
-    if (!PREFETCH_ENDPOINT || !PREFETCH_OTP_ENABLED) return;
-    var emailInput = q(FIELD_SELECTORS.emailTemp);
-    if (!emailInput) return;
-    var wrap = fieldWrapper(emailInput) || emailInput.parentElement;
-    var box = document.createElement("div");
-    box.id = "contour-prefill-offer";
-    box.className = "contour-prefill-offer";
-    box.style.display = "none";
-    var message = document.createElement("p");
-    message.className = "contour-prefill-offer__message";
-    box.appendChild(message);
-    var codeRow = document.createElement("div");
-    codeRow.className = "contour-prefill-offer__code-row";
-    codeRow.style.display = "none";
-    var codeInput = document.createElement("input");
-    codeInput.type = "text";
-    codeInput.inputMode = "numeric";
-    codeInput.maxLength = 6;
-    codeInput.placeholder = "6-digit code";
-    codeInput.className = "contour-prefill-offer__code-input";
-    codeRow.appendChild(codeInput);
-    var confirmBtn = document.createElement("button");
-    confirmBtn.type = "button";
-    confirmBtn.textContent = "Prefill my details";
-    confirmBtn.className = "contour-prefill-offer__confirm";
-    codeRow.appendChild(confirmBtn);
-    box.appendChild(codeRow);
-    var errorEl = document.createElement("p");
-    errorEl.className = "contour-prefill-offer__error";
-    errorEl.style.display = "none";
-    box.appendChild(errorEl);
-    wrap.appendChild(box);
-    var lastRequestedEmail = null;
-    function reset() {
-      box.style.display = "none";
-      codeRow.style.display = "none";
-      errorEl.style.display = "none";
-      codeInput.value = "";
-    }
-    emailInput.addEventListener("input", function () {
-      reset();
-      lastRequestedEmail = null;
-    });
-    emailInput.addEventListener("blur", function () {
-      var email = emailInput.value.trim();
-      if (!EMAIL_SHAPE.test(email) || email === lastRequestedEmail) return;
-      lastRequestedEmail = email;
-      prefetchPost("/request", {
-        email: email
-      }).then(function (data) {
-        if (!data || !data.found) return;
-        if (emailInput.value.trim() !== email) return;
-        message.textContent = "Looks like you've signed up with us before. We've emailed a 6-digit code to " + email + ". Enter it below and we'll fill in your details.";
-        box.style.display = "";
-        codeRow.style.display = "";
-      }).catch(function (err) {
-        console.warn("Contour Form 1 logic: prefetch request failed —", err);
-      });
-    });
-    confirmBtn.addEventListener("click", function () {
-      var email = emailInput.value.trim();
-      var code = codeInput.value.trim();
-      if (!code) return;
-      confirmBtn.disabled = true;
-      prefetchPost("/confirm", {
-        email: email,
-        code: code
-      }).then(function (data) {
-        confirmBtn.disabled = false;
-        if (data && data.ok && data.contact) {
-          applyPrefill(data.contact);
-          message.textContent = "Your details have been prefilled from your previous signup. Please review before submitting.";
-          codeRow.style.display = "none";
-          errorEl.style.display = "none";
-          return;
-        }
-        errorEl.textContent = "That code didn't match. Please check the email and try again.";
-        errorEl.style.display = "";
-      }).catch(function (err) {
-        confirmBtn.disabled = false;
-        errorEl.textContent = "Something went wrong verifying the code. Please try again.";
-        errorEl.style.display = "";
-        console.warn("Contour Form 1 logic: prefetch confirm failed —", err);
-      });
     });
   }
   var CALENDLY_URLS = {
@@ -3397,7 +3297,6 @@ var ContourForm1Logic = function () {
     });
     enforceEmailTempValidation();
     enforceDuplicateEmailValidation();
-    enhanceEmailPrefill();
     injectStudentPhoneStyles();
     enhanceStudentPhoneField();
     watchStudentPhoneField();
