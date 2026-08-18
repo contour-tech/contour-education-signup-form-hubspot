@@ -728,67 +728,82 @@ var ContourForm1Logic = function () {
   }
   // Graduated students are asked for their university, not their old high
   // school (Ramodh via Amitav, 18 Aug 2026) — grad classes are split by uni
-  // vs gap year, so a "Gap Year / Not at Uni" quick option fills the field
-  // for students not at university. Everything reverts when the year level
-  // changes away from Graduated.
-  var GAP_YEAR_VALUE = "Gap Year / Not at Uni";
+  // vs gap year. Two quick answers, "Gap Year" and "Not In University", are
+  // offered as helper-text links and pinned at the top of the suggestion
+  // list. Everything reverts when the year level changes away from
+  // Graduated.
+  var GRAD_QUICK_OPTIONS = ["Gap Year", "Not In University"];
+  function isGraduatedSelected() {
+    return getValue(FIELD_SELECTORS.yearLevel) === "Graduated";
+  }
+  function fillSchoolQuickOption(value) {
+    var schoolInput = q(FIELD_SELECTORS.schoolText);
+    if (!schoolInput) return;
+    schoolInput.value = value;
+    // "change" only — an "input" event would open the school suggestion
+    // listbox.
+    schoolInput.dispatchEvent(new Event("change", {
+      bubbles: true
+    }));
+    var codeInput = q(FIELD_SELECTORS.schoolCode);
+    var acaraInput = q(FIELD_SELECTORS.acaraId);
+    if (codeInput && codeInput.value) setHiddenValue(FIELD_SELECTORS.schoolCode, "");
+    if (acaraInput && acaraInput.value) setHiddenValue(FIELD_SELECTORS.acaraId, "");
+  }
   var schoolDescDefault = null;
   function updateSchoolFieldGraduateMode() {
     var input = q(FIELD_SELECTORS.schoolText);
     if (!input) return;
     var wrap = fieldWrapper(input);
     if (!wrap) return;
-    var isGraduated = getValue(FIELD_SELECTORS.yearLevel) === "Graduated";
+    var isGraduated = isGraduatedSelected();
     var intake = getValue(FIELD_SELECTORS.intakeYear);
-    setFieldLabelText("schoolText", isGraduated ? "University" : intake ? "School in " + intake : "Current School");
+    setFieldLabelText("schoolText", isGraduated ? (intake ? "University in " + intake : "Current University") : intake ? "School in " + intake : "Current School");
     var desc = wrap.querySelector(".hs-field-desc");
-    if (desc) {
-      if (schoolDescDefault === null) schoolDescDefault = desc.textContent;
-      desc.textContent = isGraduated ? "Start typing your university name. Not at university? Choose Gap Year / Not at Uni below." : schoolDescDefault;
-    }
-    var gapBtn = wrap.querySelector(".contour-gap-year-option");
-    if (isGraduated) {
-      if (!document.getElementById("contour-gap-year-styles")) {
-        var style = document.createElement("style");
-        style.id = "contour-gap-year-styles";
-        style.textContent = ".hs-form .contour-gap-year-option { display: inline-block; margin-top: 8px; padding: 6px 14px; border: 1px solid #0C3166; border-radius: 999px; background: #FFFFFF; color: #0C3166; font-size: 13px; font-weight: 600; cursor: pointer; }" +
-          ".hs-form .contour-gap-year-option:hover { background: #0C3166; color: #FFFFFF; }";
-        document.head.appendChild(style);
-      }
-      if (!gapBtn) {
-        gapBtn = document.createElement("button");
-        gapBtn.type = "button";
-        gapBtn.className = "contour-gap-year-option";
-        gapBtn.textContent = GAP_YEAR_VALUE;
-        gapBtn.addEventListener("click", function() {
-          var schoolInput = q(FIELD_SELECTORS.schoolText);
-          if (!schoolInput) return;
-          schoolInput.value = GAP_YEAR_VALUE;
-          // "change" only — an "input" event would open the school
-          // suggestion listbox.
-          schoolInput.dispatchEvent(new Event("change", {
-            bubbles: true
-          }));
-          var codeInput = q(FIELD_SELECTORS.schoolCode);
-          var acaraInput = q(FIELD_SELECTORS.acaraId);
-          if (codeInput && codeInput.value) setHiddenValue(FIELD_SELECTORS.schoolCode, "");
-          if (acaraInput && acaraInput.value) setHiddenValue(FIELD_SELECTORS.acaraId, "");
-        });
-        var searchWrap = wrap.querySelector(".contour-school-search") || input.parentElement;
-        searchWrap.parentNode.insertBefore(gapBtn, searchWrap.nextSibling);
-      }
-      gapBtn.style.display = "";
-    } else if (gapBtn) {
-      gapBtn.style.display = "none";
-      // A gap-year answer only makes sense for Graduated — clear it if the
-      // year level changes so a school gets entered instead.
-      if (input.value === GAP_YEAR_VALUE) {
+    if (!desc) return;
+    if (schoolDescDefault === null) schoolDescDefault = desc.textContent;
+    if (!isGraduated) {
+      desc.textContent = schoolDescDefault;
+      if (GRAD_QUICK_OPTIONS.indexOf(input.value) !== -1) {
+        // A gap-year/not-in-uni answer only makes sense for Graduated —
+        // clear it so a school gets entered instead.
         input.value = "";
         input.dispatchEvent(new Event("change", {
           bubbles: true
         }));
       }
+      return;
     }
+    if (!document.getElementById("contour-grad-quick-styles")) {
+      var style = document.createElement("style");
+      style.id = "contour-grad-quick-styles";
+      style.textContent = ".hs-form .contour-grad-quick-link { color: #0C3166; font-weight: 600; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }" +
+        ".hs-form .contour-grad-quick-link:hover { color: #3478F7; }";
+      document.head.appendChild(style);
+    }
+    // Rebuilt each pass (idempotent): plain text with the two quick answers
+    // hyperlinked — clicking one fills the field.
+    desc.textContent = "";
+    desc.appendChild(document.createTextNode("Start typing your university name. Taking a gap year or not at university? Select "));
+    GRAD_QUICK_OPTIONS.forEach(function(optionValue, index) {
+      var link = document.createElement("a");
+      link.className = "contour-grad-quick-link";
+      link.setAttribute("role", "button");
+      link.setAttribute("tabindex", "0");
+      link.textContent = optionValue;
+      link.addEventListener("click", function(e) {
+        e.preventDefault();
+        fillSchoolQuickOption(optionValue);
+      });
+      link.addEventListener("keydown", function(e) {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          fillSchoolQuickOption(optionValue);
+        }
+      });
+      desc.appendChild(link);
+      desc.appendChild(document.createTextNode(index === 0 ? " or " : "."));
+    });
   }
   function injectDisabledFieldStyles() {
     if (document.getElementById("contour-disabled-field-styles")) return;
@@ -1922,6 +1937,25 @@ var ContourForm1Logic = function () {
         return fuzzyMatchesQueryAndLocation(school, queryWords, location);
       });
     }
+    // Graduated students get "Gap Year" and "Not In University" pinned at
+    // the top of the suggestions, whatever the query.
+    function gradQuickEntries() {
+      if (!isGraduatedSelected()) return [];
+      return GRAD_QUICK_OPTIONS.map(function (name) {
+        return {
+          name: name,
+          school_code: "",
+          acara_id: ""
+        };
+      });
+    }
+    function withGradQuickFirst(matches) {
+      var quick = gradQuickEntries();
+      if (quick.length === 0) return matches;
+      return quick.concat(matches.filter(function (school) {
+        return GRAD_QUICK_OPTIONS.indexOf(school.name) === -1;
+      }));
+    }
     function renderResults(matches) {
       listbox.innerHTML = "";
       currentMatches = matches;
@@ -1996,9 +2030,10 @@ var ContourForm1Logic = function () {
       }
       var query = normalize(input.value);
       if (query.length < MIN_CHARS) {
-        closeListbox();
         if (codeInput && codeInput.value) setHiddenField(codeInput, "");
         if (acaraInput && acaraInput.value) setHiddenField(acaraInput, "");
+        var quick = gradQuickEntries();
+        if (quick.length > 0) renderResults(quick); else closeListbox();
         return;
       }
       if (codeInput && codeInput.value) setHiddenField(codeInput, "");
@@ -2006,8 +2041,14 @@ var ContourForm1Logic = function () {
       loadSchoolList().then(function (list) {
         var currentLocation = getValue(FIELD_SELECTORS.location);
         var matches = searchSchools(list, query, currentLocation).slice(0, MAX_RESULTS);
-        renderResults(matches);
+        renderResults(withGradQuickFirst(matches));
       });
+    });
+    input.addEventListener("focus", function () {
+      if (listbox.hidden && normalize(input.value).length < MIN_CHARS) {
+        var quick = gradQuickEntries();
+        if (quick.length > 0) renderResults(quick);
+      }
     });
     input.addEventListener("keydown", function (e) {
       if (listbox.hidden && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
@@ -2015,8 +2056,11 @@ var ContourForm1Logic = function () {
         if (query.length >= MIN_CHARS) {
           loadSchoolList().then(function (list) {
             var currentLocation = getValue(FIELD_SELECTORS.location);
-            renderResults(searchSchools(list, query, currentLocation).slice(0, MAX_RESULTS));
+            renderResults(withGradQuickFirst(searchSchools(list, query, currentLocation).slice(0, MAX_RESULTS)));
           });
+        } else {
+          var quick = gradQuickEntries();
+          if (quick.length > 0) renderResults(quick);
         }
         return;
       }
