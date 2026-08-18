@@ -2554,7 +2554,7 @@ var ContourForm1Logic = function () {
   // Duplicate checking covers both people the form collects: the student's
   // email and phone, and the guardian's (Amitav). Each field gets its own
   // independent check against HubSpot; the endpoint takes either ?email= or
-  // ?phone=.
+  // ?phone=, and searches every property that can hold one.
   var DUPLICATE_CHECK_FIELDS = [
     {
       selector: '[name="email_2"]',
@@ -2577,8 +2577,6 @@ var ContourForm1Logic = function () {
     {
       selector: '[name="student_phone_number"]',
       param: "phone",
-      // Only ever a duplicate of another student's number, not a guardian's.
-      scope: "student",
       message: "This student phone number is already registered. Please contact our team to update your details.",
       errorClass: "contour-duplicate-student-phone-error"
     }
@@ -2620,7 +2618,6 @@ var ContourForm1Logic = function () {
       }
       if (pending[email]) return pending[email];
       var url = PREFETCH_ENDPOINT + "/exists?" + config.param + "=" + encodeURIComponent(email);
-      if (config.scope) url += "&scope=" + encodeURIComponent(config.scope);
       var request = fetch(url).then(function (res) {
         if (!res.ok) throw new Error("HTTP " + res.status);
         return res.json();

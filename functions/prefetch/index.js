@@ -44,14 +44,21 @@ const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // Properties the form can write an email into; a hit on any of them means
 // this address already has an entry.
 // Emails are matched across every property that can hold one, whichever field
-// was typed into: the contact's own, the stand-in used by the form, and the
-// student/guardian pair (Amitav).
-const EMAIL_MATCH_PROPERTIES = ["email", "email_2", "student_email", "guardian_email"];
-// A student phone is only a duplicate against another student phone. Any other
-// number is checked against every phone property.
-const STUDENT_PHONE_MATCH_PROPERTIES = ["student_phone_number", "student_phone"];
+// was typed into: the contact's own, the stand-in used by the form, the
+// student/guardian pair, and contact_email (Amitav).
+const EMAIL_MATCH_PROPERTIES = [
+  "email",
+  "email_2",
+  "student_email",
+  "guardian_email",
+  "contact_email"
+];
+// Both phone fields search every phone property (Amitav). mobilephone matters
+// most here: ~7.5k contacts carry a number there and nowhere else, so leaving
+// it out missed real duplicates.
 const PHONE_MATCH_PROPERTIES = [
   "phone",
+  "mobilephone",
   "student_phone_number",
   "student_phone",
   "guardian_phone"
@@ -204,13 +211,10 @@ function phoneSearchDigits(raw) {
   return digits.length >= 8 ? digits : "";
 }
 
-async function contactExistsByPhone(phone, studentOnly) {
+async function contactExistsByPhone(phone) {
   const digits = phoneSearchDigits(phone);
   if (!digits) return false;
-  const properties = studentOnly
-    ? STUDENT_PHONE_MATCH_PROPERTIES
-    : PHONE_MATCH_PROPERTIES;
-  return contactExistsByProperties(properties, `*${digits}*`, "CONTAINS_TOKEN");
+  return contactExistsByProperties(PHONE_MATCH_PROPERTIES, `*${digits}*`, "CONTAINS_TOKEN");
 }
 
 functions.http("prefetch", async (req, res) => {
@@ -243,12 +247,9 @@ functions.http("prefetch", async (req, res) => {
       return res.status(400).json({ error: "invalid phone" });
     }
     try {
-      // scope=student restricts a phone check to the student phone properties,
-      // so a student's number is only ever a duplicate of another student's.
-      const studentOnly = String(req.query.scope || "") === "student";
       const exists = email
         ? await contactExistsByEmail(email)
-        : await contactExistsByPhone(phone, studentOnly);
+        : await contactExistsByPhone(phone);
       return res.json({ exists });
     } catch (err) {
       console.error("exists error:", err.message);
