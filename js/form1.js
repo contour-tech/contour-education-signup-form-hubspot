@@ -1,5 +1,5 @@
 /* Contour Form 1 logic — source of truth: github.com/contour-tech/contour-education-signup-form-hubspot */
-var ContourForm1Logic = function() {
+var ContourForm1Logic = function () {
   "use strict";
   var FIELD_SELECTORS = {
     contactType: '[name="web_form_contact_type"]',
@@ -20,11 +20,12 @@ var ContourForm1Logic = function() {
     signedUpBy: '[name="signed_up_by"]'
   };
   var FIELD_WRAPPER_CLASS = "hs-form-field";
-  var VALID_LOCATIONS = [ "VIC", "NSW", "QLD", "SA", "ACT", "TAS", "WA", "NT", "United Kingdom", "New Zealand", "Overseas" ];
-  // All three brands share the single Contour navy accent (Amrit, 18 Aug
-  // 2026): hover fades in the soft tint and wipes the navy colour across the
-  // logo; selection keeps the accent on the border, ring and badge.
-  var PROGRAM_CARD_CONFIG = [ {
+  var VALID_LOCATIONS = ["VIC", "NSW", "QLD", "SA", "ACT", "TAS", "WA", "NT", "United Kingdom", "New Zealand", "Overseas"];
+  // accent/accentSoft/accentContrast reuse the retired pill palette per
+  // brand: hover wipes in the soft tint, selection keeps the accent on the
+  // border, ring and badge. accentContrast is the badge tick colour (navy on
+  // the lime TestPrep accent, white elsewhere).
+  var PROGRAM_CARD_CONFIG = [{
     match: /education|tutoring/i,
     title: "High School Tutoring",
     description: "Expert tutoring for in-depth understanding and results",
@@ -48,7 +49,7 @@ var ContourForm1Logic = function() {
     accent: "#0C3166",
     accentSoft: "rgba(12, 49, 102, 0.06)",
     accentContrast: "#FFFFFF"
-  } ];
+  }];
   var UK_TOKEN = "United Kingdom";
   var UCAT_UK_PATTERN = /UCAT\s*\(UK\)/i;
   var UCAT_ANZ_PATTERN = /UCAT\s*\(ANZ\)/i;
@@ -57,7 +58,7 @@ var ContourForm1Logic = function() {
   // value logic (the matrix is a 2027 planning view and omits 2026-only
   // subjects like VSE Core).
   var SUBJECT_MATRIX_INTAKE = "2027";
-  var SUBJECT_MATRIX = {"VIC":{"Year 5":["VSC-EN05","VSC-MA05","VSC-WR05"],"Year 6":["VIC-EN07","VIC-EN08","VIC-MA07","VIC-MA08","VIC-SC07","VIC-SC08","VSE-EN06","VSE-MA06","VSE-WR06"],"Year 7":["VIC-EN07","VIC-EN08","VIC-EN09","VIC-MA07","VIC-MA08","VIC-MA09","VIC-SC07","VIC-SC08","VIC-SC09","VSE-EN07","VSE-MA07","VSE-WR07"],"Year 8":["VIC-EN08","VIC-EN09","VIC-EN10","VIC-MA08","VIC-MA09","VIC-MA1A","VIC-SC08","VIC-SC09","VIC-SC10","VSE-EN08","VSE-MA08","VSE-WR08"],"Year 9":["VCE-BI12","VCE-CH12","VCE-EL12","VCE-EN12","VCE-MM12","VCE-PH12","VCE-SM12","VIC-EN09","VIC-EN10","VIC-MA09","VIC-MA1A","VIC-SC09","VIC-SC10"],"Year 10":["MD-INT","UCAT-ANZ-CORE","VCE-BI12","VCE-BI34","VCE-CH12","VCE-CH34","VCE-EL12","VCE-EL34","VCE-EN12","VCE-EN34","VCE-MM12","VCE-MM34","VCE-PH12","VCE-PH34","VCE-SM12","VCE-SM34","VIC-EN10","VIC-MA1A","VIC-SC10"],"Year 11":["MD-INT","UCAT-ANZ-CORE","VCE-BI12","VCE-BI34","VCE-CH12","VCE-CH34","VCE-EL12","VCE-EL34","VCE-EN12","VCE-EN34","VCE-MM12","VCE-MM34","VCE-PH12","VCE-PH34","VCE-SM12","VCE-SM34"],"Year 12":["MD-INT","UCAT-ANZ-MAST","VCE-BI34","VCE-CH34","VCE-EL34","VCE-EN34","VCE-MM34","VCE-PH34","VCE-SM34"],"Graduated":["GAMSAT","MD-INT","UCAT-ANZ-MAST"]},"QLD":{"Year 6":["QLD-EN07","QLD-EN08","QLD-MA07","QLD-MA08","QLD-SC07","QLD-SC08"],"Year 7":["QLD-EN07","QLD-EN08","QLD-EN09","QLD-MA07","QLD-MA08","QLD-MA09","QLD-SC07","QLD-SC08","QLD-SC09"],"Year 8":["QLD-EN08","QLD-EN09","QLD-EN10","QLD-MA08","QLD-MA09","QLD-MA1A","QLD-SC08","QLD-SC09","QLD-SC10"],"Year 9":["QCE-BI12","QCE-CH12","QCE-MM12","QCE-PH12","QCE-SM12","QLD-EN09","QLD-EN10","QLD-MA09","QLD-MA1A","QLD-SC09","QLD-SC10"],"Year 10":["MD-INT","QCE-BI12","QCE-BI34","QCE-CH12","QCE-CH34","QCE-MM12","QCE-MM34","QCE-PH12","QCE-PH34","QCE-SM12","QCE-SM34","QLD-EN10","QLD-MA1A","QLD-SC10","UCAT-ANZ-CORE"],"Year 11":["MD-INT","QCE-BI12","QCE-BI34","QCE-CH12","QCE-CH34","QCE-MM12","QCE-MM34","QCE-PH12","QCE-PH34","QCE-SM12","QCE-SM34","UCAT-ANZ-CORE"],"Year 12":["MD-INT","QCE-BI34","QCE-CH34","QCE-MM34","QCE-PH34","QCE-SM34","UCAT-ANZ-MAST"],"Graduated":["GAMSAT","MD-INT","UCAT-ANZ-MAST"]},"WA":{"Year 10":["MD-INT","UCAT-ANZ-CORE"],"Year 11":["MD-INT","UCAT-ANZ-CORE"],"Year 12":["MD-INT","UCAT-ANZ-MAST"],"Graduated":["GAMSAT","MD-INT","UCAT-ANZ-MAST"]},"SA":{"Year 10":["MD-INT","UCAT-ANZ-CORE"],"Year 11":["MD-INT","UCAT-ANZ-CORE"],"Year 12":["MD-INT","UCAT-ANZ-MAST"],"Graduated":["GAMSAT","MD-INT","UCAT-ANZ-MAST"]},"NSW":{"Year 6":["NSW-EN07","NSW-EN08","NSW-MA07","NSW-MA08","NSW-SC07","NSW-SC08"],"Year 7":["NSW-EN07","NSW-EN08","NSW-EN09","NSW-MA07","NSW-MA08","NSW-MA09","NSW-SC07","NSW-SC08","NSW-SC09"],"Year 8":["NSW-EN08","NSW-EN09","NSW-EN10","NSW-MA08","NSW-MA09","NSW-MA10","NSW-SC08","NSW-SC09","NSW-SC10"],"Year 9":["NSW-EN09","NSW-EN10","NSW-MA09","NSW-MA10","NSW-SC09","NSW-SC10","PRE-BIOL","PRE-CHEM","PRE-MADV","PRE-MAE1","PRE-PHYS"],"Year 10":["HSC-BIOL","HSC-CHEM","HSC-MADV","HSC-MAE1","HSC-MAE2","HSC-PHYS","MD-INT","NSW-EN10","NSW-MA10","NSW-SC10","PRE-BIOL","PRE-CHEM","PRE-MADV","PRE-MAE1","PRE-PHYS","UCAT-ANZ-CORE"],"Year 11":["HSC-BIOL","HSC-CHEM","HSC-MADV","HSC-MAE1","HSC-MAE2","HSC-PHYS","MD-INT","PRE-BIOL","PRE-CHEM","PRE-MADV","PRE-MAE1","PRE-PHYS","UCAT-ANZ-CORE"],"Year 12":["HSC-BIOL","HSC-CHEM","HSC-MADV","HSC-MAE1","HSC-MAE2","HSC-PHYS","MD-INT","UCAT-ANZ-MAST"],"Graduated":["GAMSAT","MD-INT","UCAT-ANZ-MAST"]},"TAS":{"Year 10":["MD-INT","UCAT-ANZ-CORE"],"Year 11":["MD-INT","UCAT-ANZ-CORE"],"Year 12":["MD-INT","UCAT-ANZ-MAST"],"Graduated":["GAMSAT","MD-INT","UCAT-ANZ-MAST"]},"ACT":{"Year 10":["MD-INT","UCAT-ANZ-CORE"],"Year 11":["MD-INT","UCAT-ANZ-CORE"],"Year 12":["MD-INT","UCAT-ANZ-MAST"],"Graduated":["GAMSAT","MD-INT","UCAT-ANZ-MAST"]},"NT":{"Year 10":["MD-INT","UCAT-ANZ-CORE"],"Year 11":["MD-INT","UCAT-ANZ-CORE"],"Year 12":["MD-INT","UCAT-ANZ-MAST"],"Graduated":["GAMSAT","MD-INT","UCAT-ANZ-MAST"]},"NZ":{"Year 11":["MD-INT","UCAT-ANZ-CORE"],"Year 12":["MD-INT","UCAT-ANZ-CORE"],"Year 13":["MD-INT","UCAT-ANZ-MAST"],"Graduated":["GAMSAT","MD-INT","UCAT-ANZ-MAST"]},"UK":{"Year 10":["MD-INT","UCAT-UK-MAST"],"Year 11":["MD-INT","UCAT-UK-MAST"],"Year 12":["MD-INT","UCAT-UK-MAST"],"Year 13":["MD-INT","UCAT-UK-MAST"],"Graduated":["GAMSAT","MD-INT","UCAT-UK-MAST"]},"INTERNATIONAL":{"Year 10":["MD-INT","UCAT-ANZ-CORE"],"Year 11":["MD-INT","UCAT-ANZ-CORE"],"Year 12":["MD-INT","UCAT-ANZ-MAST"],"Year 13":["MD-INT","UCAT-ANZ-MAST"],"Graduated":["GAMSAT","MD-INT","UCAT-ANZ-MAST"]}};
+  var SUBJECT_MATRIX = { "VIC": { "Year 5": ["VSC-EN05", "VSC-MA05", "VSC-WR05"], "Year 6": ["VIC-EN07", "VIC-EN08", "VIC-MA07", "VIC-MA08", "VIC-SC07", "VIC-SC08", "VSE-EN06", "VSE-MA06", "VSE-WR06"], "Year 7": ["VIC-EN07", "VIC-EN08", "VIC-EN09", "VIC-MA07", "VIC-MA08", "VIC-MA09", "VIC-SC07", "VIC-SC08", "VIC-SC09", "VSE-EN07", "VSE-MA07", "VSE-WR07"], "Year 8": ["VIC-EN08", "VIC-EN09", "VIC-EN10", "VIC-MA08", "VIC-MA09", "VIC-MA1A", "VIC-SC08", "VIC-SC09", "VIC-SC10", "VSE-EN08", "VSE-MA08", "VSE-WR08"], "Year 9": ["VCE-BI12", "VCE-CH12", "VCE-EL12", "VCE-EN12", "VCE-MM12", "VCE-PH12", "VCE-SM12", "VIC-EN09", "VIC-EN10", "VIC-MA09", "VIC-MA1A", "VIC-SC09", "VIC-SC10"], "Year 10": ["MD-INT", "UCAT-ANZ-CORE", "VCE-BI12", "VCE-BI34", "VCE-CH12", "VCE-CH34", "VCE-EL12", "VCE-EL34", "VCE-EN12", "VCE-EN34", "VCE-MM12", "VCE-MM34", "VCE-PH12", "VCE-PH34", "VCE-SM12", "VCE-SM34", "VIC-EN10", "VIC-MA1A", "VIC-SC10"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE", "VCE-BI12", "VCE-BI34", "VCE-CH12", "VCE-CH34", "VCE-EL12", "VCE-EL34", "VCE-EN12", "VCE-EN34", "VCE-MM12", "VCE-MM34", "VCE-PH12", "VCE-PH34", "VCE-SM12", "VCE-SM34"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST", "VCE-BI34", "VCE-CH34", "VCE-EL34", "VCE-EN34", "VCE-MM34", "VCE-PH34", "VCE-SM34"], "Graduated": ["GAMSAT", "MD-INT", "UCAT-ANZ-MAST"] }, "QLD": { "Year 6": ["QLD-EN07", "QLD-EN08", "QLD-MA07", "QLD-MA08", "QLD-SC07", "QLD-SC08"], "Year 7": ["QLD-EN07", "QLD-EN08", "QLD-EN09", "QLD-MA07", "QLD-MA08", "QLD-MA09", "QLD-SC07", "QLD-SC08", "QLD-SC09"], "Year 8": ["QLD-EN08", "QLD-EN09", "QLD-EN10", "QLD-MA08", "QLD-MA09", "QLD-MA1A", "QLD-SC08", "QLD-SC09", "QLD-SC10"], "Year 9": ["QCE-BI12", "QCE-CH12", "QCE-MM12", "QCE-PH12", "QCE-SM12", "QLD-EN09", "QLD-EN10", "QLD-MA09", "QLD-MA1A", "QLD-SC09", "QLD-SC10"], "Year 10": ["MD-INT", "QCE-BI12", "QCE-BI34", "QCE-CH12", "QCE-CH34", "QCE-MM12", "QCE-MM34", "QCE-PH12", "QCE-PH34", "QCE-SM12", "QCE-SM34", "QLD-EN10", "QLD-MA1A", "QLD-SC10", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "QCE-BI12", "QCE-BI34", "QCE-CH12", "QCE-CH34", "QCE-MM12", "QCE-MM34", "QCE-PH12", "QCE-PH34", "QCE-SM12", "QCE-SM34", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "QCE-BI34", "QCE-CH34", "QCE-MM34", "QCE-PH34", "QCE-SM34", "UCAT-ANZ-MAST"], "Graduated": ["GAMSAT", "MD-INT", "UCAT-ANZ-MAST"] }, "WA": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["GAMSAT", "MD-INT", "UCAT-ANZ-MAST"] }, "SA": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["GAMSAT", "MD-INT", "UCAT-ANZ-MAST"] }, "NSW": { "Year 6": ["NSW-EN07", "NSW-EN08", "NSW-MA07", "NSW-MA08", "NSW-SC07", "NSW-SC08"], "Year 7": ["NSW-EN07", "NSW-EN08", "NSW-EN09", "NSW-MA07", "NSW-MA08", "NSW-MA09", "NSW-SC07", "NSW-SC08", "NSW-SC09"], "Year 8": ["NSW-EN08", "NSW-EN09", "NSW-EN10", "NSW-MA08", "NSW-MA09", "NSW-MA10", "NSW-SC08", "NSW-SC09", "NSW-SC10"], "Year 9": ["NSW-EN09", "NSW-EN10", "NSW-MA09", "NSW-MA10", "NSW-SC09", "NSW-SC10", "PRE-BIOL", "PRE-CHEM", "PRE-MADV", "PRE-MAE1", "PRE-PHYS"], "Year 10": ["HSC-BIOL", "HSC-CHEM", "HSC-MADV", "HSC-MAE1", "HSC-MAE2", "HSC-PHYS", "MD-INT", "NSW-EN10", "NSW-MA10", "NSW-SC10", "PRE-BIOL", "PRE-CHEM", "PRE-MADV", "PRE-MAE1", "PRE-PHYS", "UCAT-ANZ-CORE"], "Year 11": ["HSC-BIOL", "HSC-CHEM", "HSC-MADV", "HSC-MAE1", "HSC-MAE2", "HSC-PHYS", "MD-INT", "PRE-BIOL", "PRE-CHEM", "PRE-MADV", "PRE-MAE1", "PRE-PHYS", "UCAT-ANZ-CORE"], "Year 12": ["HSC-BIOL", "HSC-CHEM", "HSC-MADV", "HSC-MAE1", "HSC-MAE2", "HSC-PHYS", "MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["GAMSAT", "MD-INT", "UCAT-ANZ-MAST"] }, "TAS": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["GAMSAT", "MD-INT", "UCAT-ANZ-MAST"] }, "ACT": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["GAMSAT", "MD-INT", "UCAT-ANZ-MAST"] }, "NT": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["GAMSAT", "MD-INT", "UCAT-ANZ-MAST"] }, "NZ": { "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-CORE"], "Year 13": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["GAMSAT", "MD-INT", "UCAT-ANZ-MAST"] }, "UK": { "Year 10": ["MD-INT", "UCAT-UK-MAST"], "Year 11": ["MD-INT", "UCAT-UK-MAST"], "Year 12": ["MD-INT", "UCAT-UK-MAST"], "Year 13": ["MD-INT", "UCAT-UK-MAST"], "Graduated": ["GAMSAT", "MD-INT", "UCAT-UK-MAST"] }, "INTERNATIONAL": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Year 13": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["GAMSAT", "MD-INT", "UCAT-ANZ-MAST"] } };
   // UCAT enrolments are closed until later in September 2026 (Ramodh via Luke,
   // 12 Aug 2026). While closed, UCAT signups are waitlist registrations, not
   // enrolments: the Welcome Consultation scheduler is hidden and a waitlist
@@ -73,7 +74,7 @@ var ContourForm1Logic = function() {
   // nothing else needs changing.
   var WC_BOOKINGS_OPEN = false;
   var WC_OPEN_SOON_NOTE = "Welcome Consultation bookings open soon. You can submit this form now — our team will contact you to book your Welcome Consultation once bookings open.";
-  var CATEGORY_DISPLAY_ORDER = [ "Mathematics", "Science", "English", "TestPrep", "MedPrep", "Other" ];
+  var CATEGORY_DISPLAY_ORDER = ["Mathematics", "Science", "English", "TestPrep", "MedPrep", "Other"];
   var CATEGORY_DISPLAY_NAMES = {
     TestPrep: "Selective Entry & Scholarship",
     MedPrep: "Medical Entry"
@@ -152,14 +153,14 @@ var ContourForm1Logic = function() {
   }
   function structuredYearListToLevels(yearStr) {
     if (!yearStr || yearStr === "ALL") return null;
-    return yearStr.split(",").map(function(token) {
+    return yearStr.split(",").map(function (token) {
       var trimmed = token.trim();
       return trimmed === "Graduated" ? "Graduated" : "Year " + trimmed;
     });
   }
   function classificationFromStructuredValue(parsed) {
     var state = !parsed.state || parsed.state === "ALL" ? null : parsed.state;
-    var intake = parsed.intake ? parsed.intake.split(",").map(function(s) {
+    var intake = parsed.intake ? parsed.intake.split(",").map(function (s) {
       return s.trim();
     }) : null;
     return {
@@ -223,7 +224,7 @@ var ContourForm1Logic = function() {
     return el ? el.value || "" : "";
   }
   function getCheckedValues(selector) {
-    return qAll(selector + ":checked").map(function(el) {
+    return qAll(selector + ":checked").map(function (el) {
       return el.value;
     });
   }
@@ -279,7 +280,7 @@ var ContourForm1Logic = function() {
   }
   function enhanceCampusLabels() {
     var options = qAll(FIELD_SELECTORS.campus);
-    options.forEach(function(opt) {
+    options.forEach(function (opt) {
       var wrap = optionWrapper(opt);
       if (!wrap || wrap.querySelector(".contour-campus-address")) return;
       var span = wrap.querySelector("input + span");
@@ -332,7 +333,7 @@ var ContourForm1Logic = function() {
     injectProgramCardAccentStyles();
     var checkboxes = qAll(FIELD_SELECTORS.programInterest);
     var gridApplied = false;
-    checkboxes.forEach(function(inputEl, index) {
+    checkboxes.forEach(function (inputEl, index) {
       if (inputEl.closest(".contour-program-card")) return;
       var config = matchCardConfig(inputEl, index);
       var nativeWrapper = inputEl.closest("li") || inputEl.parentElement;
@@ -407,7 +408,7 @@ var ContourForm1Logic = function() {
     var observer = new MutationObserver(apply);
     observer.observe(ul, {
       attributes: true,
-      attributeFilter: [ "class" ]
+      attributeFilter: ["class"]
     });
   }
   function enforceContactTypeLayout(ul) {
@@ -422,20 +423,20 @@ var ContourForm1Logic = function() {
     var observer = new MutationObserver(apply);
     observer.observe(ul, {
       attributes: true,
-      attributeFilter: [ "class" ]
+      attributeFilter: ["class"]
     });
   }
   function enforceContactTypeLayoutIfPresent() {
     var contactTypeUl = formRoot.querySelector(".hs-fieldtype-radio .input > ul.inputs-list");
     if (contactTypeUl) enforceContactTypeLayout(contactTypeUl);
   }
-  var CONTACT_TYPE_ILLUSTRATIONS = [ {
+  var CONTACT_TYPE_ILLUSTRATIONS = [{
     match: /student/i,
     url: "https://cdn.prod.website-files.com/696ed06d2e62378f0a51f2d4/6a66e39e97ac4cd2dff8015f_Workbook%20Outline%202.avif"
   }, {
     match: /guardian/i,
     url: "https://cdn.prod.website-files.com/696ed06d2e62378f0a51f2d4/69af5e98ec0cb906f867e85d_Special%20events.avif"
-  } ];
+  }];
   function matchContactTypeIllustration(labelText) {
     for (var i = 0; i < CONTACT_TYPE_ILLUSTRATIONS.length; i++) {
       if (CONTACT_TYPE_ILLUSTRATIONS[i].match.test(labelText)) return CONTACT_TYPE_ILLUSTRATIONS[i];
@@ -444,7 +445,7 @@ var ContourForm1Logic = function() {
   }
   function enhanceContactTypeIllustrations() {
     var radios = qAll(FIELD_SELECTORS.contactType);
-    radios.forEach(function(radio) {
+    radios.forEach(function (radio) {
       var wrap = optionWrapper(radio);
       if (!wrap || wrap.querySelector(".contour-contact-type-illustration")) return;
       var label = wrap.querySelector("label.hs-form-radio-display");
@@ -488,7 +489,7 @@ var ContourForm1Logic = function() {
   }
   function createRequiredMarkUpdater(fieldSelectorKey, className) {
     var mark = null;
-    return function(shouldShow) {
+    return function (shouldShow) {
       if (!mark) {
         var field = q(FIELD_SELECTORS[fieldSelectorKey]);
         var fieldWrap = field ? fieldWrapper(field) : null;
@@ -514,7 +515,7 @@ var ContourForm1Logic = function() {
     var options = qAll(FIELD_SELECTORS.programInterest);
     var anyEligible = false;
     var eligibleOptions = [];
-    options.forEach(function(opt) {
+    options.forEach(function (opt) {
       var programValue = opt.value;
       var eligible = !!location && !!yearLevel && !!intakeYear && isProgramEligibleFromSubjects(programValue, location, yearLevel, intakeYear);
       if (eligible) {
@@ -526,7 +527,7 @@ var ContourForm1Logic = function() {
       if (!eligible) setCheckboxChecked(opt, false);
       opt.disabled = !eligible;
     });
-    var anyChecked = options.some(function(opt) {
+    var anyChecked = options.some(function (opt) {
       return opt.checked;
     });
     if (eligibleOptions.length === 1 && !anyChecked) {
@@ -585,10 +586,10 @@ var ContourForm1Logic = function() {
   function getNoProgramsMessageText(location, yearLevel, intakeYear) {
     var DEFAULT_MESSAGE = "We don't currently offer any programs for your location and year level, join the waitlist to be notified when new programs become available";
     if (intakeYear !== "2026") return DEFAULT_MESSAGE;
-    var programValues = qAll(FIELD_SELECTORS.programInterest).map(function(opt) {
+    var programValues = qAll(FIELD_SELECTORS.programInterest).map(function (opt) {
       return opt.value;
     });
-    var wouldBeEligibleFor2027 = programValues.some(function(programValue) {
+    var wouldBeEligibleFor2027 = programValues.some(function (programValue) {
       return isProgramEligibleFromSubjects(programValue, location, yearLevel, "2027");
     });
     if (wouldBeEligibleFor2027) {
@@ -608,7 +609,7 @@ var ContourForm1Logic = function() {
       setCheckboxChecked(waitlistField, false);
     }
   }
-  var YEAR_13_LOCATIONS = [ "United Kingdom", "New Zealand", "Overseas" ];
+  var YEAR_13_LOCATIONS = ["United Kingdom", "New Zealand", "Overseas"];
   function evaluateYearLevelOptions() {
     var select = q(FIELD_SELECTORS.yearLevel);
     if (!select) return;
@@ -618,7 +619,7 @@ var ContourForm1Logic = function() {
     // Year 5 has no 2026 offering publicly, but internal test rounds need it
     // selectable so a test:true Year 5 subject can be reached in either intake.
     var year5Blocked = intakeYear === "2026" && !isInternalMode();
-    Array.prototype.forEach.call(select.options, function(opt) {
+    Array.prototype.forEach.call(select.options, function (opt) {
       if (opt.value === "Year 13") {
         opt.hidden = !year13Eligible;
         opt.disabled = !year13Eligible;
@@ -709,7 +710,7 @@ var ContourForm1Logic = function() {
     if (document.getElementById("contour-disabled-field-styles")) return;
     var style = document.createElement("style");
     style.id = "contour-disabled-field-styles";
-    style.textContent = ".hs-form select:disabled, .hs-form input:disabled { opacity: 0.55; background-color: #f1f0ec; cursor: not-allowed; }" + ".contour-prefill-offer { margin-top: 8px; padding: 12px; border: 1px solid #d8d5cc; border-radius: 8px; background: #faf9f6; }" + ".contour-prefill-offer__message { margin: 0 0 8px; font-size: 14px; }" + ".contour-prefill-offer__code-row { display: flex; gap: 8px; align-items: center; }" + ".contour-prefill-offer__code-input { max-width: 140px; }" + ".contour-prefill-offer__confirm { cursor: pointer; }" + ".contour-prefill-offer__error { margin: 8px 0 0; color: #b3261e; font-size: 13px; }" + ".contour-prefill-banner { display: flex; align-items: flex-start; gap: 14px; margin: 0 0 24px; padding: 18px 22px; border: 1px solid rgba(12, 49, 102, 0.12); border-radius: 16px; background: #FFFFFF; box-shadow: 0 1px 3px rgba(12, 49, 102, 0.06); }" + ".contour-prefill-banner__badge { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; background: #D7FC3D; color: #0C3166; font-size: 15px; font-weight: 700; }" + ".contour-prefill-banner__content { flex: 1; min-width: 0; }" + ".contour-prefill-banner__title { margin: 0 0 2px; font-size: 15px; font-weight: 700; color: #0C3166; }" + ".contour-prefill-banner__text { margin: 0 0 8px; font-size: 13.5px; line-height: 1.45; color: #6b7280; }" + ".contour-prefill-banner__reset { display: inline-block; font-size: 13px; font-weight: 600; color: #0C3166; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }" + ".contour-prefill-banner__reset:hover { color: #0540F2; }" + ".contour-subject-summary { margin: 24px 0; padding: 20px 22px; border: 1px solid rgba(12, 49, 102, 0.12); border-radius: 16px; background: #FFFFFF; box-shadow: 0 1px 3px rgba(12, 49, 102, 0.06); }" + ".contour-subject-summary__heading { font-size: 15px; font-weight: 700; color: #0C3166; margin-bottom: 14px; }" + ".contour-subject-summary__grid { display: flex; flex-wrap: wrap; gap: 24px; }" + ".contour-subject-summary__col { flex: 1 1 180px; min-width: 160px; }" + ".contour-subject-summary__col-title { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #6b7280; margin-bottom: 8px; }" + ".contour-subject-summary__chips { display: flex; flex-wrap: wrap; gap: 6px; }" + ".contour-subject-chip { display: inline-block; padding: 5px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 600; line-height: 1.3; }" + ".contour-subject-chip--navy { background: #092749; color: #FFFFFF; }" + ".contour-subject-chip--lime { background: #D7FC3D; color: #0C3166; }" + ".contour-subject-chip--blue { background: #007AFF; color: #FFFFFF; }" + ".contour-welcome-consultation__waitlist-note { margin: 0; padding: 14px 18px; border: 1px solid #f0d9a6; border-radius: 12px; background: #FFF3D6; color: #8a5a00; font-size: 14px; line-height: 1.5; font-weight: 600; }" +".contour-form-loader { display: flex; flex-direction: column; align-items: center; padding: 60px 0; }" + ".contour-form-loader__spinner { width: 36px; height: 36px; border: 4px solid #e3e0d8; border-top-color: #1a1a2e; border-radius: 50%; animation: contour-spin 0.8s linear infinite; }" + "@keyframes contour-spin { to { transform: rotate(360deg); } }" + ".contour-form-loader__text { margin-top: 12px; font-size: 14px; }";
+    style.textContent = ".hs-form select:disabled, .hs-form input:disabled { opacity: 0.55; background-color: #f1f0ec; cursor: not-allowed; }" + ".contour-prefill-offer { margin-top: 8px; padding: 12px; border: 1px solid #d8d5cc; border-radius: 8px; background: #faf9f6; }" + ".contour-prefill-offer__message { margin: 0 0 8px; font-size: 14px; }" + ".contour-prefill-offer__code-row { display: flex; gap: 8px; align-items: center; }" + ".contour-prefill-offer__code-input { max-width: 140px; }" + ".contour-prefill-offer__confirm { cursor: pointer; }" + ".contour-prefill-offer__error { margin: 8px 0 0; color: #b3261e; font-size: 13px; }" + ".contour-prefill-banner { display: flex; align-items: flex-start; gap: 14px; margin: 0 0 24px; padding: 18px 22px; border: 1px solid rgba(12, 49, 102, 0.12); border-radius: 16px; background: #FFFFFF; box-shadow: 0 1px 3px rgba(12, 49, 102, 0.06); }" + ".contour-prefill-banner__badge { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; background: #D7FC3D; color: #0C3166; font-size: 15px; font-weight: 700; }" + ".contour-prefill-banner__content { flex: 1; min-width: 0; }" + ".contour-prefill-banner__title { margin: 0 0 2px; font-size: 15px; font-weight: 700; color: #0C3166; }" + ".contour-prefill-banner__text { margin: 0 0 8px; font-size: 13.5px; line-height: 1.45; color: #6b7280; }" + ".contour-prefill-banner__reset { display: inline-block; font-size: 13px; font-weight: 600; color: #0C3166; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }" + ".contour-prefill-banner__reset:hover { color: #0540F2; }" + ".contour-subject-summary { margin: 24px 0; padding: 20px 22px; border: 1px solid rgba(12, 49, 102, 0.12); border-radius: 16px; background: #FFFFFF; box-shadow: 0 1px 3px rgba(12, 49, 102, 0.06); }" + ".contour-subject-summary__heading { font-size: 15px; font-weight: 700; color: #0C3166; margin-bottom: 14px; }" + ".contour-subject-summary__grid { display: flex; flex-wrap: wrap; gap: 24px; }" + ".contour-subject-summary__col { flex: 1 1 180px; min-width: 160px; }" + ".contour-subject-summary__col-title { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #6b7280; margin-bottom: 8px; }" + ".contour-subject-summary__chips { display: flex; flex-wrap: wrap; gap: 6px; }" + ".contour-subject-chip { display: inline-block; padding: 5px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 600; line-height: 1.3; }" + ".contour-subject-chip--navy { background: #092749; color: #FFFFFF; }" + ".contour-subject-chip--lime { background: #D7FC3D; color: #0C3166; }" + ".contour-subject-chip--blue { background: #007AFF; color: #FFFFFF; }" + ".contour-welcome-consultation__waitlist-note { margin: 0; padding: 14px 18px; border: 1px solid #f0d9a6; border-radius: 12px; background: #FFF3D6; color: #8a5a00; font-size: 14px; line-height: 1.5; font-weight: 600; }" + ".contour-form-loader { display: flex; flex-direction: column; align-items: center; padding: 60px 0; }" + ".contour-form-loader__spinner { width: 36px; height: 36px; border: 4px solid #e3e0d8; border-top-color: #1a1a2e; border-radius: 50%; animation: contour-spin 0.8s linear infinite; }" + "@keyframes contour-spin { to { transform: rotate(360deg); } }" + ".contour-form-loader__text { margin-top: 12px; font-size: 14px; }";
     document.head.appendChild(style);
   }
   function getClassification(inputEl) {
@@ -746,7 +747,7 @@ var ContourForm1Logic = function() {
     var listParent = firstWrapper ? firstWrapper.parentNode : null;
     if (!listParent) return;
     var buckets = {};
-    checkboxes.forEach(function(inputEl) {
+    checkboxes.forEach(function (inputEl) {
       var classification = getClassification(inputEl);
       var category = classification.category || "Other";
       if (!buckets[category]) buckets[category] = [];
@@ -755,10 +756,10 @@ var ContourForm1Logic = function() {
     // 3/4 subjects sit above their 1/2 counterparts (Amitav's request).
     // Stable partition per category: level-3/4 options (codes ending in 34)
     // first, everything else after in HubSpot order.
-    Object.keys(buckets).forEach(function(category) {
+    Object.keys(buckets).forEach(function (category) {
       var level34 = [];
       var otherLevels = [];
-      buckets[category].forEach(function(li) {
+      buckets[category].forEach(function (li) {
         var input = li ? li.querySelector("input") : null;
         var code = input ? getClassification(input).code : null;
         (code && /34$/.test(code) ? level34 : otherLevels).push(li);
@@ -769,7 +770,7 @@ var ContourForm1Logic = function() {
     // then GAMSAT (Nick's request) — HubSpot serves them roughly reversed.
     // Rank sort keeps unknown future codes between Interviews and GAMSAT.
     if (buckets.MedPrep) {
-      var medRank = function(li) {
+      var medRank = function (li) {
         var input = li ? li.querySelector("input") : null;
         if (!input) return 2;
         var classification = getClassification(input);
@@ -778,18 +779,18 @@ var ContourForm1Logic = function() {
         if (classification.code === "GAMSAT") return 3;
         return 2;
       };
-      buckets.MedPrep = buckets.MedPrep.map(function(li, index) {
+      buckets.MedPrep = buckets.MedPrep.map(function (li, index) {
         return { li: li, rank: medRank(li), index: index };
-      }).sort(function(a, b) {
+      }).sort(function (a, b) {
         return a.rank - b.rank || a.index - b.index;
-      }).map(function(entry) {
+      }).map(function (entry) {
         return entry.li;
       });
     }
-    var orderedCategories = CATEGORY_DISPLAY_ORDER.concat(Object.keys(buckets).filter(function(c) {
+    var orderedCategories = CATEGORY_DISPLAY_ORDER.concat(Object.keys(buckets).filter(function (c) {
       return CATEGORY_DISPLAY_ORDER.indexOf(c) === -1;
     }));
-    orderedCategories.forEach(function(category) {
+    orderedCategories.forEach(function (category) {
       var items = buckets[category];
       if (!items || items.length === 0) return;
       var header = document.createElement("li");
@@ -797,7 +798,7 @@ var ContourForm1Logic = function() {
       header.textContent = CATEGORY_DISPLAY_NAMES[category] || category;
       listParent.appendChild(header);
       categoryHeaderMap[category] = header;
-      items.forEach(function(li) {
+      items.forEach(function (li) {
         listParent.appendChild(li);
       });
     });
@@ -810,7 +811,7 @@ var ContourForm1Logic = function() {
     var options = qAll(FIELD_SELECTORS.interestedSubjects);
     var anyVisible = false;
     var anyVisibleByCategory = {};
-    options.forEach(function(opt) {
+    options.forEach(function (opt) {
       var classification = getClassification(opt);
       relabelTestPrepSubject(opt, classification);
       stripStateSuffixFromLabel(opt, classification);
@@ -838,7 +839,7 @@ var ContourForm1Logic = function() {
         anyVisibleByCategory[category] = true;
       }
     });
-    Object.keys(categoryHeaderMap).forEach(function(category) {
+    Object.keys(categoryHeaderMap).forEach(function (category) {
       categoryHeaderMap[category].style.display = anyVisibleByCategory[category] ? "" : "none";
     });
     toggleFieldWrapper(q(FIELD_SELECTORS.interestedSubjects), anyVisible);
@@ -939,12 +940,12 @@ var ContourForm1Logic = function() {
   function evaluateSubjectExclusions() {
     var options = qAll(FIELD_SELECTORS.interestedSubjects);
     var checkedByKey = {};
-    options.forEach(function(opt) {
+    options.forEach(function (opt) {
       if (!opt.checked) return;
       var key = subjectExclusionKey(getClassification(opt));
       if (key) checkedByKey[key] = opt;
     });
-    options.forEach(function(opt) {
+    options.forEach(function (opt) {
       var wrap = optionWrapper(opt);
       var isVisible = wrap && wrap.style.display !== "none";
       var key = subjectExclusionKey(getClassification(opt));
@@ -989,7 +990,7 @@ var ContourForm1Logic = function() {
     var options = qAll(FIELD_SELECTORS.campus);
     var isMedPrepOnly = selectedPrograms.length === 1 && selectedPrograms[0] === "MedPrep";
     if (isMedPrepOnly) {
-      options.forEach(function(opt) {
+      options.forEach(function (opt) {
         var isOnline = getCampusClassification(opt).code === "ONLINE";
         setCheckboxChecked(opt, isOnline);
       });
@@ -998,7 +999,7 @@ var ContourForm1Logic = function() {
       return;
     }
     var fieldShouldShow = selectedPrograms.length > 0;
-    options.forEach(function(opt) {
+    options.forEach(function (opt) {
       var classification = getCampusClassification(opt);
       var shouldShow = fieldShouldShow && subjectMatchesLocation(classification.state, location);
       shouldShow ? showOption(opt) : hideOption(opt);
@@ -1007,8 +1008,8 @@ var ContourForm1Logic = function() {
     updateCampusRequiredMark(fieldShouldShow);
   }
   function fixRadioCardClickArea() {
-    qAll(".hs-fieldtype-radio .hs-form-radio-display").forEach(function(label) {
-      label.addEventListener("click", function(e) {
+    qAll(".hs-fieldtype-radio .hs-form-radio-display").forEach(function (label) {
+      label.addEventListener("click", function (e) {
         var input = label.querySelector('input[type="radio"]');
         if (!input || e.target === input) return;
         e.preventDefault();
@@ -1017,8 +1018,8 @@ var ContourForm1Logic = function() {
     });
   }
   function fixCheckboxCardClickArea() {
-    qAll(".hs-fieldtype-checkbox .hs-form-checkbox-display").forEach(function(label) {
-      label.addEventListener("click", function(e) {
+    qAll(".hs-fieldtype-checkbox .hs-form-checkbox-display").forEach(function (label) {
+      label.addEventListener("click", function (e) {
         var input = label.querySelector('input[type="checkbox"]');
         if (!input || e.target === input) return;
         e.preventDefault();
@@ -1027,8 +1028,8 @@ var ContourForm1Logic = function() {
     });
   }
   function fixProgramCardClickArea() {
-    qAll(".contour-program-card").forEach(function(label) {
-      label.addEventListener("click", function(e) {
+    qAll(".contour-program-card").forEach(function (label) {
+      label.addEventListener("click", function (e) {
         var input = label.querySelector('input[type="checkbox"]');
         if (!input || e.target === input) return;
         e.preventDefault();
@@ -1046,15 +1047,15 @@ var ContourForm1Logic = function() {
     if (!PREFETCH_ENDPOINT) return null;
     var studentId = getUrlParam(STUDENT_ID_PARAM);
     if (!studentId) return null;
-    var request = fetch(PREFETCH_ENDPOINT + "/prefetch?studentId=" + encodeURIComponent(studentId)).then(function(res) {
+    var request = fetch(PREFETCH_ENDPOINT + "/prefetch?studentId=" + encodeURIComponent(studentId)).then(function (res) {
       if (!res.ok) throw new Error("HTTP " + res.status);
       return res.json();
-    }).catch(function(err) {
+    }).catch(function (err) {
       console.warn("Contour Form 1 logic: URL prefetch failed —", err);
       return null;
     });
-    var timeout = new Promise(function(resolve) {
-      setTimeout(function() {
+    var timeout = new Promise(function (resolve) {
+      setTimeout(function () {
         resolve(null);
       }, 8000);
     });
@@ -1083,9 +1084,9 @@ var ContourForm1Logic = function() {
   }
   function splitMultiValue(raw) {
     if (!raw) return [];
-    return String(raw).split(";").map(function(s) {
+    return String(raw).split(";").map(function (s) {
       return s.trim();
-    }).filter(function(s) {
+    }).filter(function (s) {
       return s.length > 0;
     });
   }
@@ -1103,13 +1104,13 @@ var ContourForm1Logic = function() {
   function attemptCheckboxValues(selector, values, excludeCodes) {
     if (!values || values.length === 0) return [];
     var remaining = [];
-    values.forEach(function(value) {
+    values.forEach(function (value) {
       if (excludeCodes && excludeCodes.length > 0) {
         var parsed = parseStructuredSubjectValue(value);
         if (parsed && excludeCodes.indexOf(parsed.code) !== -1) return;
       }
       var applied = false;
-      qAll(selector).forEach(function(opt) {
+      qAll(selector).forEach(function (opt) {
         if (applied || opt.value !== value) return;
         var wrap = optionWrapper(opt);
         var visible = !wrap || wrap.style.display !== "none";
@@ -1143,7 +1144,7 @@ var ContourForm1Logic = function() {
       return;
     }
     if (tries <= 0) return;
-    setTimeout(function() {
+    setTimeout(function () {
       setTextWhenPresent(selector, value, tries - 1);
     }, 150);
   }
@@ -1182,7 +1183,7 @@ var ContourForm1Logic = function() {
     var parts = splitE164(value);
     if (select && parts) {
       var matched = false;
-      Array.prototype.forEach.call(select.options, function(opt) {
+      Array.prototype.forEach.call(select.options, function (opt) {
         if (matched) return;
         var v = (opt.value || "").toLowerCase();
         if (v === parts.iso || v === parts.dial || v === "+" + parts.dial || v.indexOf(parts.iso + "_") === 0 || v.indexOf("_" + parts.dial) !== -1) {
@@ -1193,10 +1194,10 @@ var ContourForm1Logic = function() {
       if (matched) {
         fireInputEvents(select);
         var inputs = Array.prototype.slice.call(wrap.querySelectorAll("input"));
-        var hasHidden = inputs.some(function(inp) {
+        var hasHidden = inputs.some(function (inp) {
           return inp.type === "hidden";
         });
-        inputs.forEach(function(inp) {
+        inputs.forEach(function (inp) {
           // HubSpot's own widget: hidden input carries the full E.164 value
           // for submission and the visible one only holds the national number.
           // Our injected widget (see enhanceStudentPhoneField) has no hidden
@@ -1228,7 +1229,7 @@ var ContourForm1Logic = function() {
       return;
     }
     if (tries <= 0) return;
-    setTimeout(function() {
+    setTimeout(function () {
       setPhoneValueWhenPresent(selector, value, tries - 1);
     }, 150);
   }
@@ -1239,7 +1240,7 @@ var ContourForm1Logic = function() {
     var isGuardianFlow = contactType === "Guardian" || contactType === "Parent";
     if (contactType === "Student" || isGuardianFlow) {
       var radioValue = isGuardianFlow ? "Guardian" : "Student";
-      qAll(FIELD_SELECTORS.contactType).forEach(function(radio) {
+      qAll(FIELD_SELECTORS.contactType).forEach(function (radio) {
         if (radio.value === radioValue) setCheckboxChecked(radio, true);
       });
     }
@@ -1272,7 +1273,7 @@ var ContourForm1Logic = function() {
       setSelectOrTextValue(FIELD_SELECTORS.schoolCode, contact.school_code || "");
       setSelectOrTextValue(FIELD_SELECTORS.acaraId, contact.acara_id || "");
       var schoolInput = q(FIELD_SELECTORS.schoolText);
-      if (schoolInput) setTimeout(function() {
+      if (schoolInput) setTimeout(function () {
         schoolInput.dispatchEvent(new Event("blur"));
       }, 200);
     }
@@ -1313,7 +1314,7 @@ var ContourForm1Logic = function() {
     resetLink.href = "#";
     resetLink.className = "contour-prefill-banner__reset";
     resetLink.textContent = "Not you, or starting fresh? Clear the form";
-    resetLink.addEventListener("click", function(e) {
+    resetLink.addEventListener("click", function (e) {
       e.preventDefault();
       // A DOM-level reset fights HubSpot's internal form state (radios get
       // restored on re-render) — reloading without the student_id param
@@ -1329,12 +1330,12 @@ var ContourForm1Logic = function() {
     // HubSpot's embed hydrates/re-renders right after onFormReady and wipes a
     // synchronous click — select on a delay and verify it stuck, retrying
     // against fresh nodes.
-    setTimeout(function() {
+    setTimeout(function () {
       var radios = qAll(FIELD_SELECTORS.contactType);
-      if (radios.length === 0 || radios.some(function(r) {
+      if (radios.length === 0 || radios.some(function (r) {
         return r.checked;
       })) return;
-      radios.forEach(function(radio) {
+      radios.forEach(function (radio) {
         if (radio.value === "Student") setCheckboxChecked(radio, true);
       });
       if (tries > 0) defaultContactTypeToStudent(tries - 1);
@@ -1346,7 +1347,7 @@ var ContourForm1Logic = function() {
       return;
     }
     showFormLoader();
-    urlPrefetchPromise.then(function(data) {
+    urlPrefetchPromise.then(function (data) {
       if (data && data.found && data.contact) {
         prefetchedTrialSubjectCodes = data.trialSubjectCodes || [];
         prefetchedEnrolledSubjectCodes = data.enrolledSubjectCodes || [];
@@ -1371,7 +1372,7 @@ var ContourForm1Logic = function() {
         "Content-Type": "application/json"
       },
       body: JSON.stringify(payload)
-    }).then(function(res) {
+    }).then(function (res) {
       if (!res.ok) throw new Error("HTTP " + res.status);
       return res.json();
     });
@@ -1416,27 +1417,27 @@ var ContourForm1Logic = function() {
       errorEl.style.display = "none";
       codeInput.value = "";
     }
-    emailInput.addEventListener("input", function() {
+    emailInput.addEventListener("input", function () {
       reset();
       lastRequestedEmail = null;
     });
-    emailInput.addEventListener("blur", function() {
+    emailInput.addEventListener("blur", function () {
       var email = emailInput.value.trim();
       if (!EMAIL_SHAPE.test(email) || email === lastRequestedEmail) return;
       lastRequestedEmail = email;
       prefetchPost("/request", {
         email: email
-      }).then(function(data) {
+      }).then(function (data) {
         if (!data || !data.found) return;
         if (emailInput.value.trim() !== email) return;
         message.textContent = "Looks like you've signed up with us before. We've emailed a 6-digit code to " + email + " — enter it below to prefill your details.";
         box.style.display = "";
         codeRow.style.display = "";
-      }).catch(function(err) {
+      }).catch(function (err) {
         console.warn("Contour Form 1 logic: prefetch request failed —", err);
       });
     });
-    confirmBtn.addEventListener("click", function() {
+    confirmBtn.addEventListener("click", function () {
       var email = emailInput.value.trim();
       var code = codeInput.value.trim();
       if (!code) return;
@@ -1444,7 +1445,7 @@ var ContourForm1Logic = function() {
       prefetchPost("/confirm", {
         email: email,
         code: code
-      }).then(function(data) {
+      }).then(function (data) {
         confirmBtn.disabled = false;
         if (data && data.ok && data.contact) {
           applyPrefill(data.contact);
@@ -1455,7 +1456,7 @@ var ContourForm1Logic = function() {
         }
         errorEl.textContent = "That code didn't match. Please check the email and try again.";
         errorEl.style.display = "";
-      }).catch(function(err) {
+      }).catch(function (err) {
         confirmBtn.disabled = false;
         errorEl.textContent = "Something went wrong verifying the code. Please try again.";
         errorEl.style.display = "";
@@ -1594,7 +1595,7 @@ var ContourForm1Logic = function() {
     var queryString = params.join("&");
     var fullUrl = baseUrl + (queryString ? "?" + queryString : "");
     schedulerContainer.innerHTML = "";
-    loadCalendlyScript(function() {
+    loadCalendlyScript(function () {
       Calendly.initInlineWidget({
         url: fullUrl,
         parentElement: schedulerContainer
@@ -1640,7 +1641,7 @@ var ContourForm1Logic = function() {
   function renderSubjectSummary() {
     var container = ensureSubjectSummary();
     var grid = container.querySelector(".contour-subject-summary__grid");
-    var interested = qAll(FIELD_SELECTORS.interestedSubjects + ":checked").map(function(opt) {
+    var interested = qAll(FIELD_SELECTORS.interestedSubjects + ":checked").map(function (opt) {
       return optionLabelText(opt);
     });
     var trialing = prefetchedTrialSubjectCodes.map(subjectCodeToLabel);
@@ -1660,7 +1661,7 @@ var ContourForm1Logic = function() {
     }];
     grid.innerHTML = "";
     var anyColumn = false;
-    columns.forEach(function(col) {
+    columns.forEach(function (col) {
       if (col.items.length === 0) return;
       anyColumn = true;
       var colEl = document.createElement("div");
@@ -1671,7 +1672,7 @@ var ContourForm1Logic = function() {
       colEl.appendChild(title);
       var chips = document.createElement("div");
       chips.className = "contour-subject-summary__chips";
-      col.items.forEach(function(label) {
+      col.items.forEach(function (label) {
         var chip = document.createElement("span");
         chip.className = "contour-subject-chip " + col.chipClass;
         chip.textContent = label;
@@ -1685,7 +1686,7 @@ var ContourForm1Logic = function() {
   function attachListeners() {
     var locationEl = q(FIELD_SELECTORS.location);
     if (locationEl) {
-      locationEl.addEventListener("change", function() {
+      locationEl.addEventListener("change", function () {
         evaluateProgramInterestOptions();
         evaluateInterestedSubjectsOptions();
         evaluateCampusOptions();
@@ -1696,16 +1697,16 @@ var ContourForm1Logic = function() {
         applyPendingPrefill();
       });
     }
-    qAll(FIELD_SELECTORS.programInterest).forEach(function(el) {
-      el.addEventListener("change", function() {
+    qAll(FIELD_SELECTORS.programInterest).forEach(function (el) {
+      el.addEventListener("change", function () {
         evaluateInterestedSubjectsOptions();
         evaluateCampusOptions();
         renderWelcomeConsultation();
         applyPendingPrefill();
       });
     });
-    qAll(FIELD_SELECTORS.interestedSubjects).forEach(function(el) {
-      el.addEventListener("change", function() {
+    qAll(FIELD_SELECTORS.interestedSubjects).forEach(function (el) {
+      el.addEventListener("change", function () {
         evaluateSubjectExclusions();
         renderWelcomeConsultation();
         renderSubjectSummary();
@@ -1713,7 +1714,7 @@ var ContourForm1Logic = function() {
     });
     var yearLevelEl = q(FIELD_SELECTORS.yearLevel);
     if (yearLevelEl) {
-      yearLevelEl.addEventListener("change", function() {
+      yearLevelEl.addEventListener("change", function () {
         evaluateProgramInterestOptions();
         evaluateInterestedSubjectsOptions();
         applyPendingPrefill();
@@ -1721,7 +1722,7 @@ var ContourForm1Logic = function() {
     }
     var intakeYearEl = q(FIELD_SELECTORS.intakeYear);
     if (intakeYearEl) {
-      intakeYearEl.addEventListener("change", function() {
+      intakeYearEl.addEventListener("change", function () {
         evaluateProgramInterestOptions();
         evaluateInterestedSubjectsOptions();
         evaluateYearLevelOptions();
@@ -1736,13 +1737,13 @@ var ContourForm1Logic = function() {
   function loadSchoolList() {
     if (schoolListCache) return Promise.resolve(schoolListCache);
     if (schoolListPromise) return schoolListPromise;
-    schoolListPromise = fetch(SCHOOL_LIST_URL).then(function(res) {
+    schoolListPromise = fetch(SCHOOL_LIST_URL).then(function (res) {
       if (!res.ok) throw new Error("HTTP " + res.status);
       return res.json();
-    }).then(function(list) {
+    }).then(function (list) {
       schoolListCache = list;
       return list;
-    }).catch(function(err) {
+    }).catch(function (err) {
       console.warn("Contour Form 1 logic: failed to load school list —", err);
       schoolListCache = [];
       return schoolListCache;
@@ -1782,7 +1783,7 @@ var ContourForm1Logic = function() {
       return normalize(school.name).indexOf(query) !== -1;
     }
     function tokenize(s) {
-      return normalize(s).split(/[^a-z0-9]+/).filter(function(w) {
+      return normalize(s).split(/[^a-z0-9]+/).filter(function (w) {
         return w.length > 0;
       });
     }
@@ -1819,20 +1820,20 @@ var ContourForm1Logic = function() {
     function fuzzyMatchesQueryAndLocation(school, queryWords, location) {
       if (!location || school.state !== location) return false;
       var nameWords = tokenize(school.name);
-      return queryWords.every(function(qw) {
-        return nameWords.some(function(nw) {
+      return queryWords.every(function (qw) {
+        return nameWords.some(function (nw) {
           return fuzzyWordMatches(qw, nw);
         });
       });
     }
     function searchSchools(list, query, location) {
-      var exact = list.filter(function(school) {
+      var exact = list.filter(function (school) {
         return matchesQueryAndLocation(school, query, location);
       });
       if (exact.length > 0) return exact;
       var queryWords = tokenize(query);
       if (queryWords.length === 0) return [];
-      return list.filter(function(school) {
+      return list.filter(function (school) {
         return fuzzyMatchesQueryAndLocation(school, queryWords, location);
       });
     }
@@ -1845,14 +1846,14 @@ var ContourForm1Logic = function() {
         input.setAttribute("aria-expanded", "false");
         return;
       }
-      matches.forEach(function(school, i) {
+      matches.forEach(function (school, i) {
         var li = document.createElement("li");
         li.className = "contour-school-search__option";
         li.id = "contour-school-option-" + i;
         li.setAttribute("role", "option");
         li.setAttribute("aria-selected", "false");
         li.textContent = school.name;
-        li.addEventListener("mousedown", function(e) {
+        li.addEventListener("mousedown", function (e) {
           e.preventDefault();
           selectSchool(school);
         });
@@ -1895,7 +1896,7 @@ var ContourForm1Logic = function() {
       if (currentMatches.length === 0) return;
       activeIndex = (activeIndex + delta + currentMatches.length) % currentMatches.length;
       var options = listbox.querySelectorAll(".contour-school-search__option");
-      options.forEach(function(opt, i) {
+      options.forEach(function (opt, i) {
         opt.setAttribute("aria-selected", i === activeIndex ? "true" : "false");
       });
       input.setAttribute("aria-activedescendant", "contour-school-option-" + activeIndex);
@@ -1903,7 +1904,7 @@ var ContourForm1Logic = function() {
         block: "nearest"
       });
     }
-    input.addEventListener("input", function() {
+    input.addEventListener("input", function () {
       if (suppressNextInputEvent) {
         suppressNextInputEvent = false;
         return;
@@ -1917,17 +1918,17 @@ var ContourForm1Logic = function() {
       }
       if (codeInput && codeInput.value) setHiddenField(codeInput, "");
       if (acaraInput && acaraInput.value) setHiddenField(acaraInput, "");
-      loadSchoolList().then(function(list) {
+      loadSchoolList().then(function (list) {
         var currentLocation = getValue(FIELD_SELECTORS.location);
         var matches = searchSchools(list, query, currentLocation).slice(0, MAX_RESULTS);
         renderResults(matches);
       });
     });
-    input.addEventListener("keydown", function(e) {
+    input.addEventListener("keydown", function (e) {
       if (listbox.hidden && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
         var query = normalize(input.value);
         if (query.length >= MIN_CHARS) {
-          loadSchoolList().then(function(list) {
+          loadSchoolList().then(function (list) {
             var currentLocation = getValue(FIELD_SELECTORS.location);
             renderResults(searchSchools(list, query, currentLocation).slice(0, MAX_RESULTS));
           });
@@ -1935,32 +1936,32 @@ var ContourForm1Logic = function() {
         return;
       }
       switch (e.key) {
-       case "ArrowDown":
-        e.preventDefault();
-        moveActive(1);
-        break;
-
-       case "ArrowUp":
-        e.preventDefault();
-        moveActive(-1);
-        break;
-
-       case "Enter":
-        if (activeIndex >= 0 && currentMatches[activeIndex]) {
+        case "ArrowDown":
           e.preventDefault();
-          selectSchool(currentMatches[activeIndex]);
-        }
-        break;
+          moveActive(1);
+          break;
 
-       case "Escape":
-        closeListbox();
-        break;
+        case "ArrowUp":
+          e.preventDefault();
+          moveActive(-1);
+          break;
+
+        case "Enter":
+          if (activeIndex >= 0 && currentMatches[activeIndex]) {
+            e.preventDefault();
+            selectSchool(currentMatches[activeIndex]);
+          }
+          break;
+
+        case "Escape":
+          closeListbox();
+          break;
       }
     });
-    input.addEventListener("blur", function() {
+    input.addEventListener("blur", function () {
       setTimeout(closeListbox, 100);
     });
-    document.addEventListener("click", function(e) {
+    document.addEventListener("click", function (e) {
       if (!wrapper.contains(e.target)) closeListbox();
     });
     loadSchoolList();
@@ -1968,7 +1969,7 @@ var ContourForm1Logic = function() {
   function watchSchoolFieldRerender() {
     // HubSpot v2 embeds re-render a field's DOM when native validation fires,
     // destroying the injected combobox — detect that and re-apply.
-    var observer = new MutationObserver(function() {
+    var observer = new MutationObserver(function () {
       var input = q(FIELD_SELECTORS.schoolText);
       if (input && !input.closest(".contour-school-search")) {
         enhanceSchoolSearch();
@@ -1988,7 +1989,7 @@ var ContourForm1Logic = function() {
       return;
     }
     pendingErrorScrolls = [el];
-    setTimeout(function() {
+    setTimeout(function () {
       var best = null;
       var bestTop = null;
       for (var i = 0; i < pendingErrorScrolls.length; i++) {
@@ -2013,7 +2014,7 @@ var ContourForm1Logic = function() {
     return !!input && input.value.trim() !== "";
   }
   function anyProgramInterestOptionEligible() {
-    return qAll(FIELD_SELECTORS.programInterest).some(function(opt) {
+    return qAll(FIELD_SELECTORS.programInterest).some(function (opt) {
       return !opt.disabled;
     });
   }
@@ -2024,7 +2025,7 @@ var ContourForm1Logic = function() {
     if (!fieldWrap) return;
     if (hasNativeRequiredMark(fieldWrap)) return;
     function defaultSatisfied() {
-      return qAll(FIELD_SELECTORS[fieldSelectorKey]).some(function(opt) {
+      return qAll(FIELD_SELECTORS[fieldSelectorKey]).some(function (opt) {
         return opt.checked;
       });
     }
@@ -2050,16 +2051,16 @@ var ContourForm1Logic = function() {
     function clearError() {
       errorList.style.display = "none";
     }
-    options.forEach(function(opt) {
-      opt.addEventListener("change", function() {
+    options.forEach(function (opt) {
+      opt.addEventListener("change", function () {
         if (isValid()) clearError();
       });
-      opt.addEventListener("input", function() {
+      opt.addEventListener("input", function () {
         if (isValid()) clearError();
       });
     });
     if (formRoot) {
-      formRoot.addEventListener("submit", function(e) {
+      formRoot.addEventListener("submit", function (e) {
         if (!isValid()) {
           e.preventDefault();
           e.stopImmediatePropagation();
@@ -2095,11 +2096,11 @@ var ContourForm1Logic = function() {
       var selectedPrograms = getCheckedValues(FIELD_SELECTORS.programInterest);
       if (selectedPrograms.length === 0) return [];
       var covered = {};
-      qAll(FIELD_SELECTORS.interestedSubjects + ":checked").forEach(function(opt) {
+      qAll(FIELD_SELECTORS.interestedSubjects + ":checked").forEach(function (opt) {
         var program = getClassification(opt).program;
         if (program) covered[program] = true;
       });
-      return selectedPrograms.filter(function(programValue) {
+      return selectedPrograms.filter(function (programValue) {
         return !covered[programValue];
       });
     }
@@ -2117,7 +2118,7 @@ var ContourForm1Logic = function() {
     errorList.appendChild(errorItem);
     fieldWrap.appendChild(errorList);
     function showError() {
-      var names = missingPrograms().map(function(programValue) {
+      var names = missingPrograms().map(function (programValue) {
         return PROGRAM_DISPLAY_NAMES[programValue] || programValue;
       });
       errorLabel.textContent = "Please select a " + names.join(" and ") + " subject, or deselect the program.";
@@ -2127,13 +2128,13 @@ var ContourForm1Logic = function() {
     function clearError() {
       errorList.style.display = "none";
     }
-    qAll(FIELD_SELECTORS.interestedSubjects).concat(qAll(FIELD_SELECTORS.programInterest)).forEach(function(opt) {
-      opt.addEventListener("change", function() {
+    qAll(FIELD_SELECTORS.interestedSubjects).concat(qAll(FIELD_SELECTORS.programInterest)).forEach(function (opt) {
+      opt.addEventListener("change", function () {
         if (isValid()) clearError();
       });
     });
     if (formRoot) {
-      formRoot.addEventListener("submit", function(e) {
+      formRoot.addEventListener("submit", function (e) {
         if (!isValid()) {
           e.preventDefault();
           e.stopImmediatePropagation();
@@ -2171,14 +2172,14 @@ var ContourForm1Logic = function() {
       input.classList.remove("invalid", "error");
       errorList.style.display = "none";
     }
-    input.addEventListener("blur", function() {
+    input.addEventListener("blur", function () {
       if (isValid()) clearError(); else showError();
     });
-    input.addEventListener("input", function() {
+    input.addEventListener("input", function () {
       if (isValid()) clearError();
     });
     if (formRoot) {
-      formRoot.addEventListener("submit", function(e) {
+      formRoot.addEventListener("submit", function (e) {
         if (!isValid()) {
           e.preventDefault();
           e.stopImmediatePropagation();
@@ -2231,17 +2232,17 @@ var ContourForm1Logic = function() {
         return Promise.resolve(results[email]);
       }
       if (pending[email]) return pending[email];
-      var request = fetch(PREFETCH_ENDPOINT + "/exists?email=" + encodeURIComponent(email)).then(function(res) {
+      var request = fetch(PREFETCH_ENDPOINT + "/exists?email=" + encodeURIComponent(email)).then(function (res) {
         if (!res.ok) throw new Error("HTTP " + res.status);
         return res.json();
-      }).then(function(data) {
+      }).then(function (data) {
         results[email] = !!(data && data.exists);
         return results[email];
-      }).catch(function(err) {
+      }).catch(function (err) {
         console.warn("Contour Form 1 logic: duplicate email check failed —", err);
         results[email] = false;
         return false;
-      }).then(function(exists) {
+      }).then(function (exists) {
         delete pending[email];
         return exists;
       });
@@ -2255,18 +2256,18 @@ var ContourForm1Logic = function() {
       if (currentEmail() !== email) return;
       if (exists) showError(); else clearError();
     }
-    input.addEventListener("blur", function() {
+    input.addEventListener("blur", function () {
       var email = currentEmail();
       if (!EMAIL_SHAPE.test(email)) return;
-      checkEmail(email).then(function(exists) {
+      checkEmail(email).then(function (exists) {
         reflectResult(email, exists);
       });
     });
-    input.addEventListener("input", function() {
+    input.addEventListener("input", function () {
       clearError();
     });
     if (formRoot) {
-      formRoot.addEventListener("submit", function(e) {
+      formRoot.addEventListener("submit", function (e) {
         var email = currentEmail();
         if (!EMAIL_SHAPE.test(email)) return;
         if (results[email] === false) return;
@@ -2281,7 +2282,7 @@ var ContourForm1Logic = function() {
         // Verdict still in flight (or blur never fired) — resolve it, then
         // either surface the duplicate error or re-submit; the cached result
         // lets the re-submission pass straight through this gate.
-        checkEmail(email).then(function(exists) {
+        checkEmail(email).then(function (exists) {
           if (currentEmail() !== email) return;
           if (exists) {
             showError();
@@ -2343,14 +2344,14 @@ var ContourForm1Logic = function() {
     var display = null;
     try {
       if (typeof Intl !== "undefined" && Intl.DisplayNames) {
-        display = new Intl.DisplayNames([ "en" ], {
+        display = new Intl.DisplayNames(["en"], {
           type: "region"
         });
       }
     } catch (e) {
       display = null;
     }
-    studentPhoneCountries = PHONE_DIAL_CODES.map(function(entry) {
+    studentPhoneCountries = PHONE_DIAL_CODES.map(function (entry) {
       var upper = entry[1].toUpperCase();
       var name = upper;
       if (display) {
@@ -2365,7 +2366,7 @@ var ContourForm1Logic = function() {
         dial: entry[0],
         name: name
       };
-    }).sort(function(a, b) {
+    }).sort(function (a, b) {
       return a.name.localeCompare(b.name);
     });
     return studentPhoneCountries;
@@ -2418,7 +2419,7 @@ var ContourForm1Logic = function() {
     var select = document.createElement("select");
     select.className = "hs-input contour-intl-phone__country";
     select.setAttribute("aria-label", "Student phone country");
-    getStudentPhoneCountries().forEach(function(country) {
+    getStudentPhoneCountries().forEach(function (country) {
       var opt = document.createElement("option");
       opt.value = country.iso;
       opt.setAttribute("data-dial", country.dial);
@@ -2439,7 +2440,7 @@ var ContourForm1Logic = function() {
     input.value = existing === "" ? formatStudentPhone(studentPhoneDial(select), "") : input.value;
     if (existing !== "") normalizeStudentPhoneInput(select, input);
     var previousDial = studentPhoneDial(select);
-    select.addEventListener("change", function() {
+    select.addEventListener("change", function () {
       var digits = (input.value || "").replace(/\D/g, "");
       if (previousDial && digits.indexOf(previousDial) === 0) {
         digits = digits.slice(previousDial.length);
@@ -2449,10 +2450,10 @@ var ContourForm1Logic = function() {
       fireInputEvents(input);
       updateStudentPhoneError();
     });
-    input.addEventListener("input", function() {
+    input.addEventListener("input", function () {
       updateStudentPhoneError();
     });
-    input.addEventListener("blur", function() {
+    input.addEventListener("blur", function () {
       // Clearing the box entirely still leaves the dial code behind, so the
       // control never loses the country half of the pair.
       if ((input.value || "").trim() === "") {
@@ -2471,7 +2472,7 @@ var ContourForm1Logic = function() {
     // fires — the same behaviour watchSchoolFieldRerender() handles.
     // enhanceStudentPhoneField() is idempotent, so the mutations it makes
     // itself just no-op on the next observer callback.
-    var observer = new MutationObserver(function() {
+    var observer = new MutationObserver(function () {
       enhanceStudentPhoneField();
     });
     observer.observe(formRoot, {
@@ -2545,7 +2546,7 @@ var ContourForm1Logic = function() {
   }
   function enforceStudentPhoneValidation() {
     if (!formRoot) return;
-    formRoot.addEventListener("submit", function(e) {
+    formRoot.addEventListener("submit", function (e) {
       if (studentPhoneIsValid()) return;
       e.preventDefault();
       e.stopImmediatePropagation();
@@ -2575,7 +2576,7 @@ var ContourForm1Logic = function() {
   // publicValue is what a normal visitor's submission records while the
   // question is hidden — "" leaves the property blank. A non-empty one is also
   // taken off the menu in internal mode, so staff can't pick the public default.
-  var INTERNAL_ONLY_FIELDS = [ {
+  var INTERNAL_ONLY_FIELDS = [{
     key: "contactMethod",
     slug: "contact-method",
     publicValue: "Website Sign-Ups",
@@ -2587,8 +2588,8 @@ var ContourForm1Logic = function() {
     errorText: "Please select who signed them up.",
     searchable: true,
     searchPlaceholder: "Start typing a name"
-  } ];
-  INTERNAL_ONLY_FIELDS.forEach(function(config) {
+  }];
+  INTERNAL_ONLY_FIELDS.forEach(function (config) {
     config.errorClass = "contour-" + config.slug + "-error";
     config.updateRequiredMark = createRequiredMarkUpdater(config.key, "contour-" + config.slug + "-required");
     config.cleared = false;
@@ -2603,7 +2604,7 @@ var ContourForm1Logic = function() {
   // rendered the <select> fresh — without a blank option the browser preselects
   // the first real one, so the caller has to clear that.
   function ensureBlankOption(select) {
-    var existing = selectOptions(select).some(function(option) {
+    var existing = selectOptions(select).some(function (option) {
       return option.value === "";
     });
     if (existing) return false;
@@ -2651,13 +2652,13 @@ var ContourForm1Logic = function() {
     return comboboxTargets.get(previous) === select ? previous : null;
   }
   function selectableOptions(select) {
-    return selectOptions(select).filter(function(option) {
+    return selectOptions(select).filter(function (option) {
       return option.value !== "" && !option.hidden && !option.disabled;
     });
   }
   function optionLabelFor(select, value) {
     if (!value) return "";
-    var chosen = selectOptions(select).filter(function(option) {
+    var chosen = selectOptions(select).filter(function (option) {
       return option.value === value;
     })[0];
     return chosen ? chosen.textContent.trim() : "";
@@ -2679,7 +2680,7 @@ var ContourForm1Logic = function() {
     // combobox, orphaning it next to an element no longer on the page. Clear any
     // before building a fresh one, so the field never ends up with two.
     if (fieldWrap) {
-      Array.prototype.forEach.call(fieldWrap.querySelectorAll("." + COMBOBOX_CLASS), function(stale) {
+      Array.prototype.forEach.call(fieldWrap.querySelectorAll("." + COMBOBOX_CLASS), function (stale) {
         if (stale.parentNode) stale.parentNode.removeChild(stale);
       });
     }
@@ -2721,7 +2722,7 @@ var ContourForm1Logic = function() {
       if (index < 0) index = rendered.length - 1;
       if (index >= rendered.length) index = 0;
       activeIndex = index;
-      Array.prototype.forEach.call(rendered, function(li, i) {
+      Array.prototype.forEach.call(rendered, function (li, i) {
         li.setAttribute("aria-selected", i === index ? "true" : "false");
       });
       input.setAttribute("aria-activedescendant", rendered[index].id);
@@ -2742,7 +2743,7 @@ var ContourForm1Logic = function() {
     }
     function render(query) {
       var normalized = query.trim().toLowerCase();
-      matches = selectableOptions(select).filter(function(option) {
+      matches = selectableOptions(select).filter(function (option) {
         return !normalized || option.textContent.toLowerCase().indexOf(normalized) !== -1;
       });
       listbox.innerHTML = "";
@@ -2755,14 +2756,14 @@ var ContourForm1Logic = function() {
         empty.textContent = "No matches";
         listbox.appendChild(empty);
       } else {
-        matches.forEach(function(option, i) {
+        matches.forEach(function (option, i) {
           var li = document.createElement("li");
           li.className = COMBOBOX_CLASS + "__option";
           li.id = listbox.id + "-option-" + i;
           li.setAttribute("role", "option");
           li.setAttribute("aria-selected", "false");
           li.textContent = option.textContent.trim();
-          li.addEventListener("mousedown", function(e) {
+          li.addEventListener("mousedown", function (e) {
             // Ahead of blur, so the click isn't lost to the field closing first.
             e.preventDefault();
             commit(option);
@@ -2773,20 +2774,20 @@ var ContourForm1Logic = function() {
       listbox.hidden = false;
       input.setAttribute("aria-expanded", "true");
     }
-    input.addEventListener("input", function() {
+    input.addEventListener("input", function () {
       render(input.value);
     });
-    input.addEventListener("focus", function() {
+    input.addEventListener("focus", function () {
       input.select();
       render("");
     });
-    input.addEventListener("blur", function() {
+    input.addEventListener("blur", function () {
       // Typing a name without picking it selects nothing, so drop the query
       // rather than leave text that reads like an answer.
       close();
       input.value = optionLabelFor(select, select.value);
     });
-    input.addEventListener("keydown", function(e) {
+    input.addEventListener("keydown", function (e) {
       if (e.key === "ArrowDown" || e.key === "ArrowUp") {
         e.preventDefault();
         if (listbox.hidden) {
@@ -2831,7 +2832,7 @@ var ContourForm1Logic = function() {
     // detaching a child it still tracks can throw on its next re-render.
     var freshRender = ensureBlankOption(select);
     if (config.publicValue) {
-      selectOptions(select).forEach(function(option) {
+      selectOptions(select).forEach(function (option) {
         if (option.value !== config.publicValue) return;
         option.hidden = true;
         option.disabled = true;
@@ -2863,7 +2864,7 @@ var ContourForm1Logic = function() {
     // validation fires, which restores the default option and the wrapper's
     // display. evaluateInternalOnlyField() is idempotent, so the mutations it
     // makes itself no-op on the next observer callback.
-    var observer = new MutationObserver(function() {
+    var observer = new MutationObserver(function () {
       evaluateInternalOnlyFields();
     });
     observer.observe(formRoot, {
@@ -2872,7 +2873,7 @@ var ContourForm1Logic = function() {
     });
   }
   function internalOnlyFieldSatisfied(config) {
-    return function() {
+    return function () {
       var select = q(FIELD_SELECTORS[config.key]);
       if (!select || select.value.trim() === "") return false;
       return !config.publicValue || select.value !== config.publicValue;
@@ -2885,20 +2886,20 @@ var ContourForm1Logic = function() {
     // of these blank on every internal signup, so surfacing both errors at once
     // beats one error per submit attempt.
     if (formRoot) {
-      formRoot.addEventListener("submit", function() {
-        controllers.forEach(function(controller) {
+      formRoot.addEventListener("submit", function () {
+        controllers.forEach(function (controller) {
           if (!controller.isValid()) controller.showError();
         });
       }, true);
     }
-    INTERNAL_ONLY_FIELDS.forEach(function(config) {
+    INTERNAL_ONLY_FIELDS.forEach(function (config) {
       var controller = enforceFieldRequiredValidation(config.key, config.errorText, config.errorClass, isInternalMode, internalOnlyFieldSatisfied(config));
       if (controller) controllers.push(controller);
     });
   }
   // Grey helper note under the intake year dropdown clarifying when the
   // 2027 program actually starts (Amitav's request).
-  var INTAKE_YEAR_NOTE_TEXT = "Our 2027 program begins in November with a two-week free trial.";
+  var INTAKE_YEAR_NOTE_TEXT = "Our 2027 program begins in November 2026 with a two-week free trial.";
   function ensureIntakeYearNote() {
     var fieldEl = q(FIELD_SELECTORS.intakeYear);
     if (!fieldEl) return;
