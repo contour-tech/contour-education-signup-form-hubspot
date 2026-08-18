@@ -73,7 +73,7 @@ var ContourForm1Logic = function () {
   // enrolments reopen — nothing else needs changing.
   var UCAT_ENROLMENTS_OPEN = false;
   var UCAT_SUBJECT_CODES = ["UCAT-ANZ-CORE", "UCAT-ANZ-MAST", "UCAT-UK-CORE", "UCAT-UK-MAST"];
-  var UCAT_WAITLIST_NOTE = "UCAT enrolments are closed until later in September. Submitting this form joins the UCAT waitlist — it is not an enrolment, and no Welcome Consultation can be booked yet. Our team will contact you to book your consultation once enrolments reopen.";
+  var UCAT_WAITLIST_NOTE = "UCAT enrolments are not open yet. Submitting this form joins the UCAT waitlist — it is not an enrolment, and no Welcome Consultation can be booked yet. Our team will contact you to book your consultation once enrolments reopen.";
   // Welcome Consultation bookings are switched off for the AY27 intake while
   // consults are not live yet (Amitav, 16 Aug 2026). MedPrep and TestPrep
   // students see the yellow "open soon" note instead of the Calendly
@@ -819,7 +819,7 @@ var ContourForm1Logic = function () {
     if (document.getElementById("contour-disabled-field-styles")) return;
     var style = document.createElement("style");
     style.id = "contour-disabled-field-styles";
-    style.textContent = ".hs-form select:disabled, .hs-form input:disabled { opacity: 0.55; background-color: #f1f0ec; cursor: not-allowed; }" + ".contour-prefill-offer { margin-top: 8px; padding: 12px; border: 1px solid #d8d5cc; border-radius: 8px; background: #faf9f6; }" + ".contour-prefill-offer__message { margin: 0 0 8px; font-size: 14px; }" + ".contour-prefill-offer__code-row { display: flex; gap: 8px; align-items: center; }" + ".contour-prefill-offer__code-input { max-width: 140px; }" + ".contour-prefill-offer__confirm { cursor: pointer; }" + ".contour-prefill-offer__error { margin: 8px 0 0; color: #b3261e; font-size: 13px; }" + ".contour-prefill-banner { display: flex; align-items: flex-start; gap: 14px; margin: 0 0 24px; padding: 18px 22px; border: 1px solid rgba(12, 49, 102, 0.12); border-radius: 16px; background: #FFFFFF; box-shadow: 0 1px 3px rgba(12, 49, 102, 0.06); }" + ".contour-prefill-banner__badge { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; background: #D7FC3D; color: #0C3166; font-size: 15px; font-weight: 700; }" + ".contour-prefill-banner__content { flex: 1; min-width: 0; }" + ".contour-prefill-banner__title { margin: 0 0 2px; font-size: 15px; font-weight: 700; color: #0C3166; }" + ".contour-prefill-banner__text { margin: 0 0 8px; font-size: 13.5px; line-height: 1.45; color: #6b7280; }" + ".contour-prefill-banner__reset { display: inline-block; font-size: 13px; font-weight: 600; color: #0C3166; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }" + ".contour-prefill-banner__reset:hover { color: #0540F2; }" + ".contour-subject-summary { margin: 24px 0; padding: 20px 22px; border: 1px solid rgba(12, 49, 102, 0.12); border-radius: 16px; background: #FFFFFF; box-shadow: 0 1px 3px rgba(12, 49, 102, 0.06); }" + ".contour-subject-summary__heading { font-size: 15px; font-weight: 700; color: #0C3166; margin-bottom: 14px; }" + ".contour-subject-summary__grid { display: flex; flex-wrap: wrap; gap: 24px; }" + ".contour-subject-summary__col { flex: 1 1 180px; min-width: 160px; }" + ".contour-subject-summary__col-title { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #6b7280; margin-bottom: 8px; }" + ".contour-subject-summary__chips { display: flex; flex-wrap: wrap; gap: 6px; }" + ".contour-subject-chip { display: inline-block; padding: 5px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 600; line-height: 1.3; }" + ".contour-subject-chip--navy { background: #092749; color: #FFFFFF; }" + ".contour-subject-chip--lime { background: #D7FC3D; color: #0C3166; }" + ".contour-subject-chip--blue { background: #007AFF; color: #FFFFFF; }" + ".contour-welcome-consultation__waitlist-note { margin: 0; padding: 14px 18px; border: 1px solid #f0d9a6; border-radius: 12px; background: #FFF3D6; color: #8a5a00; font-size: 14px; line-height: 1.5; font-weight: 600; }" + ".contour-form-loader { display: flex; flex-direction: column; align-items: center; padding: 60px 0; }" + ".contour-form-loader__spinner { width: 36px; height: 36px; border: 4px solid #e3e0d8; border-top-color: #1a1a2e; border-radius: 50%; animation: contour-spin 0.8s linear infinite; }" + "@keyframes contour-spin { to { transform: rotate(360deg); } }" + ".contour-form-loader__text { margin-top: 12px; font-size: 14px; }";
+    style.textContent = ".hs-form select:disabled, .hs-form input:disabled { opacity: 0.55; background-color: #f1f0ec; cursor: not-allowed; }" + ".contour-prefill-offer { margin-top: 8px; padding: 12px; border: 1px solid #d8d5cc; border-radius: 8px; background: #faf9f6; }" + ".contour-prefill-offer__message { margin: 0 0 8px; font-size: 14px; }" + ".contour-prefill-offer__code-row { display: flex; gap: 8px; align-items: center; }" + ".contour-prefill-offer__code-input { max-width: 140px; }" + ".contour-prefill-offer__confirm { cursor: pointer; }" + ".contour-prefill-offer__error { margin: 8px 0 0; color: #b3261e; font-size: 13px; }" + ".contour-prefill-banner { display: flex; align-items: flex-start; gap: 14px; margin: 0 0 24px; padding: 18px 22px; border: 1px solid rgba(12, 49, 102, 0.12); border-radius: 16px; background: #FFFFFF; box-shadow: 0 1px 3px rgba(12, 49, 102, 0.06); }" + ".contour-prefill-banner__badge { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; background: #D7FC3D; color: #0C3166; font-size: 15px; font-weight: 700; }" + ".contour-prefill-banner__content { flex: 1; min-width: 0; }" + ".contour-prefill-banner__title { margin: 0 0 2px; font-size: 15px; font-weight: 700; color: #0C3166; }" + ".contour-prefill-banner__text { margin: 0 0 8px; font-size: 13.5px; line-height: 1.45; color: #6b7280; }" + ".contour-prefill-banner__reset { display: inline-block; font-size: 13px; font-weight: 600; color: #0C3166; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }" + ".contour-prefill-banner__reset:hover { color: #0540F2; }" + ".contour-subject-summary { margin: 24px 0; padding: 20px 22px; border: 1px solid rgba(12, 49, 102, 0.12); border-radius: 16px; background: #FFFFFF; box-shadow: 0 1px 3px rgba(12, 49, 102, 0.06); }" + ".contour-subject-summary__heading { font-size: 15px; font-weight: 700; color: #0C3166; margin-bottom: 14px; }" + ".contour-subject-summary__grid { display: flex; flex-wrap: wrap; gap: 24px; }" + ".contour-subject-summary__col { flex: 1 1 180px; min-width: 160px; }" + ".contour-subject-summary__col-title { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #6b7280; margin-bottom: 8px; }" + ".contour-subject-summary__chips { display: flex; flex-wrap: wrap; gap: 6px; }" + ".contour-subject-chip { display: inline-block; padding: 5px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 600; line-height: 1.3; }" + ".contour-subject-chip--navy { background: #092749; color: #FFFFFF; }" + ".contour-subject-chip--lime { background: #D7FC3D; color: #0C3166; }" + ".contour-subject-chip--blue { background: #007AFF; color: #FFFFFF; }" + ".contour-ucat-waitlist-note { margin: 24px 0; }" + ".contour-welcome-consultation__waitlist-note { margin: 0; padding: 14px 18px; border: 1px solid #f0d9a6; border-radius: 12px; background: #FFF3D6; color: #8a5a00; font-size: 14px; line-height: 1.5; font-weight: 600; }" + ".contour-form-loader { display: flex; flex-direction: column; align-items: center; padding: 60px 0; }" + ".contour-form-loader__spinner { width: 36px; height: 36px; border: 4px solid #e3e0d8; border-top-color: #1a1a2e; border-radius: 50%; animation: contour-spin 0.8s linear infinite; }" + "@keyframes contour-spin { to { transform: rotate(360deg); } }" + ".contour-form-loader__text { margin-top: 12px; font-size: 14px; }";
     document.head.appendChild(style);
   }
   function getClassification(inputEl) {
@@ -1632,6 +1632,7 @@ var ContourForm1Logic = function () {
           setFieldLabelText("interestedSubjects", "Additional Subjects");
         }
         renderSubjectSummary();
+        renderUcatWaitlistNote();
       }
       // Prefill takes precedence (Guardian/Parent records select Guardian);
       // anything else — no record, unknown contact_type — defaults to Student.
@@ -1789,10 +1790,6 @@ var ContourForm1Logic = function () {
     copy.className = "contour-welcome-consultation__copy";
     copy.textContent = "New UCAT students are required to book a Welcome Consultation before a trial can be booked. Please register your consultation below before completing the rest of this form.";
     wrapper.appendChild(copy);
-    var waitlistNote = document.createElement("p");
-    waitlistNote.className = "contour-welcome-consultation__waitlist-note";
-    waitlistNote.style.display = "none";
-    wrapper.appendChild(waitlistNote);
     var openSoonNote = document.createElement("p");
     openSoonNote.className = "contour-welcome-consultation__waitlist-note contour-welcome-consultation__open-soon-note";
     openSoonNote.style.display = "none";
@@ -1819,13 +1816,12 @@ var ContourForm1Logic = function () {
     // UCAT students can't book a consultation while enrolments are closed —
     // they see the waitlist note instead. Selective Entry is unaffected, so
     // both can be on screen at once when the two are selected together.
-    var ucatWaitlisted = ucat && !UCAT_ENROLMENTS_OPEN;
     var audiences = [];
     if (ucat && UCAT_ENROLMENTS_OPEN) audiences.push("UCAT");
     if (testprep) audiences.push("Selective Entry & Scholarship");
     var showScheduler = audiences.length > 0 && WC_BOOKINGS_OPEN;
     var showOpenSoonNote = audiences.length > 0 && !WC_BOOKINGS_OPEN;
-    if (!showScheduler && !showOpenSoonNote && !ucatWaitlisted) {
+    if (!showScheduler && !showOpenSoonNote) {
       wrapper.style.display = "none";
       return;
     }
@@ -1836,11 +1832,6 @@ var ContourForm1Logic = function () {
     if (noteEl) {
       noteEl.textContent = WC_OPEN_SOON_NOTE;
       noteEl.style.display = showOpenSoonNote ? "" : "none";
-    }
-    noteEl = wrapper.querySelector(".contour-welcome-consultation__waitlist-note:not(.contour-welcome-consultation__open-soon-note)");
-    if (noteEl) {
-      noteEl.textContent = UCAT_WAITLIST_NOTE;
-      noteEl.style.display = ucatWaitlisted ? "" : "none";
     }
     if (headingEl) headingEl.style.display = showScheduler ? "" : "none";
     if (copyEl) {
@@ -1883,6 +1874,27 @@ var ContourForm1Logic = function () {
       if (parsed && parsed.code === code) return optionLabelText(options[i]);
     }
     return code;
+  }
+  // The UCAT waitlist note used to sit inside the Welcome Consultation block,
+  // below the subject summary. Amitav asked for it above "Your Subjects", so it
+  // is its own element anchored to the summary — it has to be inserted before
+  // the summary exists, hence ensureSubjectSummary() runs first.
+  function ensureUcatWaitlistNote() {
+    var existing = formRoot.querySelector("#contour-ucat-waitlist-note");
+    if (existing) return existing;
+    var summary = ensureSubjectSummary();
+    var note = document.createElement("p");
+    note.id = "contour-ucat-waitlist-note";
+    note.className = "contour-welcome-consultation__waitlist-note contour-ucat-waitlist-note";
+    note.style.display = "none";
+    summary.parentNode.insertBefore(note, summary);
+    return note;
+  }
+  function renderUcatWaitlistNote() {
+    var note = ensureUcatWaitlistNote();
+    var waitlisted = isUcatSelected() && !UCAT_ENROLMENTS_OPEN;
+    note.textContent = UCAT_WAITLIST_NOTE;
+    note.style.display = waitlisted ? "" : "none";
   }
   function ensureSubjectSummary() {
     var existing = formRoot.querySelector("#contour-subject-summary");
@@ -1984,6 +1996,7 @@ var ContourForm1Logic = function () {
         evaluateSubjectExclusions();
         renderWelcomeConsultation();
         renderSubjectSummary();
+        renderUcatWaitlistNote();
       });
     });
     var yearLevelEl = q(FIELD_SELECTORS.yearLevel);
@@ -3274,6 +3287,7 @@ var ContourForm1Logic = function () {
     watchInternalOnlyFields();
     renderWelcomeConsultation();
     renderSubjectSummary();
+    renderUcatWaitlistNote();
     initPrefetchFromUrl();
   }
   return {
