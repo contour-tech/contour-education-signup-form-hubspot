@@ -251,7 +251,7 @@ var ContourForm1Logic = function () {
     // its stale text after unblocking — so injected UI must be stripped or it
     // leaks into the subject summary chips and label matching.
     var clone = wrap.cloneNode(true);
-    var injected = clone.querySelectorAll(".contour-subject-exclusion-note, .contour-interview-program-note");
+    var injected = clone.querySelectorAll(".contour-subject-exclusion-note, .contour-info-tip");
     for (var i = 0; i < injected.length; i++) {
       injected[i].parentNode.removeChild(injected[i]);
     }
@@ -1073,10 +1073,10 @@ var ContourForm1Logic = function () {
     if (stripped !== textNode.nodeValue) textNode.nodeValue = stripped;
   }
   // Year 10-11 students can pick Medical & Dental Interviews, but the
-  // program only starts for them at the end of Year 12 — a small explainer
-  // under the option says so (Amitav/Luke, 18 Aug 2026). Needs its own class
-  // and style: the exclusion-note machinery owns
-  // .contour-subject-exclusion-note and would hide anything wearing it.
+  // program only starts for them at the end of Year 12 — an info icon beside
+  // the subject explains this in a tooltip that opens on hover anywhere over
+  // the option, or on focusing the icon (Amitav/Luke, 18 Aug 2026; tooltip
+  // form per Amrit).
   var INTERVIEW_NOTE_TEXT = "Interview Program will start at the end of Year 12 - we will contact you in Year 12.";
   var INTERVIEW_NOTE_YEAR_LEVELS = ["Year 10", "Year 11"];
   function updateInterviewProgramNote(opt, classification, yearLevel, optionVisible) {
@@ -1084,21 +1084,36 @@ var ContourForm1Logic = function () {
     var wrap = optionWrapper(opt);
     if (!wrap) return;
     var show = optionVisible && INTERVIEW_NOTE_YEAR_LEVELS.indexOf(yearLevel) !== -1;
-    var note = wrap.querySelector(".contour-interview-program-note");
-    if (!note) {
+    var tip = wrap.querySelector(".contour-info-tip");
+    if (!tip) {
       if (!show) return;
-      if (!document.getElementById("contour-interview-note-styles")) {
+      if (!document.getElementById("contour-info-tip-styles")) {
         var style = document.createElement("style");
-        style.id = "contour-interview-note-styles";
-        style.textContent = ".hs-form .contour-interview-program-note { display: block; font-size: 0.75rem; font-weight: 400; color: #6b7280; margin-top: 0.125rem; margin-left: 1.6rem; }";
+        style.id = "contour-info-tip-styles";
+        style.textContent = "" +
+          ".hs-form .contour-info-tip { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 15px; height: 15px; margin-left: 6px; border-radius: 50%; background: #9aa5b1; color: #FFFFFF; font-size: 10.5px; font-weight: 700; line-height: 1; vertical-align: middle; cursor: default; }" +
+          ".hs-form .contour-info-tip__bubble { position: absolute; bottom: calc(100% + 9px); left: 50%; transform: translateX(-50%); width: 240px; padding: 10px 12px; border-radius: 8px; background: #0C3166; color: #FFFFFF; font-size: 12.5px; font-weight: 500; line-height: 1.45; text-align: left; opacity: 0; visibility: hidden; transition: opacity 0.15s ease; pointer-events: none; z-index: 5; }" +
+          ".hs-form .contour-info-tip__bubble::after { content: \"\"; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border: 6px solid transparent; border-top-color: #0C3166; }" +
+          // Hovering anywhere on the option (or focusing the icon) opens it.
+          ".hs-form .contour-has-info-tip:hover .contour-info-tip__bubble, .hs-form .contour-info-tip:focus .contour-info-tip__bubble { opacity: 1; visibility: visible; }";
         document.head.appendChild(style);
       }
-      note = document.createElement("span");
-      note.className = "contour-interview-program-note";
-      note.textContent = INTERVIEW_NOTE_TEXT;
-      wrap.appendChild(note);
+      tip = document.createElement("span");
+      tip.className = "contour-info-tip";
+      tip.setAttribute("tabindex", "0");
+      tip.setAttribute("role", "img");
+      tip.setAttribute("aria-label", INTERVIEW_NOTE_TEXT);
+      tip.appendChild(document.createTextNode("i"));
+      var bubble = document.createElement("span");
+      bubble.className = "contour-info-tip__bubble";
+      bubble.setAttribute("role", "tooltip");
+      bubble.textContent = INTERVIEW_NOTE_TEXT;
+      tip.appendChild(bubble);
+      var labelSpan = wrap.querySelector("input + span") || wrap;
+      labelSpan.appendChild(tip);
     }
-    note.style.display = show ? "" : "none";
+    tip.style.display = show ? "inline-flex" : "none";
+    wrap.classList.toggle("contour-has-info-tip", show);
   }
   function subjectExclusionKey(classification) {
     if (classification.program !== "Education") return null;
