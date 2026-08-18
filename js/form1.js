@@ -902,6 +902,23 @@ var ContourForm1Logic = function () {
       if (classification.code && /34$/.test(classification.code)) rank += 0.5;
       return rank;
     }
+    // Only senior sequence codes club by subject name — the 1/2 & 3/4 pairs
+    // (VCE/QCE) and the Prelim/HSC pairs (NSW) are the same subject taught
+    // across two years, so they belong side by side. Junior year-level codes
+    // share a structured subject with their senior sequence (VIC-EN10 and
+    // VCE-EN12/34 are all subject:English), and clubbing them lifted Year 10
+    // English up to the VCE English group's rank — it rendered above VCE
+    // English Language. Junior options therefore group alone and sort purely
+    // on their own year rank.
+    function isSeniorSequenceCode(code) {
+      if (!code) return false;
+      return /(?:12|34)$/.test(code) || /^(?:HSC|PRE)-/.test(code);
+    }
+    function subjectGroupKey(classification, index) {
+      if (!classification || !classification.subject) return "#" + index;
+      if (isSeniorSequenceCode(classification.code)) return classification.subject;
+      return classification.subject + "|" + (classification.code || index);
+    }
     Object.keys(buckets).forEach(function (category) {
       if (category === "MedPrep") return;
       var entries = buckets[category].map(function (li, index) {
@@ -911,7 +928,7 @@ var ContourForm1Logic = function () {
           li: li,
           index: index,
           rank: input ? subjectLevelRank(input) : 0,
-          group: classification && classification.subject ? classification.subject : "#" + index
+          group: subjectGroupKey(classification, index)
         };
       });
       var groupRank = {};
