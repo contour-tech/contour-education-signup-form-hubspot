@@ -723,7 +723,71 @@ var ContourForm1Logic = function () {
     if (schoolInput) {
       var location = getValue(FIELD_SELECTORS.location);
       schoolInput.disabled = !intake || !location;
-      setFieldLabelText("schoolText", intake ? "School in " + intake : "Current School");
+      updateSchoolFieldGraduateMode();
+    }
+  }
+  // Graduated students are asked for their university, not their old high
+  // school (Ramodh via Amitav, 18 Aug 2026) — grad classes are split by uni
+  // vs gap year, so a "Gap Year / Not at Uni" quick option fills the field
+  // for students not at university. Everything reverts when the year level
+  // changes away from Graduated.
+  var GAP_YEAR_VALUE = "Gap Year / Not at Uni";
+  var schoolDescDefault = null;
+  function updateSchoolFieldGraduateMode() {
+    var input = q(FIELD_SELECTORS.schoolText);
+    if (!input) return;
+    var wrap = fieldWrapper(input);
+    if (!wrap) return;
+    var isGraduated = getValue(FIELD_SELECTORS.yearLevel) === "Graduated";
+    var intake = getValue(FIELD_SELECTORS.intakeYear);
+    setFieldLabelText("schoolText", isGraduated ? "University" : intake ? "School in " + intake : "Current School");
+    var desc = wrap.querySelector(".hs-field-desc");
+    if (desc) {
+      if (schoolDescDefault === null) schoolDescDefault = desc.textContent;
+      desc.textContent = isGraduated ? "Start typing your university name. Not at university? Choose Gap Year / Not at Uni below." : schoolDescDefault;
+    }
+    var gapBtn = wrap.querySelector(".contour-gap-year-option");
+    if (isGraduated) {
+      if (!document.getElementById("contour-gap-year-styles")) {
+        var style = document.createElement("style");
+        style.id = "contour-gap-year-styles";
+        style.textContent = ".hs-form .contour-gap-year-option { display: inline-block; margin-top: 8px; padding: 6px 14px; border: 1px solid #0C3166; border-radius: 999px; background: #FFFFFF; color: #0C3166; font-size: 13px; font-weight: 600; cursor: pointer; }" +
+          ".hs-form .contour-gap-year-option:hover { background: #0C3166; color: #FFFFFF; }";
+        document.head.appendChild(style);
+      }
+      if (!gapBtn) {
+        gapBtn = document.createElement("button");
+        gapBtn.type = "button";
+        gapBtn.className = "contour-gap-year-option";
+        gapBtn.textContent = GAP_YEAR_VALUE;
+        gapBtn.addEventListener("click", function() {
+          var schoolInput = q(FIELD_SELECTORS.schoolText);
+          if (!schoolInput) return;
+          schoolInput.value = GAP_YEAR_VALUE;
+          // "change" only — an "input" event would open the school
+          // suggestion listbox.
+          schoolInput.dispatchEvent(new Event("change", {
+            bubbles: true
+          }));
+          var codeInput = q(FIELD_SELECTORS.schoolCode);
+          var acaraInput = q(FIELD_SELECTORS.acaraId);
+          if (codeInput && codeInput.value) setHiddenValue(FIELD_SELECTORS.schoolCode, "");
+          if (acaraInput && acaraInput.value) setHiddenValue(FIELD_SELECTORS.acaraId, "");
+        });
+        var searchWrap = wrap.querySelector(".contour-school-search") || input.parentElement;
+        searchWrap.parentNode.insertBefore(gapBtn, searchWrap.nextSibling);
+      }
+      gapBtn.style.display = "";
+    } else if (gapBtn) {
+      gapBtn.style.display = "none";
+      // A gap-year answer only makes sense for Graduated — clear it if the
+      // year level changes so a school gets entered instead.
+      if (input.value === GAP_YEAR_VALUE) {
+        input.value = "";
+        input.dispatchEvent(new Event("change", {
+          bubbles: true
+        }));
+      }
     }
   }
   function injectDisabledFieldStyles() {
@@ -1737,6 +1801,7 @@ var ContourForm1Logic = function () {
       yearLevelEl.addEventListener("change", function () {
         evaluateProgramInterestOptions();
         evaluateInterestedSubjectsOptions();
+        updateSchoolFieldGraduateMode();
         applyPendingPrefill();
       });
     }
