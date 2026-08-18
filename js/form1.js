@@ -73,7 +73,7 @@ var ContourForm1Logic = function () {
   // enrolments reopen — nothing else needs changing.
   var UCAT_ENROLMENTS_OPEN = false;
   var UCAT_SUBJECT_CODES = ["UCAT-ANZ-CORE", "UCAT-ANZ-MAST", "UCAT-UK-CORE", "UCAT-UK-MAST"];
-  var UCAT_WAITLIST_NOTE = "UCAT enrolments are not open yet. Submitting this form joins the UCAT waitlist — it is not an enrolment, and no Welcome Consultation can be booked yet. Our team will contact you to book your consultation once enrolments reopen.";
+  var UCAT_WAITLIST_NOTE = "UCAT enrolments are closed until later in September. Submitting this form joins the UCAT waitlist — it is not an enrolment, and no Welcome Consultation can be booked yet. Our team will contact you to book your consultation once enrolments reopen.";
   // Welcome Consultation bookings are switched off for the AY27 intake while
   // consults are not live yet (Amitav, 16 Aug 2026). MedPrep and TestPrep
   // students see the yellow "open soon" note instead of the Calendly
