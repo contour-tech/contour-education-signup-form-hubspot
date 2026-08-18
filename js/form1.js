@@ -926,6 +926,7 @@ var ContourForm1Logic = function () {
       stripStateSuffixFromLabel(opt, classification);
       relabelUcatSubject(opt, classification);
       relabelMathematicsToMaths(opt, classification);
+      stripRedundantYearSuffix(opt, yearLevel);
       var matrixVerdict = subjectMatchesMatrix(classification, location, yearLevel, selectedIntakeYear);
       var locationOk;
       var yearOk;
@@ -954,6 +955,28 @@ var ContourForm1Logic = function () {
     toggleFieldWrapper(q(FIELD_SELECTORS.interestedSubjects), anyVisible);
     updateSubjectsRequiredMark(anyVisible);
     evaluateSubjectExclusions();
+  }
+  // A "(Year N)" tag in a subject label (QCE naming) is redundant when it
+  // matches the student's own year level (Amitav's request) — a Year 12 sees
+  // "QCE Methods" instead of "QCE Methods (Year 12)". Students who see both
+  // levels (e.g. QLD Year 11) keep the tag on the other level's subjects.
+  // Unlike the other relabels this one is reversible: the pre-strip text is
+  // cached per option so changing year level restores the tag.
+  var yearSuffixBaseText = new WeakMap();
+  function stripRedundantYearSuffix(opt, yearLevel) {
+    var wrap = optionWrapper(opt);
+    if (!wrap) return;
+    var span = wrap.querySelector("input + span") || wrap;
+    var textNode = span.firstChild;
+    if (!textNode || textNode.nodeType !== 3) return;
+    var base = yearSuffixBaseText.get(opt);
+    if (base === undefined) {
+      base = textNode.nodeValue;
+      yearSuffixBaseText.set(opt, base);
+    }
+    var match = base.match(/^(.*?)\s*\((Year \d+)\)\s*$/);
+    var next = match && yearLevel === match[2] ? match[1] : base;
+    if (textNode.nodeValue !== next) textNode.nodeValue = next;
   }
   function relabelMathematicsToMaths(opt, classification) {
     // Education subject names spell out "Mathematics" ("Year 10 Advanced
