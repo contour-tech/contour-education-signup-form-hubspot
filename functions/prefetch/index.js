@@ -43,10 +43,19 @@ const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // Properties the form can write an email into; a hit on any of them means
 // this address already has an entry.
-const EMAIL_MATCH_PROPERTIES = ["email", "email_2", "student_email"];
-// Phone lives on several properties depending on who signed up and when, so a
-// duplicate has to be looked for across all of them.
-const PHONE_MATCH_PROPERTIES = ["phone", "student_phone_number", "student_phone"];
+// Emails are matched across every property that can hold one, whichever field
+// was typed into: the contact's own, the stand-in used by the form, and the
+// student/guardian pair (Amitav).
+const EMAIL_MATCH_PROPERTIES = ["email", "email_2", "student_email", "guardian_email"];
+// A student phone is only a duplicate against another student phone. Any other
+// number is checked against every phone property.
+const STUDENT_PHONE_MATCH_PROPERTIES = ["student_phone_number", "student_phone"];
+const PHONE_MATCH_PROPERTIES = [
+  "phone",
+  "student_phone_number",
+  "student_phone",
+  "guardian_phone"
+];
 
 const ALLOWED_ORIGINS = [
   "https://contour-staging.webflow.io",
@@ -152,15 +161,12 @@ async function associatedSubjectCodes(contactId, objectType) {
   return [...new Set(codes)];
 }
 
-async function contactExistsByProperties(propertyNames, values) {
-  // filterGroups are OR-ed, so one group per property/value pair matches a
-  // contact carrying the value on any of them.
-  const filterGroups = [];
-  propertyNames.forEach((propertyName) => {
-    values.forEach((value) => {
-      filterGroups.push({ filters: [{ propertyName, operator: "EQ", value }] });
-    });
-  });
+async function contactExistsByProperties(propertyNames, value, operator) {
+  // filterGroups are OR-ed, so one group per property matches a contact
+  // carrying the value on any of them.
+  const filterGroups = propertyNames.map((propertyName) => ({
+    filters: [{ propertyName, operator: operator || "EQ", value }]
+  }));
   if (filterGroups.length === 0) return false;
   const res = await fetch(`${HUBSPOT_BASE}/crm/v3/objects/contacts/search`, {
     method: "POST",
@@ -180,36 +186,31 @@ async function contactExistsByProperties(propertyNames, values) {
 }
 
 async function contactExistsByEmail(email) {
-  return contactExistsByProperties(EMAIL_MATCH_PROPERTIES, [email]);
+  return contactExistsByProperties(EMAIL_MATCH_PROPERTIES, email);
 }
 
-// HubSpot stores phone numbers inconsistently: "+61 412345678", "0412345678",
-// "+61412345678". Searching only the typed form misses the same number stored
-// another way, so the likely variants are searched together.
-function phoneVariants(raw) {
-  const digits = String(raw).replace(/[^\d]/g, "");
-  if (digits.length < 6) return [];
-  const variants = new Set([String(raw).trim()]);
-  variants.add(`+${digits}`);
-  variants.add(digits);
-  // Australian mobiles: +61412345678 <-> 0412345678.
-  if (digits.startsWith("61") && digits.length >= 10) {
-    const national = digits.slice(2);
-    variants.add(`0${national}`);
-    variants.add(national);
-    variants.add(`+61 ${national}`);
-  } else if (digits.startsWith("0")) {
-    const national = digits.slice(1);
-    variants.add(`+61${national}`);
-    variants.add(`+61 ${national}`);
-  }
-  return [...variants].filter((v) => v.length >= 6).slice(0, 12);
+// Numbers are stored in whatever shape they were captured in: "+61412345678",
+// "61412345678", "0412345678", "+61 412 345 678". Matching the country code and
+// spacing exactly is hopeless, so the national digits are searched as a
+// substring instead. HubSpot only honours CONTAINS_TOKEN on phone properties
+// when the value is wildcarded, so the "*digits*" form is required.
+function phoneSearchDigits(raw) {
+  let digits = String(raw).replace(/[^\d]/g, "");
+  // Drop a leading country code so a number typed with one still matches the
+  // same number stored without it, and vice versa.
+  if (digits.startsWith("61") && digits.length > 9) digits = digits.slice(2);
+  else if (digits.startsWith("0")) digits = digits.replace(/^0+/, "");
+  // Guard against a short fragment matching half the database.
+  return digits.length >= 8 ? digits : "";
 }
 
-async function contactExistsByPhone(phone) {
-  const variants = phoneVariants(phone);
-  if (variants.length === 0) return false;
-  return contactExistsByProperties(PHONE_MATCH_PROPERTIES, variants);
+async function contactExistsByPhone(phone, studentOnly) {
+  const digits = phoneSearchDigits(phone);
+  if (!digits) return false;
+  const properties = studentOnly
+    ? STUDENT_PHONE_MATCH_PROPERTIES
+    : PHONE_MATCH_PROPERTIES;
+  return contactExistsByProperties(properties, `*${digits}*`, "CONTAINS_TOKEN");
 }
 
 functions.http("prefetch", async (req, res) => {
@@ -242,9 +243,12 @@ functions.http("prefetch", async (req, res) => {
       return res.status(400).json({ error: "invalid phone" });
     }
     try {
+      // scope=student restricts a phone check to the student phone properties,
+      // so a student's number is only ever a duplicate of another student's.
+      const studentOnly = String(req.query.scope || "") === "student";
       const exists = email
         ? await contactExistsByEmail(email)
-        : await contactExistsByPhone(phone);
+        : await contactExistsByPhone(phone, studentOnly);
       return res.json({ exists });
     } catch (err) {
       console.error("exists error:", err.message);

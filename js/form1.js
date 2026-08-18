@@ -2577,6 +2577,8 @@ var ContourForm1Logic = function () {
     {
       selector: '[name="student_phone_number"]',
       param: "phone",
+      // Only ever a duplicate of another student's number, not a guardian's.
+      scope: "student",
       message: "This student phone number is already registered. Please contact our team to update your details.",
       errorClass: "contour-duplicate-student-phone-error"
     }
@@ -2617,7 +2619,9 @@ var ContourForm1Logic = function () {
         return Promise.resolve(results[email]);
       }
       if (pending[email]) return pending[email];
-      var request = fetch(PREFETCH_ENDPOINT + "/exists?" + config.param + "=" + encodeURIComponent(email)).then(function (res) {
+      var url = PREFETCH_ENDPOINT + "/exists?" + config.param + "=" + encodeURIComponent(email);
+      if (config.scope) url += "&scope=" + encodeURIComponent(config.scope);
+      var request = fetch(url).then(function (res) {
         if (!res.ok) throw new Error("HTTP " + res.status);
         return res.json();
       }).then(function (data) {
