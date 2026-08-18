@@ -802,11 +802,11 @@ var ContourForm1Logic = function () {
     link.setAttribute("role", "button");
     link.setAttribute("tabindex", "0");
     link.textContent = GRAD_QUICK_VALUE;
-    link.addEventListener("click", function(e) {
+    link.addEventListener("click", function (e) {
       e.preventDefault();
       fillSchoolQuickOption(GRAD_QUICK_VALUE);
     });
-    link.addEventListener("keydown", function(e) {
+    link.addEventListener("keydown", function (e) {
       if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
         fillSchoolQuickOption(GRAD_QUICK_VALUE);
@@ -1077,7 +1077,7 @@ var ContourForm1Logic = function () {
   // the subject explains this in a tooltip that opens on hover anywhere over
   // the option, or on focusing the icon (Amitav/Luke, 18 Aug 2026; tooltip
   // form per Amrit).
-  var INTERVIEW_NOTE_TEXT = "Interview Program will start at the end of Year 12 - we will contact you in Year 12.";
+  var INTERVIEW_NOTE_TEXT = "Interview Program will start at the end of Year 12 - we will get in touch with you in Year 12.";
   var INTERVIEW_NOTE_YEAR_LEVELS = ["Year 10", "Year 11"];
   function updateInterviewProgramNote(opt, classification, yearLevel, optionVisible) {
     if (classification.code !== "MD-INT") return;
