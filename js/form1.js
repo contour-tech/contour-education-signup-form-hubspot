@@ -73,14 +73,14 @@ var ContourForm1Logic = function () {
   // enrolments reopen — nothing else needs changing.
   var UCAT_ENROLMENTS_OPEN = false;
   var UCAT_SUBJECT_CODES = ["UCAT-ANZ-CORE", "UCAT-ANZ-MAST", "UCAT-UK-CORE", "UCAT-UK-MAST"];
-  var UCAT_WAITLIST_NOTE = "UCAT enrolments are closed until later in September. Submitting this form joins the UCAT waitlist — it is not an enrolment, and no Welcome Consultation can be booked yet. Our team will contact you to book your consultation once enrolments reopen.";
+  var UCAT_WAITLIST_NOTE = "UCAT enrolments are closed until later in September. Submitting this form joins the UCAT waitlist. It is not an enrolment, and you can't book a Welcome Consultation yet. We'll be in touch to book your consultation once enrolments reopen.";
   // Welcome Consultation bookings are switched off for the AY27 intake while
   // consults are not live yet (Amitav, 16 Aug 2026). MedPrep and TestPrep
   // students see the yellow "open soon" note instead of the Calendly
   // scheduler. Flip WC_BOOKINGS_OPEN back to true to restore the scheduler —
   // nothing else needs changing.
   var WC_BOOKINGS_OPEN = false;
-  var WC_OPEN_SOON_NOTE = "Welcome Consultation bookings open soon. You can submit this form now — our team will contact you to book your Welcome Consultation once bookings open.";
+  var WC_OPEN_SOON_NOTE = "Welcome Consultation bookings open soon. You can still submit this form now. We'll be in touch to book your Welcome Consultation once bookings open.";
   var CATEGORY_DISPLAY_ORDER = ["Mathematics", "Science", "English", "TestPrep", "MedPrep", "Other"];
   var CATEGORY_DISPLAY_NAMES = {
     TestPrep: "Selective Entry & Scholarship",
@@ -462,6 +462,48 @@ var ContourForm1Logic = function () {
       if (CONTACT_TYPE_ILLUSTRATIONS[i].match.test(labelText)) return CONTACT_TYPE_ILLUSTRATIONS[i];
     }
     return null;
+  }
+  // With Guardian selected, the form asks for two people at once: the student
+  // (their own labelled fields) and the person filling it in. "Your First Name"
+  // directly under "Student First Name" reads ambiguously, so the second set is
+  // relabelled "Guardian ..." (Amitav). Student flow keeps "Your ...", since
+  // there is only one person then. Location stays untouched: it is the
+  // student's location in both flows.
+  var GUARDIAN_RELABEL_FIELDS = [
+    { selector: '[name="firstname"]', your: "Your First Name", guardian: "Guardian First Name" },
+    { selector: '[name="lastname"]', your: "Your Last Name", guardian: "Guardian Last Name" },
+    { selector: '[name="email_2"]', your: "Your Email", guardian: "Guardian Email" },
+    { selector: '[name="phone"]', your: "Your Phone number", guardian: "Guardian Phone number" }
+  ];
+  function isGuardianContactType() {
+    var checked = qAll(FIELD_SELECTORS.contactType).filter(function (radio) {
+      return radio.checked;
+    })[0];
+    if (!checked) return false;
+    return checked.value === "Guardian" || checked.value === "Parent";
+  }
+  function setLabelTextForField(selector, text) {
+    var field = q(selector);
+    var wrap = field ? fieldWrapper(field) : null;
+    if (!wrap) return;
+    var label = wrap.querySelector("label");
+    if (!label) return;
+    var spans = label.querySelectorAll("span");
+    for (var i = 0; i < spans.length; i++) {
+      if (!/hs-form-required/.test(spans[i].className)) {
+        spans[i].textContent = text;
+        return;
+      }
+    }
+    var node = label.firstChild;
+    while (node && node.nodeType !== 3) node = node.nextSibling;
+    if (node) node.nodeValue = text;
+  }
+  function updateGuardianFieldLabels() {
+    var guardian = isGuardianContactType();
+    GUARDIAN_RELABEL_FIELDS.forEach(function (config) {
+      setLabelTextForField(config.selector, guardian ? config.guardian : config.your);
+    });
   }
   function enhanceContactTypeIllustrations() {
     var radios = qAll(FIELD_SELECTORS.contactType);
@@ -1547,6 +1589,7 @@ var ContourForm1Logic = function () {
       qAll(FIELD_SELECTORS.contactType).forEach(function (radio) {
         if (radio.value === radioValue) setCheckboxChecked(radio, true);
       });
+      updateGuardianFieldLabels();
     }
     if (isGuardianFlow) {
       setSelectOrTextValue('[name="firstname"]', contact.firstname);
@@ -1612,7 +1655,7 @@ var ContourForm1Logic = function () {
     content.appendChild(title);
     var text = document.createElement("p");
     text.className = "contour-prefill-banner__text";
-    text.textContent = "We've prefilled your details from your previous signup — please review them before submitting.";
+    text.textContent = "We've filled in your details from your last signup. Please check them before you submit.";
     content.appendChild(text);
     var resetLink = document.createElement("a");
     resetLink.href = "#";
@@ -1642,6 +1685,7 @@ var ContourForm1Logic = function () {
       radios.forEach(function (radio) {
         if (radio.value === "Student") setCheckboxChecked(radio, true);
       });
+      updateGuardianFieldLabels();
       if (tries > 0) defaultContactTypeToStudent(tries - 1);
     }, 250);
   }
@@ -1735,7 +1779,7 @@ var ContourForm1Logic = function () {
       }).then(function (data) {
         if (!data || !data.found) return;
         if (emailInput.value.trim() !== email) return;
-        message.textContent = "Looks like you've signed up with us before. We've emailed a 6-digit code to " + email + " — enter it below to prefill your details.";
+        message.textContent = "Looks like you've signed up with us before. We've emailed a 6-digit code to " + email + ". Enter it below and we'll fill in your details.";
         box.style.display = "";
         codeRow.style.display = "";
       }).catch(function (err) {
@@ -3347,6 +3391,10 @@ var ContourForm1Logic = function () {
     fixProgramCardClickArea();
     enforceContactTypeLayoutIfPresent();
     enhanceContactTypeIllustrations();
+    updateGuardianFieldLabels();
+    qAll(FIELD_SELECTORS.contactType).forEach(function (radio) {
+      radio.addEventListener("change", updateGuardianFieldLabels);
+    });
     enforceEmailTempValidation();
     enforceDuplicateEmailValidation();
     enhanceEmailPrefill();
