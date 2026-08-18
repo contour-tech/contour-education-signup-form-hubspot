@@ -30,6 +30,11 @@ var ContourForm1Logic = function () {
     title: "High School Tutoring",
     description: "Expert tutoring for in-depth understanding and results",
     logoUrl: "https://cdn.prod.website-files.com/696ed06d2e62378f0a51f2d4/6a0bbf0cd57f2b816bcc79fb_Final%20EDUCATION%20horizontal%20logo.svg",
+    // Right-side clip of the hover tint so only the icon + "contour"
+    // wordmark colours in, never the brand suffix. Measured per SVG: the
+    // wordmark ends at x=362 and the suffix starts at x=380 in every logo,
+    // so the clip sits at the x=371 midpoint of that gap over each width.
+    logoTintRight: "45.4%",
     accent: "#3478F7",
     accentSoft: "rgba(52, 120, 247, 0.08)",
     accentContrast: "#FFFFFF"
@@ -38,6 +43,7 @@ var ContourForm1Logic = function () {
     title: "Selective Entry & Scholarship",
     description: "Preparing junior students for selective school examinations",
     logoUrl: "https://cdn.prod.website-files.com/696ed06d2e62378f0a51f2d4/6a0bbed5fdbd2c829b5e4e7c_Final%20TESTPREP%20Charcoal%20horizontal%20logo.svg",
+    logoTintRight: "41.8%",
     accent: "#3478F7",
     accentSoft: "rgba(52, 120, 247, 0.08)",
     accentContrast: "#FFFFFF"
@@ -46,6 +52,7 @@ var ContourForm1Logic = function () {
     title: "Medical Entry",
     description: "UCAT tutoring and medical interview coaching",
     logoUrl: "https://cdn.prod.website-files.com/696ed06d2e62378f0a51f2d4/6a0bbed5058c7ec65b1a454e_Final%20MEDPREP%20Charcoal%20horizontal%20logo.svg",
+    logoTintRight: "39.9%",
     accent: "#3478F7",
     accentSoft: "rgba(52, 120, 247, 0.08)",
     accentContrast: "#FFFFFF"
@@ -329,7 +336,7 @@ var ContourForm1Logic = function () {
       // to #3478F7 (brightness(0) first, then rotate to the blue).
       ".hs-form .contour-program-card__logo-placeholder--has-logo { position: relative; }" +
       ".hs-form .contour-program-card__logo-tint { position: absolute; top: 0; left: 0; height: 100%; width: auto; max-width: 100%; object-fit: contain; pointer-events: none; filter: brightness(0) saturate(100%) invert(42%) sepia(85%) saturate(3550%) hue-rotate(211deg) brightness(100%) contrast(94%); clip-path: inset(0 100% 0 0); transition: clip-path 0.7s ease; }" +
-      ".hs-form .contour-program-card:hover .contour-program-card__logo-tint, .hs-form .contour-program-card--selected .contour-program-card__logo-tint { clip-path: inset(0 0 0 0); }";
+      ".hs-form .contour-program-card:hover .contour-program-card__logo-tint, .hs-form .contour-program-card--selected .contour-program-card__logo-tint { clip-path: inset(0 var(--contour-logo-tint-right, 0%) 0 0); }";
     document.head.appendChild(style);
   }
   function enhanceProgramInterestCards() {
@@ -347,6 +354,9 @@ var ContourForm1Logic = function () {
         card.style.setProperty("--contour-card-accent", config.accent);
         card.style.setProperty("--contour-card-accent-soft", config.accentSoft);
         card.style.setProperty("--contour-card-accent-contrast", config.accentContrast);
+        if (config.logoTintRight) {
+          card.style.setProperty("--contour-logo-tint-right", config.logoTintRight);
+        }
       }
       var badge = document.createElement("span");
       badge.className = "contour-program-card__badge";
