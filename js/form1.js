@@ -1178,6 +1178,12 @@ var ContourForm1Logic = function () {
     campusClassificationCache.set(inputEl, classification);
     return classification;
   }
+  // The section divider above the campus field only makes sense while the
+  // field itself renders (it hides for MedPrep-only signups).
+  function toggleCampusDivider(shouldShow) {
+    var divider = formRoot.querySelector("#contour-divider-campus");
+    if (divider) divider.style.display = shouldShow ? "" : "none";
+  }
   function evaluateCampusOptions() {
     var location = getValue(FIELD_SELECTORS.location);
     var selectedPrograms = getCheckedValues(FIELD_SELECTORS.programInterest);
@@ -1189,6 +1195,7 @@ var ContourForm1Logic = function () {
         setCheckboxChecked(opt, isOnline);
       });
       toggleFieldWrapper(q(FIELD_SELECTORS.campus), false);
+      toggleCampusDivider(false);
       updateCampusRequiredMark(false);
       return;
     }
@@ -1199,6 +1206,7 @@ var ContourForm1Logic = function () {
       shouldShow ? showOption(opt) : hideOption(opt);
     });
     toggleFieldWrapper(q(FIELD_SELECTORS.campus), fieldShouldShow);
+    toggleCampusDivider(fieldShouldShow);
     updateCampusRequiredMark(fieldShouldShow);
   }
   function fixRadioCardClickArea() {
