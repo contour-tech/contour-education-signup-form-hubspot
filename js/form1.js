@@ -879,18 +879,56 @@ var ContourForm1Logic = function () {
       if (!buckets[category]) buckets[category] = [];
       buckets[category].push(optionWrapper(inputEl));
     });
-    // 3/4 subjects sit above their 1/2 counterparts (Amitav's request).
-    // Stable partition per category: level-3/4 options (codes ending in 34)
-    // first, everything else after in HubSpot order.
+    // Subject ordering (Amitav + Amrit, 18 Aug 2026): same subjects club
+    // together and everything runs in descending level order. Each option is
+    // ranked by the highest year in its structured year list (+0.5 for 3/4
+    // codes so 3/4 always beats 1/2 at the same year); options group by
+    // their structured subject name; groups sort by their best rank, items
+    // descend within the group, and all ties keep HubSpot order. Renders
+    // e.g. Methods 3/4, Methods 1/2, Specialist 3/4, Specialist 1/2,
+    // Year 10 Maths — and HSC/Prelim or QCE (Year 12)/(Year 11) pairs
+    // side by side in the two-column grid. MedPrep keeps its own explicit
+    // order below.
+    function subjectLevelRank(input) {
+      var classification = getClassification(input);
+      var rank = 0;
+      if (classification.yearsShown) {
+        for (var i = 0; i < classification.yearsShown.length; i++) {
+          var label = classification.yearsShown[i];
+          var year = label === "Graduated" ? 13 : parseInt(label.replace("Year ", ""), 10);
+          if (year > rank) rank = year;
+        }
+      }
+      if (classification.code && /34$/.test(classification.code)) rank += 0.5;
+      return rank;
+    }
     Object.keys(buckets).forEach(function (category) {
-      var level34 = [];
-      var otherLevels = [];
-      buckets[category].forEach(function (li) {
+      if (category === "MedPrep") return;
+      var entries = buckets[category].map(function (li, index) {
         var input = li ? li.querySelector("input") : null;
-        var code = input ? getClassification(input).code : null;
-        (code && /34$/.test(code) ? level34 : otherLevels).push(li);
+        var classification = input ? getClassification(input) : null;
+        return {
+          li: li,
+          index: index,
+          rank: input ? subjectLevelRank(input) : 0,
+          group: classification && classification.subject ? classification.subject : "#" + index
+        };
       });
-      buckets[category] = level34.concat(otherLevels);
+      var groupRank = {};
+      var groupFirst = {};
+      entries.forEach(function (entry) {
+        if (!(entry.group in groupRank) || entry.rank > groupRank[entry.group]) groupRank[entry.group] = entry.rank;
+        if (!(entry.group in groupFirst)) groupFirst[entry.group] = entry.index;
+      });
+      entries.sort(function (a, b) {
+        if (groupRank[a.group] !== groupRank[b.group]) return groupRank[b.group] - groupRank[a.group];
+        if (groupFirst[a.group] !== groupFirst[b.group]) return groupFirst[a.group] - groupFirst[b.group];
+        if (a.rank !== b.rank) return b.rank - a.rank;
+        return a.index - b.index;
+      });
+      buckets[category] = entries.map(function (entry) {
+        return entry.li;
+      });
     });
     // Medical Entry list order is UCAT, then Medical & Dental Interviews,
     // then GAMSAT (Nick's request) — HubSpot serves them roughly reversed.
