@@ -732,16 +732,28 @@ var ContourForm1Logic = function () {
   // offered as helper-text links and pinned at the top of the suggestion
   // list. Everything reverts when the year level changes away from
   // Graduated.
-  var GRAD_QUICK_OPTIONS = ["Gap Year", "Not In University"];
+  var GRAD_QUICK_VALUE = "Gap Year/Not in University";
+  // Older split values, cleared on year-level change like the current one.
+  var GRAD_QUICK_LEGACY_VALUES = [GRAD_QUICK_VALUE, "Gap Year", "Not In University", "Gap Year / Not at Uni"];
   function isGraduatedSelected() {
     return getValue(FIELD_SELECTORS.yearLevel) === "Graduated";
   }
+  // Set by enhanceSchoolSearch so quick-fill goes through the combobox's own
+  // selectSchool() — the exact event sequence (input + change) that clears
+  // HubSpot's native "Please complete this required field" error. A bare
+  // value write + change event leaves that error stuck.
+  var schoolQuickFillHook = null;
   function fillSchoolQuickOption(value) {
+    if (schoolQuickFillHook) {
+      schoolQuickFillHook(value);
+      return;
+    }
     var schoolInput = q(FIELD_SELECTORS.schoolText);
     if (!schoolInput) return;
     schoolInput.value = value;
-    // "change" only — an "input" event would open the school suggestion
-    // listbox.
+    schoolInput.dispatchEvent(new Event("input", {
+      bubbles: true
+    }));
     schoolInput.dispatchEvent(new Event("change", {
       bubbles: true
     }));
@@ -764,7 +776,7 @@ var ContourForm1Logic = function () {
     if (schoolDescDefault === null) schoolDescDefault = desc.textContent;
     if (!isGraduated) {
       desc.textContent = schoolDescDefault;
-      if (GRAD_QUICK_OPTIONS.indexOf(input.value) !== -1) {
+      if (GRAD_QUICK_LEGACY_VALUES.indexOf(input.value) !== -1) {
         // A gap-year/not-in-uni answer only makes sense for Graduated —
         // clear it so a school gets entered instead.
         input.value = "";
@@ -781,29 +793,27 @@ var ContourForm1Logic = function () {
         ".hs-form .contour-grad-quick-link:hover { color: #3478F7; }";
       document.head.appendChild(style);
     }
-    // Rebuilt each pass (idempotent): plain text with the two quick answers
-    // hyperlinked — clicking one fills the field.
+    // Rebuilt each pass (idempotent): plain text with the single quick
+    // answer hyperlinked — clicking it fills the field.
     desc.textContent = "";
     desc.appendChild(document.createTextNode("Start typing your university name. Taking a gap year or not at university? Select "));
-    GRAD_QUICK_OPTIONS.forEach(function(optionValue, index) {
-      var link = document.createElement("a");
-      link.className = "contour-grad-quick-link";
-      link.setAttribute("role", "button");
-      link.setAttribute("tabindex", "0");
-      link.textContent = optionValue;
-      link.addEventListener("click", function(e) {
-        e.preventDefault();
-        fillSchoolQuickOption(optionValue);
-      });
-      link.addEventListener("keydown", function(e) {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          fillSchoolQuickOption(optionValue);
-        }
-      });
-      desc.appendChild(link);
-      desc.appendChild(document.createTextNode(index === 0 ? " or " : "."));
+    var link = document.createElement("a");
+    link.className = "contour-grad-quick-link";
+    link.setAttribute("role", "button");
+    link.setAttribute("tabindex", "0");
+    link.textContent = GRAD_QUICK_VALUE;
+    link.addEventListener("click", function(e) {
+      e.preventDefault();
+      fillSchoolQuickOption(GRAD_QUICK_VALUE);
     });
+    link.addEventListener("keydown", function(e) {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        fillSchoolQuickOption(GRAD_QUICK_VALUE);
+      }
+    });
+    desc.appendChild(link);
+    desc.appendChild(document.createTextNode("."));
   }
   function injectDisabledFieldStyles() {
     if (document.getElementById("contour-disabled-field-styles")) return;
@@ -1937,23 +1947,29 @@ var ContourForm1Logic = function () {
         return fuzzyMatchesQueryAndLocation(school, queryWords, location);
       });
     }
-    // Graduated students get "Gap Year" and "Not In University" pinned at
-    // the top of the suggestions, whatever the query.
-    function gradQuickEntries() {
-      if (!isGraduatedSelected()) return [];
-      return GRAD_QUICK_OPTIONS.map(function (name) {
-        return {
-          name: name,
-          school_code: "",
-          acara_id: ""
-        };
-      });
-    }
-    function withGradQuickFirst(matches) {
-      var quick = gradQuickEntries();
-      if (quick.length === 0) return matches;
-      return quick.concat(matches.filter(function (school) {
-        return GRAD_QUICK_OPTIONS.indexOf(school.name) === -1;
+    // For Graduated students "Gap Year/Not in University" behaves like a
+    // list entry: it appears (first) only when the typed query matches it —
+    // never by default.
+    function withGradQuickMatch(matches, query) {
+      if (!isGraduatedSelected()) return matches;
+      var nameNorm = normalize(GRAD_QUICK_VALUE);
+      var hit = nameNorm.indexOf(query) !== -1;
+      if (!hit) {
+        var queryWords = tokenize(query);
+        var nameWords = tokenize(GRAD_QUICK_VALUE);
+        hit = queryWords.length > 0 && queryWords.every(function (qw) {
+          return nameWords.some(function (nw) {
+            return fuzzyWordMatches(qw, nw);
+          });
+        });
+      }
+      if (!hit) return matches;
+      return [{
+        name: GRAD_QUICK_VALUE,
+        school_code: "",
+        acara_id: ""
+      }].concat(matches.filter(function (school) {
+        return school.name !== GRAD_QUICK_VALUE;
       }));
     }
     function renderResults(matches) {
@@ -2030,10 +2046,9 @@ var ContourForm1Logic = function () {
       }
       var query = normalize(input.value);
       if (query.length < MIN_CHARS) {
+        closeListbox();
         if (codeInput && codeInput.value) setHiddenField(codeInput, "");
         if (acaraInput && acaraInput.value) setHiddenField(acaraInput, "");
-        var quick = gradQuickEntries();
-        if (quick.length > 0) renderResults(quick); else closeListbox();
         return;
       }
       if (codeInput && codeInput.value) setHiddenField(codeInput, "");
@@ -2041,14 +2056,8 @@ var ContourForm1Logic = function () {
       loadSchoolList().then(function (list) {
         var currentLocation = getValue(FIELD_SELECTORS.location);
         var matches = searchSchools(list, query, currentLocation).slice(0, MAX_RESULTS);
-        renderResults(withGradQuickFirst(matches));
+        renderResults(withGradQuickMatch(matches, query));
       });
-    });
-    input.addEventListener("focus", function () {
-      if (listbox.hidden && normalize(input.value).length < MIN_CHARS) {
-        var quick = gradQuickEntries();
-        if (quick.length > 0) renderResults(quick);
-      }
     });
     input.addEventListener("keydown", function (e) {
       if (listbox.hidden && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
@@ -2056,11 +2065,8 @@ var ContourForm1Logic = function () {
         if (query.length >= MIN_CHARS) {
           loadSchoolList().then(function (list) {
             var currentLocation = getValue(FIELD_SELECTORS.location);
-            renderResults(withGradQuickFirst(searchSchools(list, query, currentLocation).slice(0, MAX_RESULTS)));
+            renderResults(withGradQuickMatch(searchSchools(list, query, currentLocation).slice(0, MAX_RESULTS), query));
           });
-        } else {
-          var quick = gradQuickEntries();
-          if (quick.length > 0) renderResults(quick);
         }
         return;
       }
@@ -2093,6 +2099,15 @@ var ContourForm1Logic = function () {
     document.addEventListener("click", function (e) {
       if (!wrapper.contains(e.target)) closeListbox();
     });
+    // Helper-text quick links fill through the same path as a dropdown pick
+    // so HubSpot's native required-field error clears.
+    schoolQuickFillHook = function (name) {
+      selectSchool({
+        name: name,
+        school_code: "",
+        acara_id: ""
+      });
+    };
     loadSchoolList();
   }
   function watchSchoolFieldRerender() {
