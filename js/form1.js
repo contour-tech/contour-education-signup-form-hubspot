@@ -3116,6 +3116,10 @@ var ContourForm1Logic = function () {
     enhanceCampusLabels();
     ensureIntakeYearNote();
     ensureDividerBefore(q(FIELD_SELECTORS.programInterest), "contour-divider-program-interest");
+    // Sits between the "Your Subjects" summary box and Preferred Campuses —
+    // the summary is inserted directly after the subjects field, so a
+    // divider before the campus field lands right after it (Amitav).
+    ensureDividerBefore(q(FIELD_SELECTORS.campus), "contour-divider-campus");
     ensureDividerBefore(q(FIELD_SELECTORS.referral), "contour-divider-referral");
     fixRadioCardClickArea();
     fixCheckboxCardClickArea();
