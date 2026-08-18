@@ -86,6 +86,7 @@ var ContourForm1Logic = function () {
     TestPrep: "Selective Entry & Scholarship",
     MedPrep: "Medical Entry"
   };
+  var CATEGORIES_WITHOUT_HEADER = ["TestPrep", "MedPrep"];
   function matrixLocationKey(location) {
     if (location === "United Kingdom") return "UK";
     if (location === "New Zealand") return "NZ";
@@ -902,11 +903,16 @@ var ContourForm1Logic = function () {
     orderedCategories.forEach(function (category) {
       var items = buckets[category];
       if (!items || items.length === 0) return;
-      var header = document.createElement("li");
-      header.className = "contour-subject-category-header";
-      header.textContent = CATEGORY_DISPLAY_NAMES[category] || category;
-      listParent.appendChild(header);
-      categoryHeaderMap[category] = header;
+      // TestPrep and MedPrep get no header (Amitav's request) — the program
+      // card and the subject names already carry that context. Education
+      // categories keep theirs to group the long subject list.
+      if (CATEGORIES_WITHOUT_HEADER.indexOf(category) === -1) {
+        var header = document.createElement("li");
+        header.className = "contour-subject-category-header";
+        header.textContent = CATEGORY_DISPLAY_NAMES[category] || category;
+        listParent.appendChild(header);
+        categoryHeaderMap[category] = header;
+      }
       items.forEach(function (li) {
         listParent.appendChild(li);
       });
@@ -956,10 +962,11 @@ var ContourForm1Logic = function () {
     updateSubjectsRequiredMark(anyVisible);
     evaluateSubjectExclusions();
   }
-  // A "(Year N)" tag in a subject label (QCE naming) is redundant when it
-  // matches the student's own year level (Amitav's request) — a Year 12 sees
-  // "QCE Methods" instead of "QCE Methods (Year 12)". Students who see both
-  // levels (e.g. QLD Year 11) keep the tag on the other level's subjects.
+  // The "(Year 12)" tag on QCE/HSC subject labels is dropped when the
+  // student has selected Year 12 — they only see Year 12 subjects, so the
+  // tag is noise (Amitav + Wassim, 18 Aug 2026). Year 11 and below keep
+  // every label exactly as authored in the planning matrix, including
+  // "(Year 11)" tags, so the two levels stay distinguishable side by side.
   // Unlike the other relabels this one is reversible: the pre-strip text is
   // cached per option so changing year level restores the tag.
   var yearSuffixBaseText = new WeakMap();
@@ -974,8 +981,8 @@ var ContourForm1Logic = function () {
       base = textNode.nodeValue;
       yearSuffixBaseText.set(opt, base);
     }
-    var match = base.match(/^(.*?)\s*\((Year \d+)\)\s*$/);
-    var next = match && yearLevel === match[2] ? match[1] : base;
+    var match = base.match(/^(.*?)\s*\(Year 12\)\s*$/);
+    var next = match && yearLevel === "Year 12" ? match[1] : base;
     if (textNode.nodeValue !== next) textNode.nodeValue = next;
   }
   function relabelMathematicsToMaths(opt, classification) {
