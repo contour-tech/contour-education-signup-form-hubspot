@@ -977,6 +977,7 @@ var ContourForm1Logic = function () {
     var anyVisibleByCategory = {};
     options.forEach(function (opt) {
       var classification = getClassification(opt);
+      applySignupName(opt, classification);
       relabelTestPrepSubject(opt, classification);
       stripStateSuffixFromLabel(opt, classification);
       relabelUcatSubject(opt, classification);
@@ -1081,6 +1082,22 @@ var ContourForm1Logic = function () {
     var pattern = new RegExp("\\s*\\(" + classification.state + "\\)\\s*$");
     var stripped = textNode.nodeValue.replace(pattern, "");
     if (stripped !== textNode.nodeValue) textNode.nodeValue = stripped;
+  }
+  // Subject display names come from the 'Subjects' sheet of the 2027
+  // Curriculum Planning Matrix (signup_name column; Wassim, 18 Aug 2026) —
+  // the sheet is the central reference for what students see. Applied
+  // before the heuristic relabels, which stay as fallback for unmapped
+  // codes. Display-only: submitted structured values are untouched.
+  var SUBJECT_SIGNUP_NAMES = {"GAMSAT":"GAMSAT","HSC-BIOL":"HSC Biology (Year 12)","HSC-CHEM":"HSC Chemistry (Year 12)","HSC-MADV":"HSC Maths Advanced (Year 12)","HSC-MAE1":"HSC Maths Extension 1 (Year 12)","HSC-MAE2":"HSC Maths Extension 2 (Year 12)","HSC-PHYS":"HSC Physics (Year 12)","MD-INT":"Medical & Dental Interviews","NSW-EN07":"Year 7 English","NSW-EN08":"Year 8 English","NSW-EN09":"Year 9 English","NSW-EN10":"Year 10 English","NSW-MA07":"Year 7 Maths","NSW-MA08":"Year 8 Maths","NSW-MA09":"Year 9 Maths","NSW-MA10":"Year 10 Maths","NSW-SC07":"Year 7 Science","NSW-SC08":"Year 8 Science","NSW-SC09":"Year 9 Science","NSW-SC10":"Year 10 Science","PRE-BIOL":"Prelim Biology (Year 11)","PRE-CHEM":"Prelim Chemistry (Year 11)","PRE-MADV":"Prelim Maths Advanced (Year 11)","PRE-MAE1":"Prelim Maths Extension 1 (Year 11)","PRE-PHYS":"Prelim Physics (Year 11)","QCE-BI12":"QCE Biology (Year 11)","QCE-BI34":"QCE Biology (Year 12)","QCE-CH12":"QCE Chemistry (Year 11)","QCE-CH34":"QCE Chemistry (Year 12)","QCE-MM12":"QCE Methods (Year 11)","QCE-MM34":"QCE Methods (Year 12)","QCE-PH12":"QCE Physics (Year 11)","QCE-PH34":"QCE Physics (Year 12)","QCE-SM12":"QCE Specialist Maths (Year 11)","QCE-SM34":"QCE Specialist Maths (Year 12)","QLD-EN07":"Year 7 English","QLD-EN08":"Year 8 English","QLD-EN09":"Year 9 English","QLD-EN10":"Year 10 English","QLD-MA07":"Year 7 Maths","QLD-MA08":"Year 8 Maths","QLD-MA09":"Year 9 Maths","QLD-MA1A":"Year 10 Maths","QLD-SC07":"Year 7 Science","QLD-SC08":"Year 8 Science","QLD-SC09":"Year 9 Science","QLD-SC10":"Year 10 Science","UCAT-ANZ-CORE":"UCAT","UCAT-ANZ-MAST":"UCAT","UCAT-UK-CORE":"UCAT","UCAT-UK-MAST":"UCAT","VCE-BI12":"VCE Biology 1/2","VCE-BI34":"VCE Biology 3/4","VCE-BI34-INT2":"-","VCE-BI34-INT3":"-","VCE-CH12":"VCE Chemistry 1/2","VCE-CH34":"VCE Chemistry 3/4","VCE-CH34-INT2":"-","VCE-CH34-INT3":"-","VCE-EL12":"VCE English Language 1/2","VCE-EL34":"VCE English Language 3/4","VCE-EN12":"VCE English 1/2","VCE-EN34":"VCE English 3/4","VCE-MM12":"VCE Methods 1/2","VCE-MM34":"VCE Methods 3/4","VCE-MM34-INT2":"VCE Mathematical Methods 3/4 Intensive","VCE-MM34-INT3":"VCE Mathematical Methods 3/4 Intensive","VCE-PH12":"VCE Physics 1/2","VCE-PH34":"VCE Physics 3/4","VCE-PH34-INT2":"-","VCE-PH34-INT3":"-","VCE-SM12":"VCE Specialist Maths 1/2","VCE-SM34":"VCE Specialist Maths 3/4","VCE-SM34-INT2":"VCE Specialist Mathematics 3/4 Intensive","VCE-SM34-INT3":"VCE Specialist Mathematics 3/4 Intensive","VIC-EN07":"Year 7 English","VIC-EN08":"Year 8 English","VIC-EN09":"Year 9 English","VIC-EN10":"Year 10 English","VIC-MA07":"Year 7 Maths","VIC-MA08":"Year 8 Maths","VIC-MA09":"Year 9 Maths","VIC-MA1A":"Year 10 Advanced Maths","VIC-MA9A":"Year 9 Advanced Maths","VIC-SC07":"Year 7 Science","VIC-SC08":"Year 8 Science","VIC-SC09":"Year 9 Science","VIC-SC10":"Year 10 Science","VSC-EN05":"Scholarship English","VSC-MA05":"Scholarship Maths","VSC-WR05":"Scholarship Writing","VSE-COEN":"Selective Entry English","VSE-COMA":"Selective Entry Maths","VSE-COWR":"Selective Entry Writing","VSE-EN06":"Selective Entry English","VSE-EN07":"Selective Entry English","VSE-EN08":"Selective Entry English","VSE-MA06":"Selective Entry Maths","VSE-MA07":"Selective Entry Maths","VSE-MA08":"Selective Entry Maths","VSE-WR06":"Selective Entry Writing","VSE-WR07":"Selective Entry Writing","VSE-WR08":"Selective Entry Writing"};
+  function applySignupName(opt, classification) {
+    var name = classification.code && SUBJECT_SIGNUP_NAMES[classification.code];
+    if (!name) return;
+    var wrap = optionWrapper(opt);
+    if (!wrap) return;
+    var span = wrap.querySelector("input + span") || wrap;
+    var textNode = span.firstChild;
+    if (!textNode || textNode.nodeType !== 3) return;
+    if (textNode.nodeValue !== name) textNode.nodeValue = name;
   }
   function relabelTestPrepSubject(opt, classification) {
     // TestPrep options only ever show to students of the matching year level
