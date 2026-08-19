@@ -2581,105 +2581,160 @@ var ContourForm1Logic = function () {
       errorClass: "contour-duplicate-student-phone-error"
     }
   ];
+  // Verdicts are cached per field so a re-render (or blur then submit) never
+  // re-hits the endpoint for a value already looked up.
+  var duplicateResults = {};
+  var duplicatePending = {};
+  var duplicateSubmitGates = {};
+  var DUPLICATE_BOUND_ATTR = "data-contour-duplicate-check";
   function enforceAllDuplicateValidation() {
     DUPLICATE_CHECK_FIELDS.forEach(function (config) {
       enforceDuplicateFieldValidation(config);
     });
   }
+  function watchDuplicateFields() {
+    // student_email and student_phone_number sit inside the Contact Type
+    // dependent group, so neither is in the DOM at init, and HubSpot rebuilds
+    // any of the four when native validation fires — the same behaviour
+    // watchStudentPhoneField() handles. Re-binding is idempotent.
+    var observer = new MutationObserver(function () {
+      enforceAllDuplicateValidation();
+    });
+    observer.observe(formRoot, {
+      childList: true,
+      subtree: true
+    });
+  }
+  // HubSpot's intl-phone widget — used by the guardian "phone" field, the only
+  // one carrying useCountryCodeSelect — renders three siblings: a country
+  // <select>, the visible <input type="tel"> the user types into, and a hidden
+  // input that carries the field name. Matching on [name] therefore lands on an
+  // element that never receives focus, so blur never fires. Resolve the visible
+  // sibling instead; the backend matches on national digits, so the number
+  // typed there is enough on its own without the dial code.
+  function typableInput(input) {
+    if (!input || input.type !== "hidden") return input;
+    var group = input.closest(".hs-fieldtype-intl-phone");
+    return (group && group.querySelector('input[type="tel"]')) || input;
+  }
+  function duplicateFieldInput(config) {
+    return typableInput(q(config.selector));
+  }
+  function duplicateValue(config, input) {
+    var raw = (input.value || "").trim();
+    return config.param === "email" ? raw.toLowerCase() : raw;
+  }
+  function duplicateCheckable(config, value) {
+    if (config.param === "email") return EMAIL_SHAPE.test(value);
+    // Phone: enough digits to be a real number, not a half-typed one.
+    return value.replace(/[^\d]/g, "").length >= 8;
+  }
+  function duplicateErrorList(config, input) {
+    var wrapper = fieldWrapper(input) || input.parentElement;
+    return wrapper ? wrapper.querySelector("." + config.errorClass) : null;
+  }
+  function showDuplicateError(config, input) {
+    input.classList.add("invalid", "error");
+    var list = duplicateErrorList(config, input);
+    if (list) list.style.display = "";
+  }
+  function clearDuplicateError(config, input) {
+    input.classList.remove("invalid", "error");
+    var list = duplicateErrorList(config, input);
+    if (list) list.style.display = "none";
+  }
+  function checkDuplicate(config, value) {
+    var results = duplicateResults[config.errorClass] || (duplicateResults[config.errorClass] = {});
+    var pending = duplicatePending[config.errorClass] || (duplicatePending[config.errorClass] = {});
+    if (Object.prototype.hasOwnProperty.call(results, value)) {
+      return Promise.resolve(results[value]);
+    }
+    if (pending[value]) return pending[value];
+    var url = PREFETCH_ENDPOINT + "/exists?" + config.param + "=" + encodeURIComponent(value);
+    var request = fetch(url).then(function (res) {
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      return res.json();
+    }).then(function (data) {
+      results[value] = !!(data && data.exists);
+      return results[value];
+    }).catch(function (err) {
+      console.warn("Contour Form 1 logic: duplicate " + config.param + " check failed:", err);
+      results[value] = false;
+      return false;
+    }).then(function (exists) {
+      delete pending[value];
+      return exists;
+    });
+    pending[value] = request;
+    return request;
+  }
+  function duplicateVerdict(config, value) {
+    var results = duplicateResults[config.errorClass];
+    if (!results || !Object.prototype.hasOwnProperty.call(results, value)) return null;
+    return results[value];
+  }
   function enforceDuplicateFieldValidation(config) {
     if (!PREFETCH_ENDPOINT) return;
-    var input = q(config.selector);
+    var input = duplicateFieldInput(config);
     if (!input) return;
+    // Runs on every mutation, so skip an input that already carries the check.
+    // A re-render replaces the node, dropping the flag, which re-binds it.
+    if (input.getAttribute(DUPLICATE_BOUND_ATTR) === "1") return;
+    input.setAttribute(DUPLICATE_BOUND_ATTR, "1");
     var wrapper = fieldWrapper(input) || input.parentElement;
-    var errorList = document.createElement("ul");
-    errorList.className = "no-list hs-error-msgs inputs-list " + config.errorClass;
-    errorList.setAttribute("role", "alert");
-    errorList.style.display = "none";
-    var errorItem = document.createElement("li");
-    var errorLabel = document.createElement("label");
-    errorLabel.className = "hs-error-msg hs-main-font-element";
-    errorLabel.textContent = config.message;
-    errorItem.appendChild(errorLabel);
-    errorList.appendChild(errorItem);
-    wrapper.appendChild(errorList);
-    function showError() {
-      input.classList.add("invalid", "error");
-      errorList.style.display = "";
-    }
-    function clearError() {
-      input.classList.remove("invalid", "error");
+    if (!duplicateErrorList(config, input)) {
+      var errorList = document.createElement("ul");
+      errorList.className = "no-list hs-error-msgs inputs-list " + config.errorClass;
+      errorList.setAttribute("role", "alert");
       errorList.style.display = "none";
-    }
-    var results = {};
-    var pending = {};
-    function checkValue(email) {
-      if (Object.prototype.hasOwnProperty.call(results, email)) {
-        return Promise.resolve(results[email]);
-      }
-      if (pending[email]) return pending[email];
-      var url = PREFETCH_ENDPOINT + "/exists?" + config.param + "=" + encodeURIComponent(email);
-      var request = fetch(url).then(function (res) {
-        if (!res.ok) throw new Error("HTTP " + res.status);
-        return res.json();
-      }).then(function (data) {
-        results[email] = !!(data && data.exists);
-        return results[email];
-      }).catch(function (err) {
-        console.warn("Contour Form 1 logic: duplicate " + config.param + " check failed:", err);
-        results[email] = false;
-        return false;
-      }).then(function (exists) {
-        delete pending[email];
-        return exists;
-      });
-      pending[email] = request;
-      return request;
-    }
-    function currentValue() {
-      var raw = input.value.trim();
-      return config.param === "email" ? raw.toLowerCase() : raw;
-    }
-    function isCheckable(value) {
-      if (config.param === "email") return EMAIL_SHAPE.test(value);
-      // Phone: enough digits to be a real number, not a half-typed one.
-      return value.replace(/[^\d]/g, "").length >= 8;
-    }
-    function reflectResult(email, exists) {
-      if (currentValue() !== email) return;
-      if (exists) showError(); else clearError();
+      var errorItem = document.createElement("li");
+      var errorLabel = document.createElement("label");
+      errorLabel.className = "hs-error-msg hs-main-font-element";
+      errorLabel.textContent = config.message;
+      errorItem.appendChild(errorLabel);
+      errorList.appendChild(errorItem);
+      wrapper.appendChild(errorList);
     }
     input.addEventListener("blur", function () {
-      var email = currentValue();
-      if (!isCheckable(email)) return;
-      checkValue(email).then(function (exists) {
-        reflectResult(email, exists);
+      var value = duplicateValue(config, input);
+      if (!duplicateCheckable(config, value)) return;
+      checkDuplicate(config, value).then(function (exists) {
+        if (duplicateValue(config, input) !== value) return;
+        if (exists) showDuplicateError(config, input); else clearDuplicateError(config, input);
       });
     });
     input.addEventListener("input", function () {
-      clearError();
+      clearDuplicateError(config, input);
     });
-    if (formRoot) {
+    if (formRoot && !duplicateSubmitGates[config.errorClass]) {
+      duplicateSubmitGates[config.errorClass] = true;
+      // Bound once for the lifetime of the form: formRoot survives the field
+      // re-renders, so the gate re-resolves the input each time it fires
+      // rather than closing over a node that may since have been replaced.
       formRoot.addEventListener("submit", function (e) {
-        var email = currentValue();
-        if (!isCheckable(email)) return;
-        if (results[email] === false) return;
+        var current = duplicateFieldInput(config);
+        if (!current) return;
+        var value = duplicateValue(config, current);
+        if (!duplicateCheckable(config, value)) return;
+        if (duplicateVerdict(config, value) === false) return;
         e.preventDefault();
         e.stopImmediatePropagation();
-        if (results[email] === true) {
-          showError();
-          scrollErrorIntoView(fieldWrapper(input) || input);
-          input.focus();
+        if (duplicateVerdict(config, value) === true) {
+          showDuplicateError(config, current);
+          scrollErrorIntoView(fieldWrapper(current) || current);
+          current.focus();
           return;
         }
         // Verdict still in flight (or blur never fired) — resolve it, then
         // either surface the duplicate error or re-submit; the cached result
         // lets the re-submission pass straight through this gate.
-        checkValue(email).then(function (exists) {
-          if (currentValue() !== email) return;
+        checkDuplicate(config, value).then(function (exists) {
+          var latest = duplicateFieldInput(config);
+          if (!latest || duplicateValue(config, latest) !== value) return;
           if (exists) {
-            showError();
-            scrollErrorIntoView(fieldWrapper(input) || input);
-            input.focus();
+            showDuplicateError(config, latest);
+            scrollErrorIntoView(fieldWrapper(latest) || latest);
+            latest.focus();
             return;
           }
           if (typeof formRoot.requestSubmit === "function") {
@@ -3345,6 +3400,7 @@ var ContourForm1Logic = function () {
     // After enhanceStudentPhoneField(): it rebuilds the student phone control,
     // and binding earlier would attach the check to a discarded input.
     enforceAllDuplicateValidation();
+    watchDuplicateFields();
     enforceFieldRequiredValidation("programInterest", "Please select a program.", "contour-program-interest-error", anyProgramInterestOptionEligible);
     enforceFieldRequiredValidation("campus", "Please select a campus.", "contour-campus-error", isFieldWrapVisible);
     enforceFieldRequiredValidation("interestedSubjects", "Please select at least one subject.", "contour-subjects-error", isFieldWrapVisible);
