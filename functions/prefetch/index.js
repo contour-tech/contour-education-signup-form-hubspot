@@ -22,6 +22,7 @@ const CONTACT_PROPERTIES = [
   "email_2",
   "phone",
   "state_territory_country",
+  "state",
   "which_year_are_you_interested_in_tutoring_for_",
   "year_level",
   "school_text",

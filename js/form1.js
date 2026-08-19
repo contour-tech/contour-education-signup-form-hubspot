@@ -5,6 +5,7 @@ var ContourForm1Logic = function () {
     contactType: '[name="web_form_contact_type"]',
     intakeYear: '[name="which_year_are_you_interested_in_tutoring_for_"]',
     location: '[name="state_territory_country"]',
+    region: '[name="state"]',
     programInterest: '[name="program_interest"]',
     interestedSubjects: '[name="web_form__interested_subject"]',
     campus: '[name="web_form__preferred_campuses"]',
@@ -21,6 +22,39 @@ var ContourForm1Logic = function () {
   };
   var FIELD_WRAPPER_CLASS = "hs-form-field";
   var VALID_LOCATIONS = ["VIC", "NSW", "QLD", "SA", "ACT", "TAS", "WA", "NT", "United Kingdom", "New Zealand", "Overseas"];
+  // "Your Region" (the HubSpot `state` property) is a single-line text field
+  // that opens when Your Location is United Kingdom. HubSpot can't render a
+  // dropdown for a text property, so the options are built here from the
+  // is_region rows of the Locations & Regions sheet in the 2027 Curriculum
+  // Planning Matrix, and the code — not the name — is what gets submitted, so
+  // the value joins straight back onto that sheet.
+  //
+  // Keyed by the Your Location value so a second region set (New Zealand) is a
+  // data addition here plus a matching conditional in the HubSpot form editor.
+  var REGIONS_BY_LOCATION = {
+    "United Kingdom": [
+      { code: "UK-LON", name: "London" },
+      { code: "UK-SE", name: "South East" },
+      { code: "UK-SW", name: "South West" },
+      { code: "UK-EM", name: "East Midlands" },
+      { code: "UK-WM", name: "West Midlands" },
+      { code: "UK-EE", name: "East of England" },
+      { code: "UK-NW", name: "North West" },
+      { code: "UK-NE", name: "North East" },
+      { code: "UK-YH", name: "Yorkshire and the Humber" },
+      { code: "UK-WAL", name: "Wales" },
+      { code: "UK-SCT", name: "Scotland" },
+      { code: "UK-NIR", name: "Northern Ireland" }
+    ]
+  };
+  // The twelve UK rows tile the whole country, so nobody living in the UK is
+  // missing from the list. This is the escape hatch for the Crown dependencies
+  // that sit outside it (Isle of Man, Jersey, Guernsey) and for a student who
+  // doesn't know which region they're in — better a known sentinel than a
+  // guess, and better than free text, which would drift away from the codes.
+  var REGION_OTHER_CODE = "UK-OTH";
+  var REGION_OTHER_NAME = "My region isn't listed";
+  var REGION_PLACEHOLDER = "Please Select";
   // accent/accentSoft/accentContrast reuse the retired pill palette per
   // brand: hover wipes in the soft tint, selection keeps the accent on the
   // border, ring and badge. accentContrast is the badge tick colour (navy on
@@ -1617,6 +1651,9 @@ var ContourForm1Logic = function () {
       setPhoneValue('[name="phone"]', contact.phone);
     }
     setSelectOrTextValue(FIELD_SELECTORS.location, contact.state_territory_country);
+    // Conditional on the location above, so it lands a beat later — retry the
+    // way the other dependent fields do. The injected select mirrors it.
+    setTextWhenPresent(FIELD_SELECTORS.region, contact.state, 10);
     setSelectOrTextValue(FIELD_SELECTORS.intakeYear, contact.which_year_are_you_interested_in_tutoring_for_);
     setSelectOrTextValue(FIELD_SELECTORS.yearLevel, contact.year_level);
     if (contact.school_text) {
@@ -1958,6 +1995,8 @@ var ContourForm1Logic = function () {
     var locationEl = q(FIELD_SELECTORS.location);
     if (locationEl) {
       locationEl.addEventListener("change", function () {
+        clearRegionWhenNotApplicable();
+        enhanceRegionField();
         evaluateProgramInterestOptions();
         evaluateInterestedSubjectsOptions();
         evaluateCampusOptions();
@@ -2343,6 +2382,139 @@ var ContourForm1Logic = function () {
       childList: true,
       subtree: true
     });
+  }
+  /* =========================================================
+     YOUR REGION — dropdown over a single-line text property
+     -----------------------------------------------------------
+     `state` is a text property, so the HubSpot form editor can only render it
+     as a free-text box. Free text would drift away from the region codes the
+     matrix keys on, so the text input stays as the value carrier (HubSpot
+     serialises and validates it exactly as before) and a <select> is injected
+     in front of it. Picking an option writes the code into the input and
+     fires input/change, which is what keeps HubSpot's own state — and its
+     required-field error — in step.
+  ========================================================= */
+  function injectRegionStyles() {
+    if (document.getElementById("contour-region-styles")) return;
+    var style = document.createElement("style");
+    style.id = "contour-region-styles";
+    // The input is visually hidden rather than display:none so it stays a
+    // real, focusable form control: HubSpot focuses it when its required
+    // error fires, and enhanceRegionField() bounces that focus to the select.
+    // The header CSS sizes .hs-input with !important, so every dimension here
+    // has to match it — without that the input stays a full-width, clipped but
+    // still clickable overlay sitting on top of the select.
+    style.textContent = ".hs-form .contour-region { width: 100%; box-sizing: border-box; }" + '.hs-form select.contour-region__select:not([type="checkbox"]):not([type="radio"]):not([type="file"]) { width: 100% !important; }' + '.hs-form input.contour-region__value:not([type="checkbox"]):not([type="radio"]):not([type="file"]) { position: absolute !important; width: 1px !important; height: 1px !important; min-width: 0 !important; min-height: 0 !important; padding: 0 !important; margin: -1px !important; border: 0 !important; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; pointer-events: none; }';
+    document.head.appendChild(style);
+  }
+  function regionsForLocation(location) {
+    return REGIONS_BY_LOCATION[location] || null;
+  }
+  function regionOptionsForLocation(location) {
+    var regions = regionsForLocation(location);
+    if (!regions) return null;
+    return regions.concat([{
+      code: REGION_OTHER_CODE,
+      name: REGION_OTHER_NAME
+    }]);
+  }
+  // Prefilled and hand-entered values arrive as either a code or a region
+  // name, so accept both and normalise to the code.
+  function regionCodeForValue(options, value) {
+    var wanted = String(value || "").trim().toLowerCase();
+    if (!wanted) return "";
+    for (var i = 0; i < options.length; i++) {
+      if (options[i].code.toLowerCase() === wanted) return options[i].code;
+      if (options[i].name.toLowerCase() === wanted) return options[i].code;
+    }
+    return "";
+  }
+  function setRegionValue(input, value) {
+    input.value = value || "";
+    input.dispatchEvent(new Event("input", {
+      bubbles: true
+    }));
+    input.dispatchEvent(new Event("change", {
+      bubbles: true
+    }));
+  }
+  function enhanceRegionField() {
+    var input = q(FIELD_SELECTORS.region);
+    if (!input || input.type === "hidden") return;
+    var location = getValue(FIELD_SELECTORS.location);
+    var options = regionOptionsForLocation(location);
+    var group = input.closest(".contour-region");
+    if (group) {
+      // Already enhanced. Rebuild only when the location moved to a different
+      // region set, so the options match the country that's now selected.
+      if (group.getAttribute("data-contour-region-location") === location) return;
+      group.parentNode.insertBefore(input, group);
+      group.parentNode.removeChild(group);
+      input.classList.remove("contour-region__value");
+    }
+    // No region list for this location: leave HubSpot's own text input alone.
+    if (!options) return;
+    var parent = input.parentElement;
+    if (!parent) return;
+    group = document.createElement("div");
+    group.className = "contour-region";
+    group.setAttribute("data-contour-region-location", location);
+    var select = document.createElement("select");
+    select.className = "hs-input contour-region__select";
+    select.setAttribute("aria-label", "Your Region");
+    var placeholder = document.createElement("option");
+    placeholder.value = "";
+    placeholder.textContent = REGION_PLACEHOLDER;
+    select.appendChild(placeholder);
+    options.forEach(function (region) {
+      var opt = document.createElement("option");
+      opt.value = region.code;
+      opt.textContent = region.name;
+      select.appendChild(opt);
+    });
+    parent.insertBefore(group, input);
+    group.appendChild(select);
+    group.appendChild(input);
+    input.classList.add("contour-region__value");
+    input.setAttribute("autocomplete", "off");
+    input.setAttribute("tabindex", "-1");
+    function syncSelectFromInput() {
+      var code = regionCodeForValue(options, input.value);
+      select.value = code;
+      // A name (or anything unrecognised) came in from elsewhere — rewrite it
+      // as the code so what gets submitted always matches the matrix.
+      if (code !== (input.value || "").trim()) setRegionValue(input, code);
+    }
+    syncSelectFromInput();
+    select.addEventListener("change", function () {
+      setRegionValue(input, select.value);
+    });
+    // Prefill writes straight into the input; mirror it onto the select.
+    input.addEventListener("change", syncSelectFromInput);
+    input.addEventListener("focus", function () {
+      select.focus();
+    });
+  }
+  function watchRegionField() {
+    // The field is conditional on Your Location, so it isn't in the DOM at
+    // init, and HubSpot re-renders it whenever native validation fires — the
+    // same behaviour watchSchoolFieldRerender() handles. enhanceRegionField()
+    // is idempotent, so its own mutations no-op on the next callback.
+    var observer = new MutationObserver(function () {
+      enhanceRegionField();
+    });
+    observer.observe(formRoot, {
+      childList: true,
+      subtree: true
+    });
+  }
+  // Switching away from a location that has regions leaves a stale code on a
+  // field the student can no longer see, so blank it on the way out.
+  function clearRegionWhenNotApplicable() {
+    var input = q(FIELD_SELECTORS.region);
+    if (!input || !input.value) return;
+    if (regionsForLocation(getValue(FIELD_SELECTORS.location))) return;
+    setRegionValue(input, "");
   }
   var pendingErrorScrolls = null;
   function scrollErrorIntoView(el) {
@@ -3422,6 +3594,9 @@ var ContourForm1Logic = function () {
     injectDisabledFieldStyles();
     enhanceSchoolSearch();
     watchSchoolFieldRerender();
+    injectRegionStyles();
+    enhanceRegionField();
+    watchRegionField();
     enhanceCampusLabels();
     ensureIntakeYearNote();
     ensureDividerBefore(q(FIELD_SELECTORS.programInterest), "contour-divider-program-interest");
