@@ -23,6 +23,7 @@ const CONTACT_PROPERTIES = [
   "phone",
   "state_territory_country",
   "state",
+  "country_dropdown",
   "which_year_are_you_interested_in_tutoring_for_",
   "year_level",
   "school_text",
