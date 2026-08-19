@@ -2620,6 +2620,30 @@ var ContourForm1Logic = function () {
   function duplicateFieldInput(config) {
     return typableInput(q(config.selector));
   }
+  // Which country the number belongs to, so the backend reads a number typed
+  // without a country code against the right one. The student field carries the
+  // dial code on its options; HubSpot's own widget exposes only an ISO code, so
+  // that is mapped through the same E.164 table the student widget is built
+  // from. Empty means "let the backend fall back to Australia".
+  function dialForIso(iso) {
+    var target = String(iso || "").toLowerCase();
+    if (!target) return "";
+    for (var i = 0; i < PHONE_DIAL_CODES.length; i++) {
+      if (PHONE_DIAL_CODES[i][1] === target) return PHONE_DIAL_CODES[i][0];
+    }
+    return "";
+  }
+  function duplicateDial(config, input) {
+    if (config.param !== "phone" || !input) return "";
+    var own = input.closest(".contour-intl-phone");
+    if (own) {
+      var ownSelect = own.querySelector("select");
+      return ownSelect ? studentPhoneDial(ownSelect) : "";
+    }
+    var native = input.closest(".hs-fieldtype-intl-phone");
+    var nativeSelect = native ? native.querySelector("select") : null;
+    return nativeSelect ? dialForIso(nativeSelect.value) : "";
+  }
   function duplicateValue(config, input) {
     var raw = (input.value || "").trim();
     return config.param === "email" ? raw.toLowerCase() : raw;
@@ -2643,35 +2667,43 @@ var ContourForm1Logic = function () {
     var list = duplicateErrorList(config, input);
     if (list) list.style.display = "none";
   }
-  function checkDuplicate(config, value) {
+  // The same digits under two different country codes are two different
+  // numbers, so the verdict is cached against both.
+  function duplicateKey(value, dial) {
+    return dial ? value + "|" + dial : value;
+  }
+  function checkDuplicate(config, value, dial) {
     var results = duplicateResults[config.errorClass] || (duplicateResults[config.errorClass] = {});
     var pending = duplicatePending[config.errorClass] || (duplicatePending[config.errorClass] = {});
-    if (Object.prototype.hasOwnProperty.call(results, value)) {
-      return Promise.resolve(results[value]);
+    var key = duplicateKey(value, dial);
+    if (Object.prototype.hasOwnProperty.call(results, key)) {
+      return Promise.resolve(results[key]);
     }
-    if (pending[value]) return pending[value];
+    if (pending[key]) return pending[key];
     var url = PREFETCH_ENDPOINT + "/exists?" + config.param + "=" + encodeURIComponent(value);
+    if (dial) url += "&dial=" + encodeURIComponent(dial);
     var request = fetch(url).then(function (res) {
       if (!res.ok) throw new Error("HTTP " + res.status);
       return res.json();
     }).then(function (data) {
-      results[value] = !!(data && data.exists);
-      return results[value];
+      results[key] = !!(data && data.exists);
+      return results[key];
     }).catch(function (err) {
       console.warn("Contour Form 1 logic: duplicate " + config.param + " check failed:", err);
-      results[value] = false;
+      results[key] = false;
       return false;
     }).then(function (exists) {
-      delete pending[value];
+      delete pending[key];
       return exists;
     });
-    pending[value] = request;
+    pending[key] = request;
     return request;
   }
-  function duplicateVerdict(config, value) {
+  function duplicateVerdict(config, value, dial) {
     var results = duplicateResults[config.errorClass];
-    if (!results || !Object.prototype.hasOwnProperty.call(results, value)) return null;
-    return results[value];
+    var key = duplicateKey(value, dial);
+    if (!results || !Object.prototype.hasOwnProperty.call(results, key)) return null;
+    return results[key];
   }
   function enforceDuplicateFieldValidation(config) {
     if (!PREFETCH_ENDPOINT) return;
@@ -2698,7 +2730,8 @@ var ContourForm1Logic = function () {
     input.addEventListener("blur", function () {
       var value = duplicateValue(config, input);
       if (!duplicateCheckable(config, value)) return;
-      checkDuplicate(config, value).then(function (exists) {
+      var dial = duplicateDial(config, input);
+      checkDuplicate(config, value, dial).then(function (exists) {
         if (duplicateValue(config, input) !== value) return;
         if (exists) showDuplicateError(config, input); else clearDuplicateError(config, input);
       });
@@ -2716,10 +2749,11 @@ var ContourForm1Logic = function () {
         if (!current) return;
         var value = duplicateValue(config, current);
         if (!duplicateCheckable(config, value)) return;
-        if (duplicateVerdict(config, value) === false) return;
+        var dial = duplicateDial(config, current);
+        if (duplicateVerdict(config, value, dial) === false) return;
         e.preventDefault();
         e.stopImmediatePropagation();
-        if (duplicateVerdict(config, value) === true) {
+        if (duplicateVerdict(config, value, dial) === true) {
           showDuplicateError(config, current);
           scrollErrorIntoView(fieldWrapper(current) || current);
           current.focus();
@@ -2728,7 +2762,7 @@ var ContourForm1Logic = function () {
         // Verdict still in flight (or blur never fired) — resolve it, then
         // either surface the duplicate error or re-submit; the cached result
         // lets the re-submission pass straight through this gate.
-        checkDuplicate(config, value).then(function (exists) {
+        checkDuplicate(config, value, dial).then(function (exists) {
           var latest = duplicateFieldInput(config);
           if (!latest || duplicateValue(config, latest) !== value) return;
           if (exists) {
