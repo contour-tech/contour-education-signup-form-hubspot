@@ -24,6 +24,32 @@ var ContourForm1Logic = function () {
     signedUpBy: '[name="signed_up_by"]'
   };
   var FIELD_WRAPPER_CLASS = "hs-form-field";
+  /* =========================================================
+     FEATURE FLAGS
+     -----------------------------------------------------------
+     Flip a default below and push, or override per page without a deploy by
+     setting the global before the form initialises:
+
+       <script>window.ContourForm1Config = { progressiveSections: true };</script>
+
+     which is worth having while the staging and production embeds still read
+     the same file.
+     ========================================================= */
+  var FEATURE_DEFAULTS = {
+    // Discloses the form a section at a time, each one arriving as the one
+    // before it is answered. Off by default (Amrit, 20 Aug 2026) — with it
+    // off the whole form is present from the start, as it was before.
+    progressiveSections: false,
+    // Headings above each section. Parked rather than deleted: the only one
+    // actually wanted is the Student / Guardian split, and that is being
+    // designed as its own change (Amrit, 20 Aug 2026).
+    sectionHeaders: false
+  };
+  function featureEnabled(name) {
+    var overrides = window.ContourForm1Config;
+    if (overrides && Object.prototype.hasOwnProperty.call(overrides, name)) return !!overrides[name];
+    return !!FEATURE_DEFAULTS[name];
+  }
   var VALID_LOCATIONS = ["VIC", "NSW", "QLD", "SA", "ACT", "TAS", "WA", "NT", "United Kingdom", "New Zealand", "Overseas"];
   // "Your Region" (the HubSpot `state` property) is a single-line text field
   // that opens when Your Location is United Kingdom. HubSpot can't render a
@@ -2769,7 +2795,16 @@ var ContourForm1Logic = function () {
   function fieldWrapperAnswered(wrap) {
     if (!wrap || !wrap.querySelectorAll) return true;
     var tel = wrap.querySelector('input[type="tel"]');
-    if (tel) return (tel.value || "").trim() !== "";
+    if (tel) {
+      // The hidden mirror carries what actually gets submitted, so it settles
+      // this outright when HubSpot has accepted a number.
+      var mirror = wrap.querySelector('input[type="hidden"][name]');
+      if (mirror && (mirror.value || "").trim() !== "") return true;
+      // Otherwise judge the visible box on its digits: the intl-phone widget
+      // seeds it with the dial code, so an untouched field reads "+61 " rather
+      // than empty and would count as answered.
+      return (tel.value || "").replace(/^\s*\+\s*\d{1,4}[\s)(-]*/, "").replace(/\D/g, "") !== "";
+    }
     var boxes = wrap.querySelectorAll('input[name][type="checkbox"], input[name][type="radio"]');
     if (boxes.length > 0) {
       for (var i = 0; i < boxes.length; i++) {
@@ -3076,7 +3111,7 @@ var ContourForm1Logic = function () {
     // columns — without them the heading sits beside the first field.
     ".hs-form .contour-section-header { display: flex; align-items: center; gap: 14px; box-sizing: border-box; width: 100%; flex: 0 0 100%; grid-column: 1 / -1; margin: 34px 0 20px; padding-top: 26px; border-top: 1px solid rgba(12, 49, 102, 0.10); }" + ".hs-form .contour-section-header:first-child { margin-top: 0; padding-top: 0; border-top: none; }" + ".hs-form .contour-section-header__title { flex: 0 0 auto; font-size: 12px; font-weight: 700; letter-spacing: 0.10em; text-transform: uppercase; color: #0C3166; }" + '.hs-form .contour-section-header::after { content: ""; flex: 1 1 auto; height: 1px; background: linear-gradient(90deg, rgba(12, 49, 102, 0.16), rgba(12, 49, 102, 0)); }' +
     // The three rules predate the headers and would double up with them.
-    ".hs-form.contour-sections-on hr.contour-section-divider { display: none !important; }" +
+    ".hs-form.contour-section-headers-on hr.contour-section-divider { display: none !important; }" +
     // --- helper note under a field that is waiting on an earlier answer -----
     ".hs-form .contour-disabled-hint { margin-top: 6px; font-size: 12.5px; line-height: 1.4; color: #6b7280; }" +
     // --- error summary ------------------------------------------------------
@@ -3269,7 +3304,7 @@ var ContourForm1Logic = function () {
     return def.title;
   }
   function ensureSectionHeader(def, firstNode) {
-    var title = sectionTitle(def);
+    var title = featureEnabled("sectionHeaders") ? sectionTitle(def) : null;
     var existing = formRoot.querySelector('[data-contour-section-header="' + def.id + '"]');
     if (!title || !firstNode || !firstNode.parentNode) {
       if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
@@ -3411,11 +3446,18 @@ var ContourForm1Logic = function () {
   function startSections() {
     if (sectionsReady || !formRoot) return;
     sectionsReady = true;
-    formRoot.classList.add("contour-sections-on");
-    // Staff take signups over the phone out of order, so they get the lot.
-    if (isInternalMode()) SECTION_DEFS.forEach(function (def) {
-      revealedSections[def.id] = true;
-    });
+    if (featureEnabled("sectionHeaders")) formRoot.classList.add("contour-section-headers-on");
+    // Staff take signups over the phone out of order, so they get the lot —
+    // as does everyone when disclosure is switched off, since a section marked
+    // revealed is one this code will not close. The listeners below stay bound
+    // either way: they also drive the aria wiring and the fallback messages.
+    if (!featureEnabled("progressiveSections") || isInternalMode()) {
+      SECTION_DEFS.forEach(function (def) {
+        revealedSections[def.id] = true;
+      });
+    } else {
+      formRoot.classList.add("contour-sections-on");
+    }
     formRoot.addEventListener("change", scheduleSectionEval);
     formRoot.addEventListener("input", scheduleSectionEval);
     evaluateSections({
