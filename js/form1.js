@@ -43,7 +43,11 @@ var ContourForm1Logic = function () {
     // Headings above each section. Parked rather than deleted: the only one
     // actually wanted is the Student / Guardian split, and that is being
     // designed as its own change (Amrit, 20 Aug 2026).
-    sectionHeaders: false
+    sectionHeaders: false,
+    // Mirrors the answers into localStorage as they are given and offers them
+    // back on the next visit from the same browser. On by default — see the
+    // LOCAL DRAFT CACHE block for what is deliberately never stored.
+    localDraft: true
   };
   function featureEnabled(name) {
     var overrides = window.ContourForm1Config;
@@ -308,10 +312,33 @@ var ContourForm1Logic = function () {
       return el.value;
     });
   }
+  // Depth counter, not a boolean: the setters below nest (a location change
+  // re-evaluates the subject list, which unticks options, each of which fires
+  // its own events). Anything raised while this is non-zero is the form
+  // editing itself — see the LOCAL DRAFT CACHE block for why that has to be
+  // told apart from a keystroke.
+  var programmaticEditDepth = 0;
+  function isProgrammaticEdit() {
+    return programmaticEditDepth > 0;
+  }
+  function asProgrammaticEdit(fn) {
+    programmaticEditDepth++;
+    try {
+      return fn();
+    } finally {
+      programmaticEditDepth--;
+    }
+  }
   function setCheckboxChecked(inputEl, checked) {
     if (!inputEl) return;
     if (inputEl.checked !== checked) {
-      inputEl.click();
+      // click() runs the browser's own activation behaviour, and the input and
+      // change events that come out of it are the user agent's — they arrive
+      // with isTrusted true, indistinguishable from a real tick without the
+      // counter above.
+      asProgrammaticEdit(function () {
+        inputEl.click();
+      });
     }
   }
   function optionWrapper(inputEl) {
@@ -1514,12 +1541,14 @@ var ContourForm1Logic = function () {
     var el = q(selector);
     if (!el || value === undefined || value === null || value === "") return;
     el.value = value;
-    el.dispatchEvent(new Event("input", {
-      bubbles: true
-    }));
-    el.dispatchEvent(new Event("change", {
-      bubbles: true
-    }));
+    asProgrammaticEdit(function () {
+      el.dispatchEvent(new Event("input", {
+        bubbles: true
+      }));
+      el.dispatchEvent(new Event("change", {
+        bubbles: true
+      }));
+    });
   }
   function attemptCheckboxValues(selector, values, excludeCodes) {
     if (!values || values.length === 0) return [];
@@ -1611,12 +1640,14 @@ var ContourForm1Logic = function () {
     return null;
   }
   function fireInputEvents(inp) {
-    inp.dispatchEvent(new Event("input", {
-      bubbles: true
-    }));
-    inp.dispatchEvent(new Event("change", {
-      bubbles: true
-    }));
+    asProgrammaticEdit(function () {
+      inp.dispatchEvent(new Event("input", {
+        bubbles: true
+      }));
+      inp.dispatchEvent(new Event("change", {
+        bubbles: true
+      }));
+    });
   }
   function setPhoneValue(selector, value) {
     if (!value) return;
@@ -1738,7 +1769,7 @@ var ContourForm1Logic = function () {
     var match = new RegExp("[?&]" + name + "=([^&#]*)").exec(window.location.search);
     return match ? decodeURIComponent(match[1].replace(/\+/g, " ")) : "";
   }
-  function renderPrefillBanner(fullName) {
+  function renderRestoreBanner(options) {
     var existing = formRoot.querySelector("#contour-prefill-banner");
     if (existing) existing.parentNode.removeChild(existing);
     var banner = document.createElement("div");
@@ -1753,26 +1784,49 @@ var ContourForm1Logic = function () {
     content.className = "contour-prefill-banner__content";
     var title = document.createElement("p");
     title.className = "contour-prefill-banner__title";
-    title.textContent = fullName ? "Welcome back, " + fullName : "Welcome back";
+    title.textContent = options.title;
     content.appendChild(title);
     var text = document.createElement("p");
     text.className = "contour-prefill-banner__text";
-    text.textContent = "We've filled in your details from your last signup. Please check them before you submit.";
+    text.textContent = options.text;
     content.appendChild(text);
     var resetLink = document.createElement("a");
     resetLink.href = "#";
     resetLink.className = "contour-prefill-banner__reset";
-    resetLink.textContent = "Not you, or starting fresh? Clear the form";
+    resetLink.textContent = options.linkText;
     resetLink.addEventListener("click", function (e) {
       e.preventDefault();
-      // A DOM-level reset fights HubSpot's internal form state (radios get
-      // restored on re-render) — reloading without the student_id param
-      // guarantees a pristine blank form.
-      window.location.href = window.location.pathname;
+      resetToBlankForm();
     });
     content.appendChild(resetLink);
     banner.appendChild(content);
     formRoot.insertBefore(banner, formRoot.firstChild);
+  }
+  // A DOM-level reset fights HubSpot's internal form state (radios get
+  // restored on re-render) — reloading without the student_id param
+  // guarantees a pristine blank form. The saved draft goes with it, or the
+  // reload would put the same answers straight back.
+  function resetToBlankForm() {
+    draftLocked = true;
+    clearDraft();
+    window.location.href = window.location.pathname;
+  }
+  function renderPrefillBanner(fullName) {
+    renderRestoreBanner({
+      title: fullName ? "Welcome back, " + fullName : "Welcome back",
+      text: "We've filled in your details from your last signup. Please check them before you submit.",
+      linkText: "Not you, or starting fresh? Clear the form"
+    });
+  }
+  // The local draft's own banner. Worded to say where the answers came from
+  // and that nothing has been sent: a form that fills itself in with no
+  // explanation reads either as a bug or as us knowing more than we should.
+  function renderDraftBanner() {
+    renderRestoreBanner({
+      title: "Picked up where you left off",
+      text: "We've put back what you had started on this device. Nothing has been sent to us yet — check it over and finish when you're ready.",
+      linkText: "Starting fresh? Clear the form"
+    });
   }
   function defaultContactTypeToStudent(tries) {
     if (tries === undefined) tries = 8;
@@ -1800,13 +1854,18 @@ var ContourForm1Logic = function () {
   }
   function initPrefetchFromUrl() {
     if (!urlPrefetchPromise) {
+      // No record to fetch, so a local draft is the best answer we have.
+      // Restore before the default is applied: a stored contact type has to
+      // win over the Student fallback.
+      initDraftRestore();
       defaultContactTypeToStudent();
       startFormPresentation();
       return;
     }
     showFormLoader();
     urlPrefetchPromise.then(function (data) {
-      if (data && data.found && data.contact) {
+      var prefilled = !!(data && data.found && data.contact);
+      if (prefilled) {
         prefetchedTrialSubjectCodes = data.trialSubjectCodes || [];
         prefetchedEnrolledSubjectCodes = data.enrolledSubjectCodes || [];
         applyPrefill(data.contact, data.guardian, data.associatedStudent);
@@ -1817,12 +1876,295 @@ var ContourForm1Logic = function () {
         }
         renderSubjectSummary();
         renderUcatIntakeNote();
+      } else {
+        // The link named a contact we could not fetch. Fall back to whatever
+        // was typed on this browser rather than to a blank form.
+        initDraftRestore();
       }
       // Prefill takes precedence (Guardian/Parent records select Guardian);
       // anything else — no record, unknown contact_type — defaults to Student.
       defaultContactTypeToStudent();
       hideFormLoader();
       startFormPresentation();
+    });
+  }
+  /* =========================================================
+     LOCAL DRAFT CACHE — the form remembers what was typed
+     ---------------------------------------------------------
+     Answers are mirrored into localStorage as they are given, and put back on
+     the next visit from the same browser. A form this long gets abandoned
+     part-way on a phone — a tab dies, a link is followed, the page is
+     refreshed — and until now that meant starting from the first question
+     again (Amrit, 20 Aug 2026).
+
+     Three rules keep it honest:
+       - only the student's own typing is saved, which takes both `isTrusted`
+         (to rule out the events this file dispatches by hand) and the
+         programmatic-edit counter (to rule out the browser's own events, which
+         setCheckboxChecked raises through click()). Without the pair, the URL
+         prefetch's answers would be written straight back as a local draft;
+       - a HubSpot record beats a local draft. A student_id link is a
+         deliberate "this is who I am", so the draft stands aside for it;
+       - consent is never remembered, and internal sessions are never saved at
+         all — a shared reception browser must not carry one family's details
+         into the next signup.
+     ========================================================= */
+  var DRAFT_STORAGE_KEY = "contour_form1_draft";
+  // Bumped when the stored shape changes, which discards every draft written
+  // by an older build rather than trying to interpret it.
+  var DRAFT_VERSION = 1;
+  // Long enough for "I'll finish this once I've asked Mum", short enough that
+  // a shared laptop isn't still offering it a month later.
+  var DRAFT_TTL_MS = 14 * 24 * 60 * 60 * 1000;
+  var DRAFT_SAVE_DEBOUNCE_MS = 400;
+  // Ticking the consent box is a legal act and has to be done afresh every
+  // time; the two internal questions only exist for staff, whose sessions are
+  // not saved anyway.
+  var DRAFT_SKIP_FIELDS = ["tos_privacy_consent", "how_did_they_contact_us", "signed_up_by"];
+  // Everything applyPrefill already knows how to put back, so the draft can
+  // reuse it wholesale instead of keeping a second copy of the same wiring
+  // (the phone widgets and the dependent selects especially).
+  var DRAFT_PREFILL_FIELDS = ["web_form_contact_type", "firstname", "lastname", "email_2", "phone", "student_first_name", "student_last_name", "student_email", "student_phone_number", "state_territory_country", "state", "country_dropdown", "which_year_are_you_interested_in_tutoring_for_", "year_level", "school_text", "school_code", "acara_id", "program_interest", "web_form__interested_subject", "web_form__preferred_campuses", "referral"];
+  var draftLocked = false;
+  var draftUserTouched = false;
+  var draftSaveTimer = null;
+  var draftFieldNamesCache = null;
+  var draftStorageResolved = false;
+  var draftStorageRef = null;
+  // Read off SECTION_DEFS rather than keeping a list of its own: that is
+  // already the maintained inventory of every field on the form, so a field
+  // added there is remembered without a second edit here.
+  function draftFieldNames() {
+    if (draftFieldNamesCache) return draftFieldNamesCache;
+    var names = [];
+    SECTION_DEFS.forEach(function (def) {
+      def.fields.forEach(function (name) {
+        if (DRAFT_SKIP_FIELDS.indexOf(name) !== -1) return;
+        if (names.indexOf(name) === -1) names.push(name);
+      });
+    });
+    draftFieldNamesCache = names;
+    return names;
+  }
+  // Safari in private mode, and any browser with site storage blocked, throws
+  // on access rather than handing back an empty store — and a quota of zero
+  // only shows up on the write. Probe once and remember the answer.
+  function draftStorage() {
+    if (draftStorageResolved) return draftStorageRef;
+    draftStorageResolved = true;
+    try {
+      var store = window.localStorage;
+      var probe = DRAFT_STORAGE_KEY + "__probe";
+      store.setItem(probe, "1");
+      store.removeItem(probe);
+      draftStorageRef = store;
+    } catch (err) {
+      draftStorageRef = null;
+    }
+    return draftStorageRef;
+  }
+  function draftCacheEnabled() {
+    return featureEnabled("localDraft") && !isInternalMode() && !!draftStorage();
+  }
+  function readDraft() {
+    var store = draftStorage();
+    if (!store) return null;
+    var raw;
+    try {
+      raw = store.getItem(DRAFT_STORAGE_KEY);
+    } catch (err) {
+      return null;
+    }
+    if (!raw) return null;
+    var parsed = null;
+    try {
+      parsed = JSON.parse(raw);
+    } catch (err) {
+      parsed = null;
+    }
+    if (!parsed || parsed.v !== DRAFT_VERSION || !parsed.values || !parsed.savedAt) {
+      clearDraft();
+      return null;
+    }
+    if (Date.now() - parsed.savedAt > DRAFT_TTL_MS) {
+      clearDraft();
+      return null;
+    }
+    return parsed.values;
+  }
+  function writeDraft(values) {
+    var store = draftStorage();
+    if (!store) return;
+    try {
+      store.setItem(DRAFT_STORAGE_KEY, JSON.stringify({
+        v: DRAFT_VERSION,
+        savedAt: Date.now(),
+        values: values
+      }));
+    } catch (err) {
+      // Quota, or storage revoked mid-session. Losing the draft is not worth
+      // interrupting the form over.
+    }
+  }
+  function clearDraft() {
+    var store = draftStorage();
+    if (!store) return;
+    try {
+      store.removeItem(DRAFT_STORAGE_KEY);
+    } catch (err) {}
+  }
+  // A field that is not in the DOM is left out rather than written as empty:
+  // the Student block, the region select and the campus list all come and go
+  // with earlier answers, and a field that is currently absent must not erase
+  // what was stored for it.
+  function collectDraftValues() {
+    var values = {};
+    draftFieldNames().forEach(function (name) {
+      var nodes = qAll('[name="' + name + '"]');
+      if (nodes.length === 0) return;
+      var togglable = nodes.filter(function (node) {
+        return node.type === "checkbox" || node.type === "radio";
+      });
+      if (togglable.length > 0) {
+        var checked = [];
+        togglable.forEach(function (node) {
+          if (node.checked) checked.push(node.value);
+        });
+        if (checked.length > 0) values[name] = checked;
+        return;
+      }
+      // For the guardian phone this [name] node is HubSpot's hidden mirror,
+      // which is the one holding the full +61… value — exactly what
+      // setPhoneValue wants back. Our injected student widget has no mirror
+      // and keeps the dial code on the visible input, so both round-trip.
+      var value = (nodes[0].value || "").trim();
+      if (value === "") return;
+      if (name === "phone" || name === "student_phone_number") {
+        var parts = splitE164(value);
+        // Both phone widgets pre-seed a dial code, so a bare "+61" is the
+        // empty state rather than an answer.
+        if (parts && parts.national === "") return;
+      }
+      values[name] = value;
+    });
+    return values;
+  }
+  // Contact type alone is not an answer worth restoring — it is ticked for the
+  // student by default, so a draft holding only that would offer to bring back
+  // nothing at all.
+  function draftHasAnswers(values) {
+    for (var name in values) {
+      if (!Object.prototype.hasOwnProperty.call(values, name)) continue;
+      if (name !== "web_form_contact_type") return true;
+    }
+    return false;
+  }
+  function saveDraftNow() {
+    if (draftLocked) return;
+    // After a submit HubSpot swaps the form out for its thank-you message.
+    // Reading a detached tree would collect nothing and clear a live draft.
+    if (!formRoot || (formRoot.isConnected === false)) return;
+    var values = collectDraftValues();
+    if (draftHasAnswers(values)) writeDraft(values); else clearDraft();
+  }
+  function scheduleDraftSave() {
+    if (draftSaveTimer) clearTimeout(draftSaveTimer);
+    draftSaveTimer = setTimeout(function () {
+      draftSaveTimer = null;
+      saveDraftNow();
+    }, DRAFT_SAVE_DEBOUNCE_MS);
+  }
+  function flushDraftSave() {
+    if (!draftUserTouched) return;
+    if (draftSaveTimer) {
+      clearTimeout(draftSaveTimer);
+      draftSaveTimer = null;
+    }
+    saveDraftNow();
+  }
+  function draftValuesToContact(values) {
+    function first(name) {
+      var value = values[name];
+      return Array.isArray(value) ? value[0] : value;
+    }
+    function joined(name) {
+      var value = values[name];
+      return Array.isArray(value) ? value.join(";") : value;
+    }
+    return {
+      contact_type: first("web_form_contact_type"),
+      firstname: values.firstname,
+      lastname: values.lastname,
+      email_2: values.email_2,
+      phone: values.phone,
+      student_first_name: values.student_first_name,
+      student_last_name: values.student_last_name,
+      student_email: values.student_email,
+      student_phone_number: values.student_phone_number,
+      state_territory_country: values.state_territory_country,
+      state: values.state,
+      country_dropdown: values.country_dropdown,
+      which_year_are_you_interested_in_tutoring_for_: values.which_year_are_you_interested_in_tutoring_for_,
+      year_level: values.year_level,
+      school_text: values.school_text,
+      school_code: values.school_code,
+      acara_id: values.acara_id,
+      program_interest: joined("program_interest"),
+      web_form__interested_subject: joined("web_form__interested_subject"),
+      web_form__preferred_campuses: joined("web_form__preferred_campuses"),
+      referral: values.referral
+    };
+  }
+  // Anything SECTION_DEFS lists that applyPrefill has no home for — today only
+  // the no-program waitlist tick.
+  function applyDraftValue(name, value) {
+    if (value === undefined || value === null || value === "") return;
+    var selector = '[name="' + name + '"]';
+    if (Array.isArray(value)) {
+      attemptCheckboxValues(selector, value);
+      return;
+    }
+    setTextWhenPresent(selector, value, 10);
+  }
+  function restoreDraft(values) {
+    applyPrefill(draftValuesToContact(values), null, null);
+    draftFieldNames().forEach(function (name) {
+      if (DRAFT_PREFILL_FIELDS.indexOf(name) !== -1) return;
+      applyDraftValue(name, values[name]);
+    });
+  }
+  function initDraftRestore() {
+    if (!draftCacheEnabled()) return false;
+    var values = readDraft();
+    if (!values || !draftHasAnswers(values)) return false;
+    restoreDraft(values);
+    renderDraftBanner();
+    renderSubjectSummary();
+    renderUcatIntakeNote();
+    return true;
+  }
+  function initDraftCache() {
+    if (!draftCacheEnabled()) return;
+    // Only the student's own input starts a draft. Every prefill in this file
+    // dispatches its own events, and those arrive with isTrusted false, so
+    // this one test keeps restored and prefetched answers from being written
+    // straight back as if they had been typed.
+    function onUserEdit(e) {
+      // Two tests, because neither is sufficient on its own: isTrusted rules
+      // out this file's hand-dispatched events, and the counter rules out the
+      // browser's own input/change events raised by our setCheckboxChecked
+      // calling click().
+      if (!e.isTrusted || isProgrammaticEdit()) return;
+      draftUserTouched = true;
+      scheduleDraftSave();
+    }
+    formRoot.addEventListener("input", onUserEdit);
+    formRoot.addEventListener("change", onUserEdit);
+    // A backgrounded or closed tab would otherwise lose whatever is still
+    // sitting in the debounce. pagehide is the one that fires reliably on iOS.
+    window.addEventListener("pagehide", flushDraftSave);
+    document.addEventListener("visibilitychange", function () {
+      if (document.visibilityState === "hidden") flushDraftSave();
     });
   }
   var CALENDLY_URLS = {
@@ -2800,10 +3142,12 @@ var ContourForm1Logic = function () {
       // this outright when HubSpot has accepted a number.
       var mirror = wrap.querySelector('input[type="hidden"][name]');
       if (mirror && (mirror.value || "").trim() !== "") return true;
-      // Otherwise judge the visible box on its digits: the intl-phone widget
-      // seeds it with the dial code, so an untouched field reads "+61 " rather
-      // than empty and would count as answered.
-      return (tel.value || "").replace(/^\s*\+\s*\d{1,4}[\s)(-]*/, "").replace(/\D/g, "") !== "";
+      // Otherwise judge the visible box on its national digits: the intl-phone
+      // widget seeds it with the dial code, so an untouched field reads "+61 "
+      // rather than empty and would count as answered. phoneNationalDigits()
+      // takes the longest matching code off the front, which beats guessing at
+      // a length — +1, +61 and +212 are all real.
+      return phoneNationalDigits((tel.value || "").trim()) !== "";
     }
     var boxes = wrap.querySelectorAll('input[name][type="checkbox"], input[name][type="radio"]');
     if (boxes.length > 0) {
@@ -2876,6 +3220,50 @@ var ContourForm1Logic = function () {
     }
     own.style.removeProperty("display");
   }
+  // At most one message per field, and never the same sentence twice.
+  //
+  // The standby message above is written when HubSpot has said nothing shortly
+  // after the nudge — but HubSpot renders its own required message on a *real*
+  // blur, which a synthetic one does not reproduce on a text input. So a
+  // student who submits, then tabs through the fields they missed, collects
+  // HubSpot's message underneath ours, word for word.
+  //
+  // Reconciling on a timer could never close that: the second message arrives
+  // whenever the person happens to touch the field. This runs instead from the
+  // observer already watching the form, so HubSpot inserting a message is
+  // itself what retires ours.
+  function dedupeFieldErrors() {
+    if (!formRoot) return;
+    Array.prototype.forEach.call(formRoot.querySelectorAll("." + FIELD_WRAPPER_CLASS), function (wrap) {
+      var visible = [];
+      Array.prototype.forEach.call(wrap.querySelectorAll(".hs-error-msgs"), function (list) {
+        if (list.style.display !== "none") visible.push(list);
+      });
+      if (visible.length < 2) return;
+      var real = visible.filter(function (list) {
+        return !list.classList.contains(NATIVE_FALLBACK_CLASS);
+      });
+      // The standby only ever existed to cover for a message that never came.
+      // Anything else on the field makes it redundant, whatever it says.
+      if (real.length > 0) {
+        visible.forEach(function (list) {
+          if (list.classList.contains(NATIVE_FALLBACK_CLASS)) list.style.display = "none";
+        });
+      }
+      // Beyond that, only collapse messages that read identically — two checks
+      // with genuinely different things to say must both be allowed to speak.
+      var seen = {};
+      (real.length > 0 ? real : visible).forEach(function (list) {
+        var text = (list.textContent || "").replace(/\s+/g, " ").trim().toLowerCase();
+        if (!text) return;
+        if (seen[text]) {
+          list.style.display = "none";
+          return;
+        }
+        seen[text] = true;
+      });
+    });
+  }
   function clearAnsweredRequiredFallbacks() {
     if (!formRoot) return;
     Array.prototype.forEach.call(formRoot.querySelectorAll("." + NATIVE_FALLBACK_CLASS), function (el) {
@@ -2906,6 +3294,10 @@ var ContourForm1Logic = function () {
     var native = nativeRequiredFailures();
     if (failures.length === 0 && native.length === 0) {
       markSubmitBusy(true);
+      // The answers are on their way, so the draft has done its job. Not
+      // locked: if HubSpot rejects the post the values are still in the DOM
+      // and the next edit starts a fresh draft.
+      clearDraft();
       return;
     }
     e.preventDefault();
@@ -2936,6 +3328,7 @@ var ContourForm1Logic = function () {
     [160, 650].forEach(function (delay) {
       setTimeout(function () {
         native.forEach(ensureNativeRequiredFallback);
+        dedupeFieldErrors();
         syncFieldErrorAria();
       }, delay);
     });
@@ -3440,6 +3833,7 @@ var ContourForm1Logic = function () {
       sectionEvalQueued = false;
       evaluateSections();
       clearAnsweredRequiredFallbacks();
+      dedupeFieldErrors();
       syncFieldErrorAria();
     }, 0);
   }
@@ -4901,6 +5295,7 @@ var ContourForm1Logic = function () {
     renderWelcomeConsultation();
     renderSubjectSummary();
     renderUcatIntakeNote();
+    initDraftCache();
     initPrefetchFromUrl();
   }
   return {
