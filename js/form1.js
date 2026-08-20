@@ -259,7 +259,12 @@ var ContourForm1Logic = function () {
   }
   function showFieldWrapper(el) {
     var wrap = fieldWrapper(el);
-    if (wrap) wrap.style.removeProperty("display");
+    if (!wrap) return;
+    // Only on the transition: these run on every re-evaluation, and a field
+    // that re-announces itself each time someone types is a nuisance.
+    var wasHidden = wrap.style.display === "none";
+    wrap.style.removeProperty("display");
+    if (wasHidden) playReveal(wrap);
   }
   function hideFieldWrapper(el) {
     var wrap = fieldWrapper(el);
@@ -804,10 +809,12 @@ var ContourForm1Logic = function () {
       setFieldLabelText("yearLevel", intake ? "Year level in " + intake : "Current Year Level");
     }
     lastIntakeForYearLevel = intake || null;
+    setDisabledHint(yearSelect, intake ? "" : "Pick the year you are interested in tutoring for first.");
     var schoolInput = q(FIELD_SELECTORS.schoolText);
     if (schoolInput) {
       var location = getValue(FIELD_SELECTORS.location);
       schoolInput.disabled = !intake || !location;
+      setDisabledHint(schoolInput, schoolInput.disabled ? "Pick your location and intake year first." : "");
       updateSchoolFieldGraduateMode();
     }
   }
@@ -1758,9 +1765,17 @@ var ContourForm1Logic = function () {
       if (tries > 0) defaultContactTypeToStudent(tries - 1);
     }, 250);
   }
+  // Disclosure starts only once the form is settled and in its final shape:
+  // before the prefetch resolves every field is still empty, and opening on
+  // that would collapse a returning student's fully answered form.
+  function startFormPresentation() {
+    startSections();
+    playFormEntrance();
+  }
   function initPrefetchFromUrl() {
     if (!urlPrefetchPromise) {
       defaultContactTypeToStudent();
+      startFormPresentation();
       return;
     }
     showFormLoader();
@@ -1781,6 +1796,7 @@ var ContourForm1Logic = function () {
       // anything else — no record, unknown contact_type — defaults to Student.
       defaultContactTypeToStudent();
       hideFormLoader();
+      startFormPresentation();
     });
   }
   var CALENDLY_URLS = {
@@ -2520,7 +2536,10 @@ var ContourForm1Logic = function () {
     // Prefill writes straight into the input; mirror it onto the select.
     input.addEventListener("change", syncSelectFromInput);
     input.addEventListener("focus", function () {
-      select.focus();
+      // The carrier input is clipped to 1px on top of the select, so the page
+      // is already in the right place — bouncing without preventScroll adds a
+      // second, redundant jump.
+      focusQuietly(select);
     });
   }
   function watchRegionField() {
@@ -2544,33 +2563,941 @@ var ContourForm1Logic = function () {
     if (regionsForLocation(getValue(FIELD_SELECTORS.location))) return;
     setRegionValue(input, "");
   }
-  var pendingErrorScrolls = null;
-  function scrollErrorIntoView(el) {
-    if (!el) return;
-    if (pendingErrorScrolls) {
-      pendingErrorScrolls.push(el);
+  /* =========================================================
+     ERROR FOCUS AND SCROLL
+     -----------------------------------------------------------
+     Each submit gate below blocks the form on its own, so without a single
+     owner for "where does the page go now" they contradict each other: the
+     scroll batch picks the topmost error while whichever gate happens to be
+     registered last wins the focus() call, leaving the caret in a different
+     field from the one on screen. A bare focus() also scrolls its element
+     into view instantly, so the smooth scroll a tick later starts from the
+     wrong place and glides away from where it just jumped.
+
+     reportFieldError() takes both halves together, batches every gate that
+     fires on the same submit, and moves the page exactly once: to the first
+     error in document order, caret in that same field, scroll suppressed on
+     the focus so the only movement is the one smooth scroll.
+     ========================================================= */
+  var pendingErrorReports = null;
+  function prefersReducedMotion() {
+    return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  }
+  function focusQuietly(el) {
+    if (!el || !el.focus) return;
+    // Browsers that ignore the options object simply scroll as before rather
+    // than throwing; the catch is for the ones that do throw on it.
+    try {
+      el.focus({
+        preventScroll: true
+      });
+    } catch (e) {
+      el.focus();
+    }
+  }
+  // The control the caret should land on for a field. Not just the first
+  // input in the wrapper: the school field, the internal-only dropdowns and
+  // the region field all keep their real control in the DOM but off screen
+  // behind an injected combobox or select, and focusing one of those looks
+  // exactly like the form ignoring the click.
+  function focusTargetIn(wrap) {
+    if (!wrap || !wrap.querySelectorAll) return null;
+    var candidates = wrap.querySelectorAll("input, select, textarea");
+    var fallback = null;
+    for (var i = 0; i < candidates.length; i++) {
+      var el = candidates[i];
+      if (el.disabled || el.type === "hidden") continue;
+      if (!fallback) fallback = el;
+      if (el.getClientRects && el.getClientRects().length === 0) continue;
+      return el;
+    }
+    // Nothing reported a box — an environment without layout rather than a
+    // field with nothing focusable in it. Focusing the first candidate is
+    // still better than leaving the caret where the submit button was.
+    return fallback;
+  }
+  // Centring a field taller than the screen puts the message that explains
+  // the problem below the fold — the subjects grid does exactly that. Centre
+  // the message itself in that case, which still keeps the field in shot.
+  function scrollTargetFor(anchor) {
+    if (!anchor || !anchor.getBoundingClientRect) return anchor;
+    var viewport = window.innerHeight || 0;
+    if (!viewport || anchor.getBoundingClientRect().height <= viewport * 0.8) return anchor;
+    var lists = anchor.querySelectorAll(".hs-error-msgs");
+    for (var i = 0; i < lists.length; i++) {
+      if (lists[i].getClientRects().length > 0) return lists[i];
+    }
+    return anchor;
+  }
+  function reportFieldError(anchorEl, focusEl) {
+    var anchor = anchorEl || focusEl;
+    if (!anchor) return;
+    var report = {
+      anchor: anchor,
+      focus: focusEl || null
+    };
+    if (pendingErrorReports) {
+      pendingErrorReports.push(report);
       return;
     }
-    pendingErrorScrolls = [el];
+    pendingErrorReports = [report];
     setTimeout(function () {
-      var best = null;
-      var bestTop = null;
-      for (var i = 0; i < pendingErrorScrolls.length; i++) {
-        var top = pendingErrorScrolls[i].getBoundingClientRect().top;
-        if (bestTop === null || top < bestTop) {
-          bestTop = top;
-          best = pendingErrorScrolls[i];
+      var reports = pendingErrorReports;
+      pendingErrorReports = null;
+      var best = reports[0];
+      for (var i = 1; i < reports.length; i++) {
+        // Document order, not viewport position: "the first problem on the
+        // page" is the same answer wherever the student is currently
+        // scrolled to, and two errors can share a scroll offset.
+        if (best.anchor.compareDocumentPosition(reports[i].anchor) & Node.DOCUMENT_POSITION_PRECEDING) {
+          best = reports[i];
         }
       }
-      pendingErrorScrolls = null;
-      if (best && best.scrollIntoView) best.scrollIntoView({
-        behavior: "smooth",
+      var target = scrollTargetFor(best.anchor);
+      if (target && target.scrollIntoView) target.scrollIntoView({
+        behavior: prefersReducedMotion() ? "auto" : "smooth",
         block: "center"
       });
+      focusQuietly(best.focus);
     }, 0);
   }
+  /* =========================================================
+     FORM-LEVEL ERROR SUMMARY
+     -----------------------------------------------------------
+     HubSpot's "Please complete all required fields." rollup renders with the
+     same .hs-error-msgs markup as a single field's error, so at the bottom of
+     a column of red lines it reads as one more of them rather than as the
+     summary of them all. Restyled into an alert card — badge, tinted panel,
+     heavier text — so it separates from the field errors it is summarising
+     (Amrit, 20 Aug 2026).
+
+     Tagged from JS rather than styled straight off HubSpot's own class name:
+     the rollup is the only .hs-error-msgs list that sits outside a field
+     wrapper, and that structural test survives the embed bundle renaming
+     things. .hs_error_rollup is still trusted first where it is present.
+     ========================================================= */
+  var ERROR_ROLLUP_CLASS = "contour-error-rollup";
+  function injectErrorRollupStyles() {
+    if (document.getElementById("contour-error-rollup-styles")) return;
+    var card = ".hs-form ." + ERROR_ROLLUP_CLASS;
+    var style = document.createElement("style");
+    style.id = "contour-error-rollup-styles";
+    style.textContent = "" + card + " { display: flex; align-items: center; gap: 12px; box-sizing: border-box; margin: 1.5rem 0 0 !important; padding: 14px 18px !important; border: 1px solid rgba(200, 16, 46, 0.22); border-left: 4px solid #c8102e; border-radius: 12px; background: #FDF3F4; box-shadow: 0 1px 3px rgba(200, 16, 46, 0.08); list-style: none; }" + card + "::before { content: \"!\"; flex: 0 0 auto; display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background: #c8102e; color: #FFFFFF; font-size: 13px; font-weight: 700; line-height: 1; }" + card + " ul, " + card + " .hs-error-msgs { margin: 0 !important; padding: 0 !important; list-style: none; }" +
+    // The page header sets .hs-form .hs-error-msgs li { display: block;
+    // width: 100% } with !important, which would push the badge out of a flex
+    // row, so the width has to be handed back explicitly.
+    card + " li, " + card + " label { width: auto !important; flex: 1 1 auto; margin: 0 !important; padding: 0 !important; color: #8A0C22 !important; font-size: 0.95rem !important; font-weight: 600 !important; line-height: 1.4 !important; }" + "@media (prefers-reduced-motion: no-preference) { " + card + " { animation: contour-rollup-in 0.22s ease-out; } }" + "@keyframes contour-rollup-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }";
+    document.head.appendChild(style);
+  }
+  function tagErrorRollup() {
+    if (!formRoot) return;
+    var lists = formRoot.querySelectorAll(".hs-error-msgs");
+    for (var i = 0; i < lists.length; i++) {
+      var list = lists[i];
+      var host = list.closest(".hs_error_rollup");
+      // A field's own error always lives inside that field's wrapper, whether
+      // HubSpot rendered it or one of the gates above appended it. Anything
+      // left over is the form-level rollup.
+      if (!host && list.closest("." + FIELD_WRAPPER_CLASS)) continue;
+      var card = host || list;
+      if (!card.classList.contains(ERROR_ROLLUP_CLASS)) card.classList.add(ERROR_ROLLUP_CLASS);
+      // HubSpot only draws this after a post came back rejected, so it is also
+      // the signal that the button should stop saying "Submitting…". Our own
+      // summary stands down so the two can never stack.
+      markSubmitBusy(false);
+      hideFormErrorSummary();
+    }
+  }
+  function watchErrorRollup() {
+    // HubSpot builds the rollup fresh on each failed submit and drops it again
+    // on the next render, so the class is re-applied rather than set once.
+    // Only childList is observed, so adding the class cannot re-trigger this.
+    tagErrorRollup();
+    var observer = new MutationObserver(tagErrorRollup);
+    observer.observe(formRoot, {
+      childList: true,
+      subtree: true
+    });
+  }
+  /* =========================================================
+     SUBMIT GATE — one pass, every error at once
+     -----------------------------------------------------------
+     Each check used to own a submit listener that called
+     stopImmediatePropagation(), so the first failure killed every later check
+     as well as HubSpot's own validation. A student with three problems was
+     shown them one submit at a time, and HubSpot's required-field messages
+     could never appear in the same round as ours — which also meant the form
+     level summary never rendered when one of our checks was the blocker.
+
+     Every check registers here instead. One capture-phase listener runs all
+     of them, shows all their errors, and blocks once. HubSpot's own required
+     fields join the same pass: they are found from the native asterisk and
+     nudged into drawing their message with a synthetic blur/focusout, which
+     is how HubSpot renders it normally — confirmed against the live staging
+     form, where it needs no submit to fire.
+     ========================================================= */
+  var submitValidators = [];
+  var submitGateBound = false;
+  // { isValid: fn -> bool, showError: fn, anchor: fn -> field wrapper }
+  function registerSubmitValidator(validator) {
+    submitValidators.push(validator);
+    if (submitGateBound || !formRoot) return;
+    submitGateBound = true;
+    formRoot.addEventListener("submit", runSubmitGate, true);
+  }
+  // Real visibility, not just this element's own inline flag: a field inside a
+  // section that has not been disclosed yet is display:none two levels up, and
+  // every check has to read that as absent rather than as unanswered.
+  function isElementVisible(el) {
+    if (!el) return false;
+    if (el.getClientRects && el.getClientRects().length > 0) return true;
+    if (el.offsetParent) return true;
+    // Nothing has layout in a headless harness, so fall back to walking the
+    // inline display flags this file sets itself.
+    for (var node = el; node && node.style; node = node.parentElement) {
+      if (node.style.display === "none" || node.hidden) return false;
+    }
+    return true;
+  }
+  // Judged on the controls that actually carry a submitted value. The school
+  // combobox's search box holds display text with no name, and HubSpot's
+  // intl-phone group pairs the number with a country select that always has a
+  // value, so both would otherwise read as answered while empty.
+  function fieldWrapperAnswered(wrap) {
+    if (!wrap || !wrap.querySelectorAll) return true;
+    var tel = wrap.querySelector('input[type="tel"]');
+    if (tel) return (tel.value || "").trim() !== "";
+    var boxes = wrap.querySelectorAll('input[name][type="checkbox"], input[name][type="radio"]');
+    if (boxes.length > 0) {
+      for (var i = 0; i < boxes.length; i++) {
+        if (boxes[i].checked) return true;
+      }
+      return false;
+    }
+    var controls = wrap.querySelectorAll("input[name], select[name], textarea[name]");
+    for (var j = 0; j < controls.length; j++) {
+      if (controls[j].disabled) continue;
+      if ((controls[j].value || "").trim() !== "") return true;
+    }
+    return false;
+  }
+  function nativeRequiredFailures() {
+    if (!formRoot) return [];
+    var out = [];
+    var wraps = formRoot.querySelectorAll("." + FIELD_WRAPPER_CLASS);
+    for (var i = 0; i < wraps.length; i++) {
+      var wrap = wraps[i];
+      if (!hasNativeRequiredMark(wrap)) continue;
+      if (!isElementVisible(wrap)) continue;
+      if (fieldWrapperAnswered(wrap)) continue;
+      out.push(wrap);
+    }
+    return out;
+  }
+  function nudgeNativeValidation(wrap) {
+    var control = wrap.querySelector('input[type="tel"]') || wrap.querySelector("input[name]:not([type=hidden]), select[name], textarea[name]");
+    if (!control || control.disabled) return;
+    try {
+      control.dispatchEvent(new FocusEvent("blur", {
+        bubbles: false
+      }));
+      control.dispatchEvent(new FocusEvent("focusout", {
+        bubbles: true
+      }));
+    } catch (err) {
+      /* A browser without the FocusEvent constructor simply keeps the old
+         behaviour of HubSpot's message arriving on the next submit. */
+    }
+  }
+  var NATIVE_FALLBACK_CLASS = "contour-required-fallback";
+  // HubSpot draws its own message from a blur handler for most field types,
+  // but not for the consent checkbox, which it only validates during a submit
+  // it now never gets to run. Anything still unmarked shortly after the nudge
+  // gets our message instead, so a field named in the summary is never left
+  // looking fine on the form itself.
+  function ensureNativeRequiredFallback(wrap) {
+    var hubspotSpoke = Array.prototype.some.call(wrap.querySelectorAll(".hs-error-msgs"), function (el) {
+      return el.style.display !== "none" && !el.classList.contains(NATIVE_FALLBACK_CLASS);
+    });
+    var own = wrap.querySelector("." + NATIVE_FALLBACK_CLASS);
+    if (hubspotSpoke) {
+      if (own) own.style.display = "none";
+      return;
+    }
+    if (!own) {
+      own = document.createElement("ul");
+      own.className = "no-list hs-error-msgs inputs-list " + NATIVE_FALLBACK_CLASS;
+      own.setAttribute("role", "alert");
+      var item = document.createElement("li");
+      var label = document.createElement("label");
+      label.className = "hs-error-msg hs-main-font-element";
+      label.textContent = "Please complete this required field.";
+      item.appendChild(label);
+      own.appendChild(item);
+      wrap.appendChild(own);
+    }
+    own.style.removeProperty("display");
+  }
+  function clearAnsweredRequiredFallbacks() {
+    if (!formRoot) return;
+    Array.prototype.forEach.call(formRoot.querySelectorAll("." + NATIVE_FALLBACK_CLASS), function (el) {
+      var wrap = el.closest("." + FIELD_WRAPPER_CLASS);
+      if (wrap && fieldWrapperAnswered(wrap)) el.style.display = "none";
+    });
+  }
+  function documentOrder(a, b) {
+    return a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1;
+  }
+  function runSubmitGate(e) {
+    hideFormErrorSummary();
+    // Enter in a text box reaches the gate before progressive disclosure has
+    // opened every section. Nobody should be told to fix a field they cannot
+    // see, so any submit attempt opens the whole form first.
+    revealAllSections();
+    var failures = [];
+    for (var i = 0; i < submitValidators.length; i++) {
+      var valid = true;
+      try {
+        valid = submitValidators[i].isValid();
+      } catch (err) {
+        // A check that throws must not be able to wedge the form shut.
+        valid = true;
+      }
+      if (!valid) failures.push(submitValidators[i]);
+    }
+    var native = nativeRequiredFailures();
+    if (failures.length === 0 && native.length === 0) {
+      markSubmitBusy(true);
+      return;
+    }
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    var flagged = [];
+    failures.forEach(function (validator) {
+      try {
+        validator.showError();
+      } catch (err) {}
+      var wrap = null;
+      try {
+        wrap = validator.anchor();
+      } catch (err) {}
+      if (wrap && flagged.indexOf(wrap) === -1) flagged.push(wrap);
+    });
+    native.forEach(function (wrap) {
+      // Skip anything one of our own checks has already spoken for, so a
+      // single field never collects two messages.
+      if (flagged.indexOf(wrap) !== -1) return;
+      nudgeNativeValidation(wrap);
+      reportFieldError(wrap, focusTargetIn(wrap));
+      flagged.push(wrap);
+    });
+    showFormErrorSummary(flagged);
+    // HubSpot renders a nudged message on its own schedule. Two passes: the
+    // first fills in anything it declined to mark, the second stands our
+    // message down again if it turned out to be merely slow.
+    [160, 650].forEach(function (delay) {
+      setTimeout(function () {
+        native.forEach(ensureNativeRequiredFallback);
+        syncFieldErrorAria();
+      }, delay);
+    });
+  }
+  /* =========================================================
+     ERROR SUMMARY — the blocked fields, as links
+     -----------------------------------------------------------
+     Replaces HubSpot's "Please complete all required fields." for the rounds
+     we block, which is now most of them. On a form this long, naming the
+     fields and letting the student jump straight to one is the difference
+     between the summary being decoration and being the fastest way through.
+     ========================================================= */
+  var ERROR_SUMMARY_ID = "contour-error-summary";
+  // Read off the live label wherever possible, so the guardian relabelling is
+  // picked up for free. Only the fields whose label is hidden or unhelpful
+  // need naming here.
+  var FIELD_SUMMARY_NAMES = {
+    web_form__interested_subject: "Interested Subjects",
+    tos_privacy_consent: "Terms of Service and Privacy Policy",
+    join_no_program_waitlist: "Programs waitlist"
+  };
+  function fieldSummaryLabel(wrap) {
+    var named = wrap ? wrap.querySelector("[name]") : null;
+    if (named && FIELD_SUMMARY_NAMES[named.name]) return FIELD_SUMMARY_NAMES[named.name];
+    var label = wrap ? wrap.querySelector("label") : null;
+    var text = label ? label.textContent.replace(/\s+/g, " ").trim() : "";
+    text = text.replace(/\s*\*\s*$/, "").trim();
+    if (!text) return "This field";
+    return text.length > 52 ? text.slice(0, 49).replace(/\s+\S*$/, "") + "…" : text;
+  }
+  function showFormErrorSummary(wraps) {
+    if (!formRoot || !wraps || wraps.length === 0) return;
+    var ordered = wraps.slice().sort(documentOrder);
+    var box = document.getElementById(ERROR_SUMMARY_ID);
+    if (!box) {
+      box = document.createElement("div");
+      box.id = ERROR_SUMMARY_ID;
+      box.className = "contour-error-rollup contour-error-rollup--list";
+      box.setAttribute("role", "alert");
+      // Pinned to the closing section so progressive disclosure keeps it with
+      // the submit button rather than stranding it in a collapsed group.
+      box.setAttribute("data-contour-section", "finish");
+      var submitWrap = formRoot.querySelector(".hs_submit");
+      if (submitWrap && submitWrap.parentNode) submitWrap.parentNode.insertBefore(box, submitWrap);else formRoot.appendChild(box);
+    }
+    box.innerHTML = "";
+    var body = document.createElement("div");
+    body.className = "contour-error-summary__body";
+    var title = document.createElement("p");
+    title.className = "contour-error-summary__title";
+    title.textContent = ordered.length === 1 ? "One field needs your attention before you can submit" : ordered.length + " fields need your attention before you can submit";
+    body.appendChild(title);
+    var list = document.createElement("ul");
+    list.className = "contour-error-summary__list";
+    ordered.forEach(function (wrap) {
+      var item = document.createElement("li");
+      // A button, not an anchor: it must never navigate, and Enter and Space
+      // both have to work for a keyboard user reading the summary.
+      var link = document.createElement("button");
+      link.type = "button";
+      link.className = "contour-error-summary__link";
+      link.textContent = fieldSummaryLabel(wrap);
+      link.addEventListener("click", function () {
+        reportFieldError(wrap, focusTargetIn(wrap));
+      });
+      item.appendChild(link);
+      list.appendChild(item);
+    });
+    body.appendChild(list);
+    box.appendChild(body);
+    box.style.removeProperty("display");
+    playReveal(box);
+  }
+  function hideFormErrorSummary() {
+    var box = document.getElementById(ERROR_SUMMARY_ID);
+    if (box) box.style.display = "none";
+  }
+  /* =========================================================
+     SUBMIT BUTTON BUSY STATE
+     -----------------------------------------------------------
+     HubSpot leaves the button untouched while it posts, so a slow network
+     reads as a dead button and invites a second click. Pointer events are
+     dropped rather than the button disabled: the submit is already in flight
+     through HubSpot's own handler, and disabling a control mid-dispatch is a
+     good way to find out which browsers cancel it.
+     ========================================================= */
+  var submitBusyTimer = null;
+  function submitButtonEl() {
+    return formRoot ? formRoot.querySelector('input[type="submit"], button[type="submit"]') : null;
+  }
+  function markSubmitBusy(busy) {
+    var btn = submitButtonEl();
+    if (!btn) return;
+    if (busy) {
+      if (btn.getAttribute("data-contour-busy") === "1") return;
+      btn.setAttribute("data-contour-busy", "1");
+      btn.setAttribute("data-contour-label", btn.tagName === "INPUT" ? btn.value : btn.textContent);
+      if (btn.tagName === "INPUT") btn.value = "Submitting…";else btn.textContent = "Submitting…";
+      btn.classList.add("contour-submit--busy");
+      btn.setAttribute("aria-busy", "true");
+      // A busy state that never lifts is worse than none, so it always expires
+      // even if HubSpot neither submits nor reports back.
+      if (submitBusyTimer) clearTimeout(submitBusyTimer);
+      submitBusyTimer = setTimeout(function () {
+        markSubmitBusy(false);
+      }, 12000);
+      return;
+    }
+    if (submitBusyTimer) clearTimeout(submitBusyTimer);
+    submitBusyTimer = null;
+    if (btn.getAttribute("data-contour-busy") !== "1") return;
+    btn.removeAttribute("data-contour-busy");
+    var label = btn.getAttribute("data-contour-label") || "Submit";
+    if (btn.tagName === "INPUT") btn.value = label;else btn.textContent = label;
+    btn.classList.remove("contour-submit--busy");
+    btn.removeAttribute("aria-busy");
+  }
+  /* =========================================================
+     MOTION
+     -----------------------------------------------------------
+     One vocabulary for everything that moves: 420ms for a section or a field
+     arriving, 200ms for a message, 160ms for a control responding to the
+     pointer, all on the same ease. Nothing travels more than about 10px.
+
+     playReveal() is the single entry point. It strips its own class on the
+     way out, because an element left mid-animation carries an opacity of its
+     own, which would fight anything that later tries to hide it.
+     ========================================================= */
+  var REVEAL_CLASS = "contour-reveal";
+  var REVEAL_EASE = "cubic-bezier(.22,.61,.36,1)";
+  function playReveal(el, delayMs) {
+    if (!el || !el.classList || prefersReducedMotion()) return;
+    var delay = delayMs || 0;
+    el.classList.remove(REVEAL_CLASS);
+    // Reading layout between the remove and the add is what lets the same
+    // animation replay on an element that has already been revealed once.
+    void el.offsetWidth;
+    if (delay) el.style.setProperty("animation-delay", delay + "ms");
+    el.classList.add(REVEAL_CLASS);
+    var settle = function () {
+      el.classList.remove(REVEAL_CLASS);
+      el.style.removeProperty("animation-delay");
+      el.removeEventListener("animationend", settle);
+    };
+    el.addEventListener("animationend", settle);
+    // animationend never fires on a node hidden mid-flight, so the class comes
+    // off on a timer regardless.
+    setTimeout(settle, 1200 + delay);
+  }
+  function injectMotionStyles() {
+    if (document.getElementById("contour-motion-styles")) return;
+    var notBox = ':not([type="checkbox"]):not([type="radio"]):not([type="file"])';
+    var style = document.createElement("style");
+    style.id = "contour-motion-styles";
+    style.textContent = "" +
+    // --- motion primitives -------------------------------------------------
+    "@keyframes contour-reveal-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }" + "@keyframes contour-form-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }" + "@keyframes contour-error-in { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: none; } }" + "@keyframes contour-badge-in { from { opacity: 0; transform: scale(0.4); } 70% { transform: scale(1.12); } to { opacity: 1; transform: scale(1); } }" +
+    "@media (prefers-reduced-motion: no-preference) {" + "  .contour-reveal { animation: contour-reveal-in 420ms " + REVEAL_EASE + " both; }" + "  .contour-form-enter { animation: contour-form-in 380ms " + REVEAL_EASE + " both; }" + "  .hs-form .hs-error-msgs:not(.contour-error-rollup) { animation: contour-error-in 200ms ease-out both; }" + "  .hs-form .contour-program-card--selected .contour-program-card__badge { animation: contour-badge-in 220ms " + REVEAL_EASE + " both; }" + "}" +
+    // --- controls responding to the pointer and the keyboard ---------------
+    // The page header styles fields with a three-:not() selector, which
+    // outranks a plain class, so every contested property repeats the trio.
+    ".hs-form .hs-input" + notBox + " { transition: border-color .16s ease, box-shadow .16s ease, background-color .16s ease !important; }" + ".hs-form .hs-input" + notBox + ":hover:not(:disabled) { border-color: rgba(12, 49, 102, 0.34) !important; }" +
+    // :focus-visible rather than :focus, so the ring is there for a keyboard
+    // and absent for a mouse click.
+    ".hs-form .hs-input" + notBox + ":focus-visible { outline: none !important; border-color: #0540F2 !important; box-shadow: 0 0 0 3px rgba(5, 64, 242, 0.18) !important; }" + ".hs-form .hs-input" + notBox + ":focus:not(:focus-visible) { outline: none !important; box-shadow: none !important; }" + ".hs-form .hs-input.invalid" + notBox + ", .hs-form .hs-input.error" + notBox + " { border-color: #c8102e !important; box-shadow: 0 0 0 3px rgba(200, 16, 46, 0.10) !important; }" + ".hs-form select:disabled, .hs-form input:disabled { transition: opacity .16s ease, background-color .16s ease; }" +
+    // Selectable cards: the tick is animated above, the surface eases here.
+    ".hs-form .hs-form-checkbox-display, .hs-form .hs-form-radio-display, .hs-form .contour-program-card { transition: background-color .16s ease, border-color .16s ease, box-shadow .16s ease, transform .16s ease; }" + ".hs-form .hs-form-checkbox-display:active, .hs-form .hs-form-radio-display:active { transform: scale(0.985); }" + ".hs-form .hs-button:active { transform: translateY(0) scale(0.99); }" +
+    // --- submit button busy state ------------------------------------------
+    ".hs-form .hs-button.contour-submit--busy { pointer-events: none; opacity: 0.7; }" + '.hs-form .hs-button.contour-submit--busy::before { content: ""; width: 14px; height: 14px; border-radius: 50%; border: 2px solid rgba(12, 49, 102, 0.3); border-top-color: #0C3166; animation: contour-spin 0.7s linear infinite; }' +
+    // --- section headers ----------------------------------------------------
+    // Widths are stated because the Guardian flow puts this header inside
+    // HubSpot's dependent-field container, which lays its children out in
+    // columns — without them the heading sits beside the first field.
+    ".hs-form .contour-section-header { display: flex; align-items: center; gap: 14px; box-sizing: border-box; width: 100%; flex: 0 0 100%; grid-column: 1 / -1; margin: 34px 0 20px; padding-top: 26px; border-top: 1px solid rgba(12, 49, 102, 0.10); }" + ".hs-form .contour-section-header:first-child { margin-top: 0; padding-top: 0; border-top: none; }" + ".hs-form .contour-section-header__title { flex: 0 0 auto; font-size: 12px; font-weight: 700; letter-spacing: 0.10em; text-transform: uppercase; color: #0C3166; }" + '.hs-form .contour-section-header::after { content: ""; flex: 1 1 auto; height: 1px; background: linear-gradient(90deg, rgba(12, 49, 102, 0.16), rgba(12, 49, 102, 0)); }' +
+    // The three rules predate the headers and would double up with them.
+    ".hs-form.contour-sections-on hr.contour-section-divider { display: none !important; }" +
+    // --- helper note under a field that is waiting on an earlier answer -----
+    ".hs-form .contour-disabled-hint { margin-top: 6px; font-size: 12.5px; line-height: 1.4; color: #6b7280; }" +
+    // --- accepted contact detail -------------------------------------------
+    ".hs-form .contour-field-ok > .input { position: relative; }" + '.hs-form .contour-field-ok > .input::after { content: "\\2713"; position: absolute; right: 14px; top: 20px; color: #2f9e44; font-size: 14px; font-weight: 700; line-height: 1; pointer-events: none; animation: contour-badge-in 220ms ' + REVEAL_EASE + ' both; }' +
+    // --- error summary ------------------------------------------------------
+    ".hs-form .contour-error-rollup--list { align-items: flex-start; }" + ".hs-form .contour-error-rollup--list::before { margin-top: 1px; }" + ".hs-form .contour-error-summary__body { flex: 1 1 auto; min-width: 0; }" + ".hs-form .contour-error-summary__title { margin: 0 0 9px !important; padding: 0 !important; font-size: 0.95rem !important; font-weight: 700 !important; line-height: 1.35 !important; color: #8A0C22 !important; }" + ".hs-form .contour-error-summary__list { display: flex; flex-wrap: wrap; gap: 7px 8px; margin: 0 !important; padding: 0 !important; list-style: none; }" + ".hs-form .contour-error-summary__list li { width: auto !important; flex: 0 0 auto !important; margin: 0 !important; padding: 0 !important; }" + ".hs-form .contour-error-summary__link { display: inline-block; appearance: none; -webkit-appearance: none; border: 1px solid rgba(200, 16, 46, 0.30); border-radius: 999px; background: #FFFFFF; color: #8A0C22; padding: 5px 12px; font: inherit; font-size: 12.5px; font-weight: 600; line-height: 1.3; cursor: pointer; transition: background-color .15s ease, border-color .15s ease, color .15s ease; }" + ".hs-form .contour-error-summary__link:hover { background: #c8102e; border-color: #c8102e; color: #FFFFFF; }" + ".hs-form .contour-error-summary__link:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(200, 16, 46, 0.25); }";
+    document.head.appendChild(style);
+  }
+  /* =========================================================
+     PROGRESSIVE SECTIONS
+     -----------------------------------------------------------
+     The form is long enough that opening it in full reads as a wall. It is
+     disclosed a section at a time instead: answer everything required in the
+     section you are on and the next one arrives (Amrit, 20 Aug 2026).
+
+     Three rules keep it from becoming a cage:
+       - a section that has opened never closes again, so clearing a field
+         can never take the submit button away mid-form;
+       - a section with nothing visible in it is skipped rather than treated
+         as unanswered, which is what makes the Guardian-only student block,
+         the conditional campus field and the internal-only questions behave;
+       - any submit attempt opens everything, so nobody is ever told to fix a
+         field they cannot see.
+
+     Nodes are never moved. Each top-level child of the form is assigned to a
+     section on the fly from the field names inside it, so a HubSpot re-render
+     or a dependent group appearing mid-flow lands in the right place with no
+     bookkeeping to go stale.
+     ========================================================= */
+  var SECTION_HEADER_CLASS = "contour-section-header";
+  var SECTION_DEFS = [{
+    id: "who",
+    title: null,
+    fields: ["web_form_contact_type"]
+  }, {
+    id: "student",
+    title: "Student Information",
+    fields: ["student_first_name", "student_last_name", "student_email", "student_phone_number"]
+  }, {
+    id: "contact",
+    title: "Your Details",
+    fields: ["firstname", "lastname", "email_2", "phone"]
+  }, {
+    id: "study",
+    title: "Study Details",
+    fields: ["state_territory_country", "state", "country_dropdown", "which_year_are_you_interested_in_tutoring_for_", "year_level", "school_text", "school_code", "acara_id"]
+  }, {
+    id: "programs",
+    title: "Programs and Subjects",
+    fields: ["program_interest", "join_no_program_waitlist", "web_form__interested_subject"]
+  }, {
+    id: "campus",
+    title: "Preferred Campus",
+    fields: ["web_form__preferred_campuses"]
+  }, {
+    id: "finish",
+    title: "Finish Up",
+    fields: ["referral", "how_did_they_contact_us", "signed_up_by", "tos_privacy_consent"]
+  }];
+  var SECTION_INDEX_BY_FIELD = {};
+  SECTION_DEFS.forEach(function (def, index) {
+    def.fields.forEach(function (name) {
+      SECTION_INDEX_BY_FIELD[name] = index;
+    });
+  });
+  var revealedSections = {};
+  var sectionsReady = false;
+  var sectionEvalQueued = false;
+  function sectionIndexById(id) {
+    for (var i = 0; i < SECTION_DEFS.length; i++) {
+      if (SECTION_DEFS[i].id === id) return i;
+    }
+    return -1;
+  }
+  // Every section a node has a field for. An empty list means it carries no
+  // field of its own — a divider, an injected explainer, the subject summary —
+  // and inherits whichever section it was rendered into.
+  function sectionIndicesIn(node) {
+    if (node.getAttribute) {
+      var pinned = node.getAttribute("data-contour-section");
+      if (pinned) {
+        var index = sectionIndexById(pinned);
+        return index === -1 ? [] : [index];
+      }
+    }
+    if (node.classList && node.classList.contains("hs_submit")) return [SECTION_DEFS.length - 1];
+    if (!node.querySelectorAll) return [];
+    var found = [];
+    var named = node.querySelectorAll("[name]");
+    for (var i = 0; i < named.length; i++) {
+      var at = SECTION_INDEX_BY_FIELD[named[i].name];
+      if (at === undefined || found.indexOf(at) !== -1) continue;
+      found.push(at);
+    }
+    return found.sort(function (a, b) {
+      return a - b;
+    });
+  }
+  // HubSpot renders the Contact Type dependent group *inside* the contact type
+  // field's own fieldset, so on the Guardian flow one top-level child holds
+  // both "Are you a" and the four Student Information fields. Descend until
+  // every node belongs to exactly one section rather than trying to place a
+  // node that straddles two.
+  function collectSectionNodes(parent, groups, state) {
+    Array.prototype.forEach.call(parent.children, function (node) {
+      if (node.classList && node.classList.contains(SECTION_HEADER_CLASS)) return;
+      var indices = sectionIndicesIn(node);
+      var splittable = node.children && node.children.length > 0 && !(node.classList && node.classList.contains(FIELD_WRAPPER_CLASS));
+      if (indices.length > 1 && splittable) {
+        collectSectionNodes(node, groups, state);
+        return;
+      }
+      var index = indices.length > 0 ? indices[0] : -1;
+      if (index === -1) index = state.current;else state.current = index;
+      groups[index].push(node);
+    });
+  }
+  function sectionGroups() {
+    var groups = SECTION_DEFS.map(function () {
+      return [];
+    });
+    collectSectionNodes(formRoot, groups, {
+      current: 0
+    });
+    return groups;
+  }
+  // A field counts as required when its asterisk is on screen. Native marks
+  // carry no inline display; the ones this file injects are toggled as the
+  // field becomes relevant, so reading the mark covers both.
+  function fieldIsRequired(wrap) {
+    var marks = wrap.querySelectorAll("label .hs-form-required");
+    for (var i = 0; i < marks.length; i++) {
+      if (marks[i].style.display !== "none") return true;
+    }
+    return false;
+  }
+  function groupFieldWraps(nodes) {
+    var entries = [];
+    nodes.forEach(function (node) {
+      if (!node.querySelectorAll) return;
+      if (node.classList && node.classList.contains(FIELD_WRAPPER_CLASS)) entries.push({
+        wrap: node,
+        section: node
+      });
+      Array.prototype.forEach.call(node.querySelectorAll("." + FIELD_WRAPPER_CLASS), function (wrap) {
+        entries.push({
+          wrap: wrap,
+          section: node
+        });
+      });
+    });
+    return entries;
+  }
+  // Deliberately not isElementVisible(): a closed section is display:none on
+  // its top-level node, so reading that back would make the section look empty
+  // the moment it closed — and an empty section is one this code re-opens.
+  // The walk therefore stops at the section rather than going to the document.
+  function fieldVisibleInSection(entry) {
+    for (var node = entry.wrap; node && node !== entry.section; node = node.parentElement) {
+      if (node.hidden) return false;
+      // A node this code collapsed reports the display it had beforehand, so
+      // a closed section never reads as an empty one — which is what would
+      // re-open it on the next pass.
+      if (node.getAttribute && node.getAttribute(SECTION_HIDDEN_ATTR) === "1") {
+        if ((node.getAttribute(SECTION_PREV_DISPLAY_ATTR) || "") === "none") return false;
+        continue;
+      }
+      if (node.style && node.style.display === "none") return false;
+    }
+    return true;
+  }
+  function groupHasVisibleField(nodes) {
+    var entries = groupFieldWraps(nodes);
+    for (var i = 0; i < entries.length; i++) {
+      if (fieldVisibleInSection(entries[i])) return true;
+    }
+    return false;
+  }
+  function groupComplete(nodes) {
+    var entries = groupFieldWraps(nodes);
+    for (var i = 0; i < entries.length; i++) {
+      if (!fieldVisibleInSection(entries[i])) continue;
+      if (!fieldIsRequired(entries[i].wrap)) continue;
+      if (!fieldWrapperAnswered(entries[i].wrap)) return false;
+    }
+    return true;
+  }
+  function sectionTitle(def) {
+    // One submission can record two people, and which of them "your details"
+    // refers to depends on who is filling the form in.
+    if (def.id === "contact") return isGuardianContactType() ? "Guardian Details" : "Your Details";
+    return def.title;
+  }
+  function ensureSectionHeader(def, firstNode) {
+    var title = sectionTitle(def);
+    var existing = formRoot.querySelector('[data-contour-section-header="' + def.id + '"]');
+    if (!title || !firstNode || !firstNode.parentNode) {
+      if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
+      return null;
+    }
+    if (!existing) {
+      existing = document.createElement("div");
+      existing.className = SECTION_HEADER_CLASS;
+      existing.setAttribute("data-contour-section-header", def.id);
+      var label = document.createElement("span");
+      label.className = SECTION_HEADER_CLASS + "__title";
+      existing.appendChild(label);
+    }
+    if (existing.firstChild.textContent !== title) existing.firstChild.textContent = title;
+    // Re-seated rather than left where it was: HubSpot inserting a dependent
+    // group can land fields above a header that used to sit on top of them.
+    if (existing.nextSibling !== firstNode) firstNode.parentNode.insertBefore(existing, firstNode);
+    return existing;
+  }
+  // Only ever unwinds a display this code set. HubSpot ships its own hidden
+  // nodes at the end of the form — the tracking iframe carries an inline
+  // display:none — and blanket-clearing display on a section's members put
+  // an empty bordered box under the submit button.
+  var SECTION_HIDDEN_ATTR = "data-contour-section-hidden";
+  var SECTION_PREV_DISPLAY_ATTR = "data-contour-prev-display";
+  function setNodeSectionHidden(node, hidden) {
+    if (!node || !node.style) return;
+    if (hidden) {
+      if (node.getAttribute(SECTION_HIDDEN_ATTR) === "1") return;
+      node.setAttribute(SECTION_HIDDEN_ATTR, "1");
+      node.setAttribute(SECTION_PREV_DISPLAY_ATTR, node.style.display || "");
+      node.style.display = "none";
+      return;
+    }
+    if (node.getAttribute(SECTION_HIDDEN_ATTR) !== "1") return;
+    var previous = node.getAttribute(SECTION_PREV_DISPLAY_ATTR) || "";
+    if (previous) node.style.display = previous;else node.style.removeProperty("display");
+    node.removeAttribute(SECTION_HIDDEN_ATTR);
+    node.removeAttribute(SECTION_PREV_DISPLAY_ATTR);
+  }
+  function firstVisibleNode(nodes) {
+    for (var i = 0; i < nodes.length; i++) {
+      if (groupHasVisibleField([nodes[i]])) return nodes[i];
+    }
+    return nodes[0] || null;
+  }
+  function evaluateSections(options) {
+    if (!sectionsReady || !formRoot) return;
+    var initial = !!(options && options.initial);
+    var groups = sectionGroups();
+    var open = true;
+    var revealedNow = [];
+    SECTION_DEFS.forEach(function (def, index) {
+      var nodes = groups[index];
+      var wasRevealed = !!revealedSections[def.id];
+      var empty = !groupHasVisibleField(nodes);
+      // An empty section is transparent: it neither shows a header nor holds
+      // the rest of the form shut behind it.
+      var show = !empty && (open || wasRevealed);
+      if (empty) {
+        nodes.forEach(function (node) {
+          setNodeSectionHidden(node, false);
+        });
+        ensureSectionHeader({
+          id: def.id,
+          title: null
+        }, null);
+      } else if (show) {
+        var header = ensureSectionHeader(def, firstVisibleNode(nodes));
+        nodes.forEach(function (node) {
+          setNodeSectionHidden(node, false);
+        });
+        if (header) header.style.removeProperty("display");
+        if (!wasRevealed) {
+          revealedSections[def.id] = true;
+          revealedNow.push({
+            header: header,
+            nodes: nodes
+          });
+        }
+      } else {
+        ensureSectionHeader({
+          id: def.id,
+          title: null
+        }, null);
+        nodes.forEach(function (node) {
+          setNodeSectionHidden(node, true);
+        });
+      }
+      if (!empty && !groupComplete(nodes)) open = false;
+    });
+    if (initial || revealedNow.length === 0) return;
+    revealedNow.forEach(function (entry, i) {
+      // Several sections open at once only on a prefilled return, where a
+      // short cascade reads as the form filling itself in.
+      var delay = i * 90;
+      if (entry.header) playReveal(entry.header, delay);
+      entry.nodes.forEach(function (node) {
+        playReveal(node, delay);
+      });
+    });
+    if (revealedNow.length === 1) scrollSectionIntoView(revealedNow[0]);
+  }
+  // Only nudges the page when the new section is genuinely off screen, and
+  // never while someone is typing — being scrolled away from a half-finished
+  // answer is worse than not being shown the next question straight away.
+  function scrollSectionIntoView(entry) {
+    if (prefersReducedMotion()) return;
+    var active = document.activeElement;
+    if (active && (active.tagName === "TEXTAREA" || active.tagName === "INPUT" && active.type !== "checkbox" && active.type !== "radio" && active.type !== "submit")) return;
+    var target = entry.header || entry.nodes[0];
+    if (!target || !target.getBoundingClientRect) return;
+    var viewport = window.innerHeight || 0;
+    if (!viewport || target.getBoundingClientRect().top < viewport - 48) return;
+    target.scrollIntoView({
+      behavior: "smooth",
+      block: "nearest"
+    });
+  }
+  function revealAllSections() {
+    if (!sectionsReady) return;
+    SECTION_DEFS.forEach(function (def) {
+      revealedSections[def.id] = true;
+    });
+    evaluateSections({
+      initial: true
+    });
+  }
+  function scheduleSectionEval() {
+    if (sectionEvalQueued) return;
+    sectionEvalQueued = true;
+    setTimeout(function () {
+      sectionEvalQueued = false;
+      evaluateSections();
+      clearAnsweredRequiredFallbacks();
+      syncFieldErrorAria();
+    }, 0);
+  }
+  function startSections() {
+    if (sectionsReady || !formRoot) return;
+    sectionsReady = true;
+    formRoot.classList.add("contour-sections-on");
+    // Staff take signups over the phone out of order, so they get the lot.
+    if (isInternalMode()) SECTION_DEFS.forEach(function (def) {
+      revealedSections[def.id] = true;
+    });
+    formRoot.addEventListener("change", scheduleSectionEval);
+    formRoot.addEventListener("input", scheduleSectionEval);
+    evaluateSections({
+      initial: true
+    });
+    // defaultContactTypeToStudent() ticks the radio through HubSpot, which
+    // settles a tick later — without a second pass the form would open on the
+    // contact-type question alone and then visibly expand.
+    scheduleSectionEval();
+    // HubSpot rebuilds fields on its own validation and inserts the Contact
+    // Type dependent group mid-flow. Re-assigning is idempotent, so the
+    // header this makes itself no-ops on the next callback.
+    var observer = new MutationObserver(scheduleSectionEval);
+    observer.observe(formRoot, {
+      childList: true,
+      subtree: true
+    });
+  }
+  function playFormEntrance() {
+    if (!formRoot || prefersReducedMotion()) return;
+    formRoot.classList.add("contour-form-enter");
+    setTimeout(function () {
+      formRoot.classList.remove("contour-form-enter");
+    }, 900);
+  }
+  /* =========================================================
+     ACCESSIBILITY — invalid fields announce themselves
+     -----------------------------------------------------------
+     Every error list on the form carries role="alert", so the message is read
+     out when it appears, but nothing tied the message to the field. A screen
+     reader landing on the box afterwards had no way to know it was rejected
+     or why.
+     ========================================================= */
+  var ariaErrorSeq = 0;
+  var ARIA_OWNED_ATTR = "data-contour-describes";
+  function syncFieldErrorAria() {
+    if (!formRoot) return;
+    Array.prototype.forEach.call(formRoot.querySelectorAll("." + FIELD_WRAPPER_CLASS), function (wrap) {
+      var shown = null;
+      Array.prototype.forEach.call(wrap.querySelectorAll(".hs-error-msgs"), function (list) {
+        if (!shown && list.style.display !== "none") shown = list;
+      });
+      if (shown && !shown.id) shown.id = "contour-error-" + ++ariaErrorSeq;
+      Array.prototype.forEach.call(wrap.querySelectorAll("input[name], select[name], textarea[name], input[type='tel']"), function (control) {
+        if (control.type === "hidden") return;
+        var owned = control.getAttribute(ARIA_OWNED_ATTR);
+        if (shown) {
+          control.setAttribute("aria-invalid", "true");
+          if (owned !== shown.id) {
+            control.setAttribute("aria-describedby", shown.id);
+            control.setAttribute(ARIA_OWNED_ATTR, shown.id);
+          }
+          return;
+        }
+        control.removeAttribute("aria-invalid");
+        // Only ever removes the pointer this file put there.
+        if (owned) {
+          if (control.getAttribute("aria-describedby") === owned) control.removeAttribute("aria-describedby");
+          control.removeAttribute(ARIA_OWNED_ATTR);
+        }
+      });
+    });
+  }
+  // A greyed-out field with no explanation reads as broken. Program Interest
+  // already says what it is waiting for; Year Level and Current School said
+  // nothing at all.
+  function setDisabledHint(fieldEl, text) {
+    var wrap = fieldEl ? fieldWrapper(fieldEl) : null;
+    if (!wrap) return;
+    var hint = wrap.querySelector(".contour-disabled-hint");
+    if (!text) {
+      if (hint && hint.parentNode) hint.parentNode.removeChild(hint);
+      return;
+    }
+    if (!hint) {
+      hint = document.createElement("div");
+      hint.className = "hs-field-desc contour-disabled-hint";
+      wrap.appendChild(hint);
+    }
+    if (hint.textContent !== text) hint.textContent = text;
+  }
   function isFieldWrapVisible(fieldWrap) {
-    return fieldWrap.style.display !== "none";
+    return isElementVisible(fieldWrap);
   }
   function schoolFieldSatisfied() {
     var input = q(FIELD_SELECTORS.schoolText);
@@ -2609,7 +3536,7 @@ var ContourForm1Logic = function () {
     fieldWrap.appendChild(errorList);
     function showError() {
       errorList.style.display = "";
-      scrollErrorIntoView(fieldWrap);
+      reportFieldError(fieldWrap, focusTargetIn(fieldWrap));
     }
     function clearError() {
       errorList.style.display = "none";
@@ -2622,15 +3549,13 @@ var ContourForm1Logic = function () {
         if (isValid()) clearError();
       });
     });
-    if (formRoot) {
-      formRoot.addEventListener("submit", function (e) {
-        if (!isValid()) {
-          e.preventDefault();
-          e.stopImmediatePropagation();
-          showError();
-        }
-      }, true);
-    }
+    registerSubmitValidator({
+      isValid: isValid,
+      showError: showError,
+      anchor: function () {
+        return fieldWrap;
+      }
+    });
     return {
       isValid: isValid,
       showError: showError,
@@ -2686,7 +3611,7 @@ var ContourForm1Logic = function () {
       });
       errorLabel.textContent = "Please select a " + names.join(" and ") + " subject, or deselect the program.";
       errorList.style.display = "";
-      scrollErrorIntoView(fieldWrap);
+      reportFieldError(fieldWrap, focusTargetIn(fieldWrap));
     }
     function clearError() {
       errorList.style.display = "none";
@@ -2696,15 +3621,13 @@ var ContourForm1Logic = function () {
         if (isValid()) clearError();
       });
     });
-    if (formRoot) {
-      formRoot.addEventListener("submit", function (e) {
-        if (!isValid()) {
-          e.preventDefault();
-          e.stopImmediatePropagation();
-          showError();
-        }
-      }, true);
-    }
+    registerSubmitValidator({
+      isValid: isValid,
+      showError: showError,
+      anchor: function () {
+        return fieldWrap;
+      }
+    });
   }
   /* =========================================================
      CONTACT FIELD FORMAT VALIDATION
@@ -2819,26 +3742,48 @@ var ContourForm1Logic = function () {
     input.setAttribute(CONTACT_FORMAT_BOUND_ATTR, "1");
     ensureContourError(input, config.errorClass, config.message);
     input.addEventListener("blur", function () {
-      if (contactFormatIsValid(config, input)) clearContourError(input, config.errorClass);
-      else showContourError(input, config.errorClass);
+      if (contactFormatIsValid(config, input)) clearContourError(input, config.errorClass);else showContourError(input, config.errorClass);
+      updateContactFieldOk(input);
+      syncFieldErrorAria();
     });
     input.addEventListener("input", function () {
       if (contactFormatIsValid(config, input)) clearContourError(input, config.errorClass);
+      updateContactFieldOk(input);
     });
     if (formRoot && !contactFormatSubmitGates[config.errorClass]) {
       contactFormatSubmitGates[config.errorClass] = true;
-      // Bound once for the lifetime of the form: formRoot survives the field
-      // re-renders, so the gate re-resolves the input each time it fires rather
-      // than closing over a node that may since have been replaced.
-      formRoot.addEventListener("submit", function (e) {
-        var current = typableInput(q(config.selector));
-        if (!current || contactFormatIsValid(config, current)) return;
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        showContourError(current, config.errorClass);
-        scrollErrorIntoView(fieldWrapper(current) || current);
-      }, true);
+      // Registered once for the lifetime of the form: formRoot survives the
+      // field re-renders, so the check re-resolves the input each time it runs
+      // rather than closing over a node that may since have been replaced.
+      registerSubmitValidator({
+        isValid: function () {
+          var current = typableInput(q(config.selector));
+          return !current || contactFormatIsValid(config, current);
+        },
+        showError: function () {
+          var current = typableInput(q(config.selector));
+          if (!current) return;
+          showContourError(current, config.errorClass);
+          reportFieldError(fieldWrapper(current) || current, current);
+        },
+        anchor: function () {
+          var current = typableInput(q(config.selector));
+          return current ? fieldWrapper(current) || current : null;
+        }
+      });
     }
+  }
+  // A contact detail that passes gets a quiet tick. Four boxes on this form
+  // can be rejected for their shape alone, and silence after typing one reads
+  // as "did that register?".
+  function updateContactFieldOk(input) {
+    var wrap = fieldWrapper(input);
+    if (!wrap) return;
+    var value = (input.value || "").trim();
+    var showing = Array.prototype.some.call(wrap.querySelectorAll(".hs-error-msgs"), function (el) {
+      return el.style.display !== "none";
+    });
+    wrap.classList.toggle("contour-field-ok", value !== "" && !showing);
   }
   function enforceAllContactFormatValidation() {
     CONTACT_FORMAT_FIELDS.forEach(enforceContactFormatField);
@@ -2929,14 +3874,18 @@ var ContourForm1Logic = function () {
     });
     if (formRoot && !emailPairSubmitGateBound) {
       emailPairSubmitGateBound = true;
-      formRoot.addEventListener("submit", function (e) {
-        if (emailPairIsValid()) return;
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        updateEmailPairError(true);
-        var current = emailPairInputs();
-        if (current) scrollErrorIntoView(fieldWrapper(current.student) || current.student);
-      }, true);
+      registerSubmitValidator({
+        isValid: emailPairIsValid,
+        showError: function () {
+          updateEmailPairError(true);
+          var current = emailPairInputs();
+          if (current) reportFieldError(fieldWrapper(current.student) || current.student, current.student);
+        },
+        anchor: function () {
+          var current = emailPairInputs();
+          return current ? fieldWrapper(current.student) : null;
+        }
+      });
     }
   }
   /* =========================================================
@@ -3160,8 +4109,7 @@ var ContourForm1Logic = function () {
         // e.stopImmediatePropagation();
         // if (duplicateVerdict(config, value, dial) === true) {
           // showDuplicateError(config, current);
-          // scrollErrorIntoView(fieldWrapper(current) || current);
-          // current.focus();
+          // reportFieldError(fieldWrapper(current) || current, current);
           // return;
         // }
         // Verdict still in flight (or blur never fired) — resolve it, then
@@ -3172,8 +4120,13 @@ var ContourForm1Logic = function () {
           // if (!latest || duplicateValue(config, latest) !== value) return;
           // if (exists) {
             // showDuplicateError(config, latest);
-            // scrollErrorIntoView(fieldWrapper(latest) || latest);
-            // latest.focus();
+            // This verdict can land a second or more after the click, by
+            // which time the student may have started typing somewhere else.
+            // Still scroll to the reason the submit did nothing, but only
+            // take the caret if it is not already in a field.
+            // var active = document.activeElement;
+            // var caretIsFree = !active || active === document.body || active.type === "submit" || active.tagName === "BUTTON";
+            // reportFieldError(fieldWrapper(latest) || latest, caretIsFree ? latest : null);
             // return;
           // }
           // if (typeof formRoot.requestSubmit === "function") {
@@ -3432,15 +4385,18 @@ var ContourForm1Logic = function () {
   }
   function enforceStudentPhoneValidation() {
     if (!formRoot) return;
-    formRoot.addEventListener("submit", function (e) {
-      if (studentPhoneIsValid()) return;
-      e.preventDefault();
-      e.stopImmediatePropagation();
-      updateStudentPhoneError(true);
-      var input = q(FIELD_SELECTORS.studentPhone);
-      scrollErrorIntoView(fieldWrapper(input) || input);
-      if (input) input.focus();
-    }, true);
+    registerSubmitValidator({
+      isValid: studentPhoneIsValid,
+      showError: function () {
+        updateStudentPhoneError(true);
+        var input = q(FIELD_SELECTORS.studentPhone);
+        reportFieldError(fieldWrapper(input) || input, input);
+      },
+      anchor: function () {
+        var input = q(FIELD_SELECTORS.studentPhone);
+        return input ? fieldWrapper(input) || input : null;
+      }
+    });
   }
   /* =========================================================
      INTERNAL-ONLY QUESTIONS
@@ -3766,21 +4722,11 @@ var ContourForm1Logic = function () {
     };
   }
   function enforceInternalOnlyFieldValidation() {
-    var controllers = [];
-    // Registered before the per-field validators below, so it still runs when
-    // the first unanswered one calls stopImmediatePropagation(). Staff hit both
-    // of these blank on every internal signup, so surfacing both errors at once
-    // beats one error per submit attempt.
-    if (formRoot) {
-      formRoot.addEventListener("submit", function () {
-        controllers.forEach(function (controller) {
-          if (!controller.isValid()) controller.showError();
-        });
-      }, true);
-    }
+    // Staff hit both of these blank on every internal signup. They used to
+    // need a dedicated listener to surface together; the single submit gate
+    // now shows every failing check at once, so registering them is enough.
     INTERNAL_ONLY_FIELDS.forEach(function (config) {
-      var controller = enforceFieldRequiredValidation(config.key, config.errorText, config.errorClass, isInternalMode, internalOnlyFieldSatisfied(config));
-      if (controller) controllers.push(controller);
+      enforceFieldRequiredValidation(config.key, config.errorText, config.errorClass, isInternalMode, internalOnlyFieldSatisfied(config));
     });
   }
   // Grey helper note under the intake year dropdown clarifying when the
@@ -3812,6 +4758,9 @@ var ContourForm1Logic = function () {
     enhanceProgramInterestCards();
     enhanceInterestedSubjectsCategories();
     injectDisabledFieldStyles();
+    injectErrorRollupStyles();
+    injectMotionStyles();
+    watchErrorRollup();
     enhanceSchoolSearch();
     watchSchoolFieldRerender();
     injectRegionStyles();
@@ -3846,8 +4795,6 @@ var ContourForm1Logic = function () {
     // on a legitimate return signup. The implementation below is kept intact,
     // commented out, ready to come back once the rules for who is allowed to
     // re-use an address are settled.
-    // After enhanceStudentPhoneField(): it rebuilds the student phone control,
-    // and binding earlier would attach the check to a discarded input.
     // enforceAllDuplicateValidation();
     // watchDuplicateFields();
     enforceFieldRequiredValidation("programInterest", "Please select a program.", "contour-program-interest-error", anyProgramInterestOptionEligible);
