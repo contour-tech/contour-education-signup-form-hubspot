@@ -1024,7 +1024,7 @@ var ContourForm1Logic = function () {
     if (document.getElementById("contour-disabled-field-styles")) return;
     var style = document.createElement("style");
     style.id = "contour-disabled-field-styles";
-    style.textContent = ".hs-form select:disabled, .hs-form input:disabled { opacity: 0.55; background-color: #f1f0ec; cursor: not-allowed; }" + ".contour-prefill-banner { display: flex; align-items: flex-start; gap: 14px; margin: 0 0 24px; padding: 18px 22px; border: 1px solid rgba(12, 49, 102, 0.12); border-radius: 16px; background: #FFFFFF; box-shadow: 0 1px 3px rgba(12, 49, 102, 0.06); }" + ".contour-prefill-banner__badge { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; background: #D7FC3D; color: #0C3166; font-size: 15px; font-weight: 700; }" + ".contour-prefill-banner__content { flex: 1; min-width: 0; }" + ".contour-prefill-banner__title { margin: 0 0 2px; font-size: 15px; font-weight: 700; color: #0C3166; }" + ".contour-prefill-banner__text { margin: 0 0 8px; font-size: 13.5px; line-height: 1.45; color: #6b7280; }" + ".contour-prefill-banner__reset { display: inline-block; font-size: 13px; font-weight: 600; color: #0C3166; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }" + ".contour-prefill-banner__reset:hover { color: #0540F2; }" + ".contour-subject-summary { margin: 24px 0; padding: 20px 22px; border: 1px solid rgba(12, 49, 102, 0.12); border-radius: 16px; background: #FFFFFF; box-shadow: 0 1px 3px rgba(12, 49, 102, 0.06); }" + ".contour-subject-summary__heading { font-size: 15px; font-weight: 700; color: #0C3166; margin-bottom: 14px; }" + ".contour-subject-summary__grid { display: flex; flex-wrap: wrap; gap: 24px; }" + ".contour-subject-summary__col { flex: 1 1 180px; min-width: 160px; }" + ".contour-subject-summary__col-title { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #6b7280; margin-bottom: 8px; }" + ".contour-subject-summary__chips { display: flex; flex-wrap: wrap; gap: 6px; }" + ".contour-subject-chip { display: inline-block; padding: 5px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 600; line-height: 1.3; }" + ".contour-subject-chip--navy { background: #092749; color: #FFFFFF; }" + ".contour-subject-chip--lime { background: #D7FC3D; color: #0C3166; }" + ".contour-subject-chip--blue { background: #007AFF; color: #FFFFFF; }" + ".contour-ucat-intake-note { margin: 24px 0; }" + ".contour-welcome-consultation__waitlist-note { margin: 0; padding: 14px 18px; border: 1px solid #f0d9a6; border-radius: 12px; background: #FFF3D6; color: #8a5a00; font-size: 14px; line-height: 1.5; font-weight: 600; }" + ".contour-form-loader { display: flex; flex-direction: column; align-items: center; padding: 60px 0; }" + ".contour-form-loader__spinner { width: 36px; height: 36px; border: 4px solid #e3e0d8; border-top-color: #1a1a2e; border-radius: 50%; animation: contour-spin 0.8s linear infinite; }" + "@keyframes contour-spin { to { transform: rotate(360deg); } }" + ".contour-form-loader__text { margin-top: 12px; font-size: 14px; }";
+    style.textContent = ".hs-form select:disabled, .hs-form input:disabled, .hs-form input.contour-prefill-locked[readonly] { opacity: 0.55; background-color: #f1f0ec; cursor: not-allowed; }" + ".contour-prefill-banner { display: flex; align-items: flex-start; gap: 14px; margin: 0 0 24px; padding: 18px 22px; border: 1px solid rgba(12, 49, 102, 0.12); border-radius: 16px; background: #FFFFFF; box-shadow: 0 1px 3px rgba(12, 49, 102, 0.06); }" + ".contour-prefill-banner__badge { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; background: #D7FC3D; color: #0C3166; font-size: 15px; font-weight: 700; }" + ".contour-prefill-banner__content { flex: 1; min-width: 0; }" + ".contour-prefill-banner__title { margin: 0 0 2px; font-size: 15px; font-weight: 700; color: #0C3166; }" + ".contour-prefill-banner__text { margin: 0 0 8px; font-size: 13.5px; line-height: 1.45; color: #6b7280; }" + ".contour-prefill-banner__reset { display: inline-block; font-size: 13px; font-weight: 600; color: #0C3166; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }" + ".contour-prefill-banner__reset:hover { color: #0540F2; }" + ".contour-subject-summary { margin: 24px 0; padding: 20px 22px; border: 1px solid rgba(12, 49, 102, 0.12); border-radius: 16px; background: #FFFFFF; box-shadow: 0 1px 3px rgba(12, 49, 102, 0.06); }" + ".contour-subject-summary__heading { font-size: 15px; font-weight: 700; color: #0C3166; margin-bottom: 14px; }" + ".contour-subject-summary__grid { display: flex; flex-wrap: wrap; gap: 24px; }" + ".contour-subject-summary__col { flex: 1 1 180px; min-width: 160px; }" + ".contour-subject-summary__col-title { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #6b7280; margin-bottom: 8px; }" + ".contour-subject-summary__chips { display: flex; flex-wrap: wrap; gap: 6px; }" + ".contour-subject-chip { display: inline-block; padding: 5px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 600; line-height: 1.3; }" + ".contour-subject-chip--navy { background: #092749; color: #FFFFFF; }" + ".contour-subject-chip--lime { background: #D7FC3D; color: #0C3166; }" + ".contour-subject-chip--blue { background: #007AFF; color: #FFFFFF; }" + ".contour-ucat-intake-note { margin: 24px 0; }" + ".contour-welcome-consultation__waitlist-note { margin: 0; padding: 14px 18px; border: 1px solid #f0d9a6; border-radius: 12px; background: #FFF3D6; color: #8a5a00; font-size: 14px; line-height: 1.5; font-weight: 600; }" + ".contour-form-loader { display: flex; flex-direction: column; align-items: center; padding: 60px 0; }" + ".contour-form-loader__spinner { width: 36px; height: 36px; border: 4px solid #e3e0d8; border-top-color: #1a1a2e; border-radius: 50%; animation: contour-spin 0.8s linear infinite; }" + "@keyframes contour-spin { to { transform: rotate(360deg); } }" + ".contour-form-loader__text { margin-top: 12px; font-size: 14px; }";
     document.head.appendChild(style);
   }
   function getClassification(inputEl) {
@@ -1739,7 +1739,31 @@ var ContourForm1Logic = function () {
       setPhoneValueWhenPresent(selector, value, tries - 1);
     }, 150);
   }
-  function applyPrefill(contact, guardian, associatedStudent) {
+  // PREFILLED EMAIL LOCK — a student_id link resolves to a HubSpot record by
+  // its email address; letting that address be edited would point the whole
+  // submission (and every check built on the email) at a different record than
+  // the one the link named. Locked with readOnly rather than disabled because
+  // HubSpot's serializer drops disabled inputs, which would strip the value
+  // from the submission and trip the required-field gate on a field the
+  // student can no longer type into. The injected :disabled styling is shared
+  // so it still reads as untouchable. Only fields the prefetch actually filled
+  // are locked — an empty student email stays editable. HubSpot re-renders
+  // replace the node, so the watchContactFields observer re-asserts the lock.
+  var prefilledEmailLocks = [];
+  function recordPrefilledEmailLock(selector, value) {
+    if (!value) return;
+    if (prefilledEmailLocks.indexOf(selector) === -1) prefilledEmailLocks.push(selector);
+  }
+  function enforcePrefilledEmailLock() {
+    prefilledEmailLocks.forEach(function (selector) {
+      var input = q(selector);
+      if (!input || input.readOnly) return;
+      input.readOnly = true;
+      input.setAttribute("aria-readonly", "true");
+      input.classList.add("contour-prefill-locked");
+    });
+  }
+  function applyPrefill(contact, guardian, associatedStudent, lockEmails) {
     var contactType = contact.contact_type;
     // "Parent" records use the same flow as "Guardian" — the form radio only
     // knows Student/Guardian.
@@ -1766,11 +1790,18 @@ var ContourForm1Logic = function () {
       setTextWhenPresent('[name="student_last_name"]', s.lastname, 10);
       setTextWhenPresent('[name="student_email"]', s.email_2 || s.email, 10);
       setPhoneValueWhenPresent(FIELD_SELECTORS.studentPhone, s.phone, 10);
+      if (lockEmails) {
+        recordPrefilledEmailLock(FIELD_SELECTORS.emailTemp, contact.email_2 || contact.email);
+        recordPrefilledEmailLock(FIELD_SELECTORS.studentEmail, s.email_2 || s.email);
+      }
     } else {
       setSelectOrTextValue('[name="firstname"]', contact.firstname);
       setSelectOrTextValue('[name="lastname"]', contact.lastname);
       setSelectOrTextValue(FIELD_SELECTORS.emailTemp, contact.email_2 || contact.email);
       setPhoneValue('[name="phone"]', contact.phone);
+      if (lockEmails) {
+        recordPrefilledEmailLock(FIELD_SELECTORS.emailTemp, contact.email_2 || contact.email);
+      }
     }
     setSelectOrTextValue(FIELD_SELECTORS.location, contact.state_territory_country);
     // Conditional on the location above, so it lands a beat later — retry the
@@ -1795,6 +1826,7 @@ var ContourForm1Logic = function () {
     };
     applyPendingPrefill();
     setSelectOrTextValue(FIELD_SELECTORS.referral, contact.referral);
+    enforcePrefilledEmailLock();
   }
   function getUrlParam(name) {
     var match = new RegExp("[?&]" + name + "=([^&#]*)").exec(window.location.search);
@@ -1899,7 +1931,7 @@ var ContourForm1Logic = function () {
       if (prefilled) {
         prefetchedTrialSubjectCodes = data.trialSubjectCodes || [];
         prefetchedEnrolledSubjectCodes = data.enrolledSubjectCodes || [];
-        applyPrefill(data.contact, data.guardian, data.associatedStudent);
+        applyPrefill(data.contact, data.guardian, data.associatedStudent, true);
         var fullName = ((data.contact.firstname || "") + " " + (data.contact.lastname || "")).trim();
         renderPrefillBanner(fullName);
         if (prefetchedTrialSubjectCodes.length > 0 || prefetchedEnrolledSubjectCodes.length > 0) {
@@ -4346,6 +4378,10 @@ var ContourForm1Logic = function () {
     var observer = new MutationObserver(function () {
       enforceAllContactFormatValidation();
       enforceGuardianStudentEmailValidation();
+      // Prefilled email locks land here too: student_email joins the DOM only
+      // after the Guardian radio is set, and HubSpot re-renders swap in fresh
+      // unlocked nodes. The binder no-ops on anything already locked.
+      enforcePrefilledEmailLock();
       // enforceDuplicateEmailValidation(); // parked — see DUPLICATE EMAIL GUARD
       refreshAllContactFormatErrors();
     });
