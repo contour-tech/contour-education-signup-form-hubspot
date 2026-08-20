@@ -14,6 +14,10 @@ var ContourForm1Logic = function () {
     schoolText: '[name="school_text"]',
     schoolCode: '[name="school_code"]',
     acaraId: '[name="acara_id"]',
+    firstName: '[name="firstname"]',
+    lastName: '[name="lastname"]',
+    studentFirstName: '[name="student_first_name"]',
+    studentLastName: '[name="student_last_name"]',
     emailTemp: '[name="email_2"]',
     studentEmail: '[name="student_email"]',
     guardianPhone: '[name="phone"]',
@@ -4101,7 +4105,9 @@ var ContourForm1Logic = function () {
      and the student's email and phone, which only exist inside the Contact
      Type dependent group. HubSpot's own validation only checks that a
      required field is non-empty, so whether what was typed is shaped like an
-     address or a number is checked here.
+     address or a number is checked here. The four name fields (guardian and
+     student, first and last) are held to the same standard: no digits, and
+     not whitespace passed off as an answer.
 
      student_phone_number is deliberately not in the list below:
      enforceStudentPhoneValidation() already checks it against the custom
@@ -4113,7 +4119,36 @@ var ContourForm1Logic = function () {
   // same constants as the student phone widget, so the two phone fields agree
   // on what counts as a number.
   var PHONE_ALLOWED_CHARS = /^[\d\s+().-]+$/;
+  // Names may not carry digits, and a value of nothing but whitespace reads as
+  // filled to HubSpot's required check, so both are rejected here. A truly
+  // empty box stays HubSpot's required error to report.
+  var NAME_DIGIT_PATTERN = /\d/;
+  var NAME_MESSAGE = "Please enter a valid name.";
   var CONTACT_FORMAT_FIELDS = [
+    {
+      selector: FIELD_SELECTORS.firstName,
+      kind: "name",
+      message: NAME_MESSAGE,
+      errorClass: "contour-firstname-error"
+    },
+    {
+      selector: FIELD_SELECTORS.lastName,
+      kind: "name",
+      message: NAME_MESSAGE,
+      errorClass: "contour-lastname-error"
+    },
+    {
+      selector: FIELD_SELECTORS.studentFirstName,
+      kind: "name",
+      message: NAME_MESSAGE,
+      errorClass: "contour-student-firstname-error"
+    },
+    {
+      selector: FIELD_SELECTORS.studentLastName,
+      kind: "name",
+      message: NAME_MESSAGE,
+      errorClass: "contour-student-lastname-error"
+    },
     {
       selector: FIELD_SELECTORS.emailTemp,
       kind: "email",
@@ -4205,7 +4240,14 @@ var ContourForm1Logic = function () {
     return digits.slice(dial.length);
   }
   function contactFormatIsValid(config, input) {
-    var value = (input.value || "").trim();
+    var raw = input.value || "";
+    var value = raw.trim();
+    // Whitespace-only satisfies HubSpot's required check, so a name of nothing
+    // but spaces has to be caught here; only a truly empty box is left to it.
+    if (config.kind === "name") {
+      if (value === "") return raw === "";
+      return !NAME_DIGIT_PATTERN.test(value);
+    }
     // Blank is HubSpot's own required error to report, not ours.
     if (value === "") return true;
     if (config.kind === "email") return EMAIL_PATTERN.test(value);
