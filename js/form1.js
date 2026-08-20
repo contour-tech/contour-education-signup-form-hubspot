@@ -15,6 +15,8 @@ var ContourForm1Logic = function () {
     schoolCode: '[name="school_code"]',
     acaraId: '[name="acara_id"]',
     emailTemp: '[name="email_2"]',
+    studentEmail: '[name="student_email"]',
+    guardianPhone: '[name="phone"]',
     studentPhone: '[name="student_phone_number"]',
     noProgramWaitlist: '[name="join_no_program_waitlist"]',
     referral: '[name="referral"]',
@@ -2704,118 +2706,310 @@ var ContourForm1Logic = function () {
       }, true);
     }
   }
-  function enforceEmailTempValidation() {
-    var input = q(FIELD_SELECTORS.emailTemp);
-    if (!input) return;
-    var EMAIL_PATTERN = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
-    function isValid() {
-      var value = input.value.trim();
-      if (value === "") return true;
-      return EMAIL_PATTERN.test(value);
+  /* =========================================================
+     CONTACT FIELD FORMAT VALIDATION
+     -----------------------------------------------------------
+     The form collects up to four contact points: the guardian's email and
+     phone (always on the page, relabelled "Your ..." on the student flow)
+     and the student's email and phone, which only exist inside the Contact
+     Type dependent group. HubSpot's own validation only checks that a
+     required field is non-empty, so whether what was typed is shaped like an
+     address or a number is checked here.
+
+     student_phone_number is deliberately not in the list below:
+     enforceStudentPhoneValidation() already checks it against the custom
+     widget's dial code, and a second validator would stack a second error
+     message under the same field.
+     ========================================================= */
+  var EMAIL_PATTERN = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+  // Anything a real number can be written with. Digit count is bounded by the
+  // same constants as the student phone widget, so the two phone fields agree
+  // on what counts as a number.
+  var PHONE_ALLOWED_CHARS = /^[\d\s+().-]+$/;
+  var CONTACT_FORMAT_FIELDS = [
+    {
+      selector: FIELD_SELECTORS.emailTemp,
+      kind: "email",
+      message: "Please enter a valid email address.",
+      errorClass: "contour-email-temp-error"
+    },
+    {
+      selector: FIELD_SELECTORS.studentEmail,
+      kind: "email",
+      message: "Please enter a valid email address.",
+      errorClass: "contour-student-email-error"
+    },
+    {
+      selector: FIELD_SELECTORS.guardianPhone,
+      kind: "phone",
+      message: "Please enter a valid phone number.",
+      errorClass: "contour-phone-error"
     }
+  ];
+  var CONTACT_FORMAT_BOUND_ATTR = "data-contour-format-check";
+  var contactFormatSubmitGates = {};
+  // HubSpot's intl-phone widget — used by the guardian "phone" field, the only
+  // one carrying useCountryCodeSelect — renders three siblings: a country
+  // <select>, the visible <input type="tel"> the user types into, and a hidden
+  // input that carries the field name. Matching on [name] therefore lands on an
+  // element that never receives focus, so blur never fires. Resolve the visible
+  // sibling instead; the dial code lives on the select, so what is typed in the
+  // box is the national number on its own.
+  function typableInput(input) {
+    if (!input || input.type !== "hidden") return input;
+    var group = input.closest(".hs-fieldtype-intl-phone");
+    return (group && group.querySelector('input[type="tel"]')) || input;
+  }
+  function contourErrorList(input, errorClass) {
     var wrapper = fieldWrapper(input) || input.parentElement;
+    return wrapper ? wrapper.querySelector("." + errorClass) : null;
+  }
+  // Rendered in HubSpot's own error markup so it sits where a native message
+  // would, and inherits the form's error styling untouched.
+  function ensureContourError(input, errorClass, message) {
+    var existing = contourErrorList(input, errorClass);
+    if (existing) return existing;
+    var wrapper = fieldWrapper(input) || input.parentElement;
+    if (!wrapper) return null;
     var errorList = document.createElement("ul");
-    errorList.className = "no-list hs-error-msgs inputs-list contour-email-temp-error";
+    errorList.className = "no-list hs-error-msgs inputs-list " + errorClass;
     errorList.setAttribute("role", "alert");
     errorList.style.display = "none";
     var errorItem = document.createElement("li");
     var errorLabel = document.createElement("label");
     errorLabel.className = "hs-error-msg hs-main-font-element";
-    errorLabel.textContent = "Please enter a valid email address.";
+    errorLabel.textContent = message;
     errorItem.appendChild(errorLabel);
     errorList.appendChild(errorItem);
     wrapper.appendChild(errorList);
-    function showError() {
-      input.classList.add("invalid", "error");
-      errorList.style.display = "";
-    }
-    function clearError() {
-      input.classList.remove("invalid", "error");
-      errorList.style.display = "none";
-    }
+    return errorList;
+  }
+  function showContourError(input, errorClass) {
+    input.classList.add("invalid", "error");
+    var list = contourErrorList(input, errorClass);
+    if (list) list.style.display = "";
+  }
+  function clearContourError(input, errorClass) {
+    var list = contourErrorList(input, errorClass);
+    if (list) list.style.display = "none";
+    // Student Email carries two checks (format, and not the guardian's), and
+    // HubSpot adds its own, so the red state only comes off the box once none
+    // of them is showing.
+    var wrapper = fieldWrapper(input) || input.parentElement;
+    var stillShowing = wrapper && Array.prototype.some.call(wrapper.querySelectorAll(".hs-error-msgs"), function (el) {
+      return el.style.display !== "none";
+    });
+    if (!stillShowing) input.classList.remove("invalid", "error");
+  }
+  function contactFormatIsValid(config, input) {
+    var value = (input.value || "").trim();
+    // Blank is HubSpot's own required error to report, not ours.
+    if (value === "") return true;
+    if (config.kind === "email") return EMAIL_PATTERN.test(value);
+    if (!PHONE_ALLOWED_CHARS.test(value)) return false;
+    var digits = value.replace(/\D/g, "");
+    return digits.length >= STUDENT_PHONE_MIN_DIGITS && digits.length <= STUDENT_PHONE_MAX_DIGITS;
+  }
+  function enforceContactFormatField(config) {
+    var input = typableInput(q(config.selector));
+    if (!input) return;
+    // Runs on every mutation, so skip an input that already carries the check.
+    // A re-render replaces the node, dropping the flag, which re-binds it.
+    if (input.getAttribute(CONTACT_FORMAT_BOUND_ATTR) === "1") return;
+    input.setAttribute(CONTACT_FORMAT_BOUND_ATTR, "1");
+    ensureContourError(input, config.errorClass, config.message);
     input.addEventListener("blur", function () {
-      if (isValid()) clearError(); else showError();
+      if (contactFormatIsValid(config, input)) clearContourError(input, config.errorClass);
+      else showContourError(input, config.errorClass);
     });
     input.addEventListener("input", function () {
-      if (isValid()) clearError();
+      if (contactFormatIsValid(config, input)) clearContourError(input, config.errorClass);
     });
-    if (formRoot) {
+    if (formRoot && !contactFormatSubmitGates[config.errorClass]) {
+      contactFormatSubmitGates[config.errorClass] = true;
+      // Bound once for the lifetime of the form: formRoot survives the field
+      // re-renders, so the gate re-resolves the input each time it fires rather
+      // than closing over a node that may since have been replaced.
       formRoot.addEventListener("submit", function (e) {
-        if (!isValid()) {
-          e.preventDefault();
-          e.stopImmediatePropagation();
-          showError();
-          scrollErrorIntoView(fieldWrapper(input) || input);
-          input.focus();
-        }
+        var current = typableInput(q(config.selector));
+        if (!current || contactFormatIsValid(config, current)) return;
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        showContourError(current, config.errorClass);
+        scrollErrorIntoView(fieldWrapper(current) || current);
       }, true);
     }
   }
-  /* =========================================================
-     DUPLICATE EMAIL GUARD — block re-signup with a known email
-     -----------------------------------------------------------
-     On blur (i.e. as soon as the user moves to the next field) the entered
-     email is checked against the prefetch cloud function's /exists route,
-     which searches HubSpot contacts across email, email_2 and student_email.
-     A hit shows an error under the email box and blocks submission. Results
-     are cached per address so blur + submit never double-hit the endpoint.
-     Network failures fail open — an outage of the check must never lock
-     legitimate signups out.
-     ========================================================= */
-  // Duplicate checking covers both people the form collects: the student's
-  // email and phone, and the guardian's (Amitav). Each field gets its own
-  // independent check against HubSpot; the endpoint takes either ?email= or
-  // ?phone=, and searches every property that can hold one.
-  var DUPLICATE_CHECK_FIELDS = [
-    {
-      selector: '[name="email_2"]',
-      param: "email",
-      message: "This email is already registered. Please contact our team to update your details.",
-      errorClass: "contour-duplicate-email-error"
-    },
-    {
-      selector: '[name="student_email"]',
-      param: "email",
-      message: "This student email is already registered. Please contact our team to update your details.",
-      errorClass: "contour-duplicate-student-email-error"
-    },
-    {
-      selector: '[name="phone"]',
-      param: "phone",
-      message: "This phone number is already registered. Please contact our team to update your details.",
-      errorClass: "contour-duplicate-phone-error"
-    },
-    {
-      selector: '[name="student_phone_number"]',
-      param: "phone",
-      message: "This student phone number is already registered. Please contact our team to update your details.",
-      errorClass: "contour-duplicate-student-phone-error"
-    }
-  ];
-  // Verdicts are cached per field so a re-render (or blur then submit) never
-  // re-hits the endpoint for a value already looked up.
-  var duplicateResults = {};
-  var duplicatePending = {};
-  var duplicateSubmitGates = {};
-  var DUPLICATE_BOUND_ATTR = "data-contour-duplicate-check";
-  function enforceAllDuplicateValidation() {
-    DUPLICATE_CHECK_FIELDS.forEach(function (config) {
-      enforceDuplicateFieldValidation(config);
-    });
+  function enforceAllContactFormatValidation() {
+    CONTACT_FORMAT_FIELDS.forEach(enforceContactFormatField);
   }
-  function watchDuplicateFields() {
-    // student_email and student_phone_number sit inside the Contact Type
-    // dependent group, so neither is in the DOM at init, and HubSpot rebuilds
-    // any of the four when native validation fires — the same behaviour
-    // watchStudentPhoneField() handles. Re-binding is idempotent.
+  function watchContactFields() {
+    if (!formRoot) return;
+    // student_email sits inside the Contact Type dependent group, so it isn't
+    // in the DOM at init, and HubSpot rebuilds any of these fields when its own
+    // validation fires — the same behaviour watchStudentPhoneField() handles.
+    // Both binders are idempotent, so the nodes they add themselves just no-op
+    // on the next observer callback.
     var observer = new MutationObserver(function () {
-      enforceAllDuplicateValidation();
+      enforceAllContactFormatValidation();
+      enforceGuardianStudentEmailValidation();
     });
     observer.observe(formRoot, {
       childList: true,
       subtree: true
     });
   }
+  /* =========================================================
+     GUARDIAN EMAIL vs STUDENT EMAIL
+     -----------------------------------------------------------
+     On the Guardian flow one submission records two people, and HubSpot
+     creates a contact for each. The same address on both collapses them onto
+     a single record, taking the guardian's details with it, so the pair has
+     to differ. Only checked while the student fields are on the page.
+     ========================================================= */
+  var EMAIL_PAIR_ERROR_CLASS = "contour-student-email-same-error";
+  var EMAIL_PAIR_MESSAGE = "The student email must be different from the guardian email.";
+  var EMAIL_PAIR_BOUND_ATTR = "data-contour-email-pair-check";
+  var emailPairSubmitGateBound = false;
+  var emailPairContactTypeBound = false;
+  function emailPairInputs() {
+    var guardian = q(FIELD_SELECTORS.emailTemp);
+    var student = q(FIELD_SELECTORS.studentEmail);
+    if (!guardian || !student) return null;
+    var wrap = fieldWrapper(student);
+    if (wrap && !isFieldWrapVisible(wrap)) return null;
+    return { guardian: guardian, student: student };
+  }
+  function emailPairIsValid() {
+    if (!isGuardianContactType()) return true;
+    var pair = emailPairInputs();
+    if (!pair) return true;
+    var guardian = (pair.guardian.value || "").trim().toLowerCase();
+    var student = (pair.student.value || "").trim().toLowerCase();
+    // A half-typed address is not a clash yet; the required check covers blanks.
+    if (guardian === "" || student === "") return true;
+    return guardian !== student;
+  }
+  function updateEmailPairError(showWhenInvalid) {
+    var pair = emailPairInputs();
+    if (!pair) return;
+    ensureContourError(pair.student, EMAIL_PAIR_ERROR_CLASS, EMAIL_PAIR_MESSAGE);
+    if (emailPairIsValid()) {
+      clearContourError(pair.student, EMAIL_PAIR_ERROR_CLASS);
+      return;
+    }
+    if (showWhenInvalid) showContourError(pair.student, EMAIL_PAIR_ERROR_CLASS);
+  }
+  function enforceGuardianStudentEmailValidation() {
+    if (!emailPairContactTypeBound) {
+      emailPairContactTypeBound = true;
+      // Switching to the student flow takes the student fields off the page,
+      // so a clash raised under Guardian must not be left showing behind them.
+      qAll(FIELD_SELECTORS.contactType).forEach(function (radio) {
+        radio.addEventListener("change", function () {
+          updateEmailPairError(false);
+        });
+      });
+    }
+    var pair = emailPairInputs();
+    if (!pair) return;
+    ensureContourError(pair.student, EMAIL_PAIR_ERROR_CLASS, EMAIL_PAIR_MESSAGE);
+    // Either box can be the one that creates the clash, so both are watched,
+    // and the message always renders under Student Email — the field the
+    // person filling the form is meant to change.
+    [pair.guardian, pair.student].forEach(function (input) {
+      if (input.getAttribute(EMAIL_PAIR_BOUND_ATTR) === "1") return;
+      input.setAttribute(EMAIL_PAIR_BOUND_ATTR, "1");
+      input.addEventListener("blur", function () {
+        updateEmailPairError(true);
+      });
+      input.addEventListener("input", function () {
+        updateEmailPairError(false);
+      });
+    });
+    if (formRoot && !emailPairSubmitGateBound) {
+      emailPairSubmitGateBound = true;
+      formRoot.addEventListener("submit", function (e) {
+        if (emailPairIsValid()) return;
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        updateEmailPairError(true);
+        var current = emailPairInputs();
+        if (current) scrollErrorIntoView(fieldWrapper(current.student) || current.student);
+      }, true);
+    }
+  }
+  /* =========================================================
+     DUPLICATE CONTACT GUARD — PARKED
+     -----------------------------------------------------------
+     Kept in full and commented out rather than deleted. A prefilled link is
+     by definition an existing contact, so every check below fires on a
+     legitimate return signup — someone adding a subject, or coming back for
+     a second trial — and blocks it. It comes back once the rules for when a
+     known email or number may sign up again are settled; reinstating it means
+     uncommenting this block and its two calls in init().
+
+     What it did: on blur the entered value went to the prefetch cloud
+     function's /exists route, which searches HubSpot contacts across every
+     property that can hold an email or a phone number. A hit showed an error
+     under the field and blocked submission. Verdicts were cached per value so
+     blur then submit never double-hit the endpoint, and network failures
+     failed open so an outage could never lock signups out.
+     ========================================================= */
+  // Duplicate checking covers both people the form collects: the student's
+  // email and phone, and the guardian's (Amitav). Each field gets its own
+  // independent check against HubSpot; the endpoint takes either ?email= or
+  // ?phone=, and searches every property that can hold one.
+  // var DUPLICATE_CHECK_FIELDS = [
+    // {
+      // selector: '[name="email_2"]',
+      // param: "email",
+      // message: "This email is already registered. Please contact our team to update your details.",
+      // errorClass: "contour-duplicate-email-error"
+    // },
+    // {
+      // selector: '[name="student_email"]',
+      // param: "email",
+      // message: "This student email is already registered. Please contact our team to update your details.",
+      // errorClass: "contour-duplicate-student-email-error"
+    // },
+    // {
+      // selector: '[name="phone"]',
+      // param: "phone",
+      // message: "This phone number is already registered. Please contact our team to update your details.",
+      // errorClass: "contour-duplicate-phone-error"
+    // },
+    // {
+      // selector: '[name="student_phone_number"]',
+      // param: "phone",
+      // message: "This student phone number is already registered. Please contact our team to update your details.",
+      // errorClass: "contour-duplicate-student-phone-error"
+    // }
+  // ];
+  // Verdicts are cached per field so a re-render (or blur then submit) never
+  // re-hits the endpoint for a value already looked up.
+  // var duplicateResults = {};
+  // var duplicatePending = {};
+  // var duplicateSubmitGates = {};
+  // var DUPLICATE_BOUND_ATTR = "data-contour-duplicate-check";
+  // function enforceAllDuplicateValidation() {
+    // DUPLICATE_CHECK_FIELDS.forEach(function (config) {
+      // enforceDuplicateFieldValidation(config);
+    // });
+  // }
+  // function watchDuplicateFields() {
+    // student_email and student_phone_number sit inside the Contact Type
+    // dependent group, so neither is in the DOM at init, and HubSpot rebuilds
+    // any of the four when native validation fires — the same behaviour
+    // watchStudentPhoneField() handles. Re-binding is idempotent.
+    // var observer = new MutationObserver(function () {
+      // enforceAllDuplicateValidation();
+    // });
+    // observer.observe(formRoot, {
+      // childList: true,
+      // subtree: true
+    // });
+  // }
   // HubSpot's intl-phone widget — used by the guardian "phone" field, the only
   // one carrying useCountryCodeSelect — renders three siblings: a country
   // <select>, the visible <input type="tel"> the user types into, and a hidden
@@ -2823,175 +3017,175 @@ var ContourForm1Logic = function () {
   // element that never receives focus, so blur never fires. Resolve the visible
   // sibling instead; the backend matches on national digits, so the number
   // typed there is enough on its own without the dial code.
-  function typableInput(input) {
-    if (!input || input.type !== "hidden") return input;
-    var group = input.closest(".hs-fieldtype-intl-phone");
-    return (group && group.querySelector('input[type="tel"]')) || input;
-  }
-  function duplicateFieldInput(config) {
-    return typableInput(q(config.selector));
-  }
+  // function typableInput(input) {
+    // if (!input || input.type !== "hidden") return input;
+    // var group = input.closest(".hs-fieldtype-intl-phone");
+    // return (group && group.querySelector('input[type="tel"]')) || input;
+  // }
+  // function duplicateFieldInput(config) {
+    // return typableInput(q(config.selector));
+  // }
   // Which country the number belongs to, so the backend reads a number typed
   // without a country code against the right one. The student field carries the
   // dial code on its options; HubSpot's own widget exposes only an ISO code, so
   // that is mapped through the same E.164 table the student widget is built
   // from. Empty means "let the backend fall back to Australia".
-  function dialForIso(iso) {
-    var target = String(iso || "").toLowerCase();
-    if (!target) return "";
-    for (var i = 0; i < PHONE_DIAL_CODES.length; i++) {
-      if (PHONE_DIAL_CODES[i][1] === target) return PHONE_DIAL_CODES[i][0];
-    }
-    return "";
-  }
-  function duplicateDial(config, input) {
-    if (config.param !== "phone" || !input) return "";
-    var own = input.closest(".contour-intl-phone");
-    if (own) {
-      var ownSelect = own.querySelector("select");
-      return ownSelect ? studentPhoneDial(ownSelect) : "";
-    }
-    var native = input.closest(".hs-fieldtype-intl-phone");
-    var nativeSelect = native ? native.querySelector("select") : null;
-    return nativeSelect ? dialForIso(nativeSelect.value) : "";
-  }
-  function duplicateValue(config, input) {
-    var raw = (input.value || "").trim();
-    return config.param === "email" ? raw.toLowerCase() : raw;
-  }
-  function duplicateCheckable(config, value) {
-    if (config.param === "email") return EMAIL_SHAPE.test(value);
+  // function dialForIso(iso) {
+    // var target = String(iso || "").toLowerCase();
+    // if (!target) return "";
+    // for (var i = 0; i < PHONE_DIAL_CODES.length; i++) {
+      // if (PHONE_DIAL_CODES[i][1] === target) return PHONE_DIAL_CODES[i][0];
+    // }
+    // return "";
+  // }
+  // function duplicateDial(config, input) {
+    // if (config.param !== "phone" || !input) return "";
+    // var own = input.closest(".contour-intl-phone");
+    // if (own) {
+      // var ownSelect = own.querySelector("select");
+      // return ownSelect ? studentPhoneDial(ownSelect) : "";
+    // }
+    // var native = input.closest(".hs-fieldtype-intl-phone");
+    // var nativeSelect = native ? native.querySelector("select") : null;
+    // return nativeSelect ? dialForIso(nativeSelect.value) : "";
+  // }
+  // function duplicateValue(config, input) {
+    // var raw = (input.value || "").trim();
+    // return config.param === "email" ? raw.toLowerCase() : raw;
+  // }
+  // function duplicateCheckable(config, value) {
+    // if (config.param === "email") return EMAIL_SHAPE.test(value);
     // Phone: enough digits to be a real number, not a half-typed one.
-    return value.replace(/[^\d]/g, "").length >= 8;
-  }
-  function duplicateErrorList(config, input) {
-    var wrapper = fieldWrapper(input) || input.parentElement;
-    return wrapper ? wrapper.querySelector("." + config.errorClass) : null;
-  }
-  function showDuplicateError(config, input) {
-    input.classList.add("invalid", "error");
-    var list = duplicateErrorList(config, input);
-    if (list) list.style.display = "";
-  }
-  function clearDuplicateError(config, input) {
-    input.classList.remove("invalid", "error");
-    var list = duplicateErrorList(config, input);
-    if (list) list.style.display = "none";
-  }
+    // return value.replace(/[^\d]/g, "").length >= 8;
+  // }
+  // function duplicateErrorList(config, input) {
+    // var wrapper = fieldWrapper(input) || input.parentElement;
+    // return wrapper ? wrapper.querySelector("." + config.errorClass) : null;
+  // }
+  // function showDuplicateError(config, input) {
+    // input.classList.add("invalid", "error");
+    // var list = duplicateErrorList(config, input);
+    // if (list) list.style.display = "";
+  // }
+  // function clearDuplicateError(config, input) {
+    // input.classList.remove("invalid", "error");
+    // var list = duplicateErrorList(config, input);
+    // if (list) list.style.display = "none";
+  // }
   // The same digits under two different country codes are two different
   // numbers, so the verdict is cached against both.
-  function duplicateKey(value, dial) {
-    return dial ? value + "|" + dial : value;
-  }
-  function checkDuplicate(config, value, dial) {
-    var results = duplicateResults[config.errorClass] || (duplicateResults[config.errorClass] = {});
-    var pending = duplicatePending[config.errorClass] || (duplicatePending[config.errorClass] = {});
-    var key = duplicateKey(value, dial);
-    if (Object.prototype.hasOwnProperty.call(results, key)) {
-      return Promise.resolve(results[key]);
-    }
-    if (pending[key]) return pending[key];
-    var url = PREFETCH_ENDPOINT + "/exists?" + config.param + "=" + encodeURIComponent(value);
-    if (dial) url += "&dial=" + encodeURIComponent(dial);
-    var request = fetch(url).then(function (res) {
-      if (!res.ok) throw new Error("HTTP " + res.status);
-      return res.json();
-    }).then(function (data) {
-      results[key] = !!(data && data.exists);
-      return results[key];
-    }).catch(function (err) {
-      console.warn("Contour Form 1 logic: duplicate " + config.param + " check failed:", err);
-      results[key] = false;
-      return false;
-    }).then(function (exists) {
-      delete pending[key];
-      return exists;
-    });
-    pending[key] = request;
-    return request;
-  }
-  function duplicateVerdict(config, value, dial) {
-    var results = duplicateResults[config.errorClass];
-    var key = duplicateKey(value, dial);
-    if (!results || !Object.prototype.hasOwnProperty.call(results, key)) return null;
-    return results[key];
-  }
-  function enforceDuplicateFieldValidation(config) {
-    if (!PREFETCH_ENDPOINT) return;
-    var input = duplicateFieldInput(config);
-    if (!input) return;
+  // function duplicateKey(value, dial) {
+    // return dial ? value + "|" + dial : value;
+  // }
+  // function checkDuplicate(config, value, dial) {
+    // var results = duplicateResults[config.errorClass] || (duplicateResults[config.errorClass] = {});
+    // var pending = duplicatePending[config.errorClass] || (duplicatePending[config.errorClass] = {});
+    // var key = duplicateKey(value, dial);
+    // if (Object.prototype.hasOwnProperty.call(results, key)) {
+      // return Promise.resolve(results[key]);
+    // }
+    // if (pending[key]) return pending[key];
+    // var url = PREFETCH_ENDPOINT + "/exists?" + config.param + "=" + encodeURIComponent(value);
+    // if (dial) url += "&dial=" + encodeURIComponent(dial);
+    // var request = fetch(url).then(function (res) {
+      // if (!res.ok) throw new Error("HTTP " + res.status);
+      // return res.json();
+    // }).then(function (data) {
+      // results[key] = !!(data && data.exists);
+      // return results[key];
+    // }).catch(function (err) {
+      // console.warn("Contour Form 1 logic: duplicate " + config.param + " check failed:", err);
+      // results[key] = false;
+      // return false;
+    // }).then(function (exists) {
+      // delete pending[key];
+      // return exists;
+    // });
+    // pending[key] = request;
+    // return request;
+  // }
+  // function duplicateVerdict(config, value, dial) {
+    // var results = duplicateResults[config.errorClass];
+    // var key = duplicateKey(value, dial);
+    // if (!results || !Object.prototype.hasOwnProperty.call(results, key)) return null;
+    // return results[key];
+  // }
+  // function enforceDuplicateFieldValidation(config) {
+    // if (!PREFETCH_ENDPOINT) return;
+    // var input = duplicateFieldInput(config);
+    // if (!input) return;
     // Runs on every mutation, so skip an input that already carries the check.
     // A re-render replaces the node, dropping the flag, which re-binds it.
-    if (input.getAttribute(DUPLICATE_BOUND_ATTR) === "1") return;
-    input.setAttribute(DUPLICATE_BOUND_ATTR, "1");
-    var wrapper = fieldWrapper(input) || input.parentElement;
-    if (!duplicateErrorList(config, input)) {
-      var errorList = document.createElement("ul");
-      errorList.className = "no-list hs-error-msgs inputs-list " + config.errorClass;
-      errorList.setAttribute("role", "alert");
-      errorList.style.display = "none";
-      var errorItem = document.createElement("li");
-      var errorLabel = document.createElement("label");
-      errorLabel.className = "hs-error-msg hs-main-font-element";
-      errorLabel.textContent = config.message;
-      errorItem.appendChild(errorLabel);
-      errorList.appendChild(errorItem);
-      wrapper.appendChild(errorList);
-    }
-    input.addEventListener("blur", function () {
-      var value = duplicateValue(config, input);
-      if (!duplicateCheckable(config, value)) return;
-      var dial = duplicateDial(config, input);
-      checkDuplicate(config, value, dial).then(function (exists) {
-        if (duplicateValue(config, input) !== value) return;
-        if (exists) showDuplicateError(config, input); else clearDuplicateError(config, input);
-      });
-    });
-    input.addEventListener("input", function () {
-      clearDuplicateError(config, input);
-    });
-    if (formRoot && !duplicateSubmitGates[config.errorClass]) {
-      duplicateSubmitGates[config.errorClass] = true;
+    // if (input.getAttribute(DUPLICATE_BOUND_ATTR) === "1") return;
+    // input.setAttribute(DUPLICATE_BOUND_ATTR, "1");
+    // var wrapper = fieldWrapper(input) || input.parentElement;
+    // if (!duplicateErrorList(config, input)) {
+      // var errorList = document.createElement("ul");
+      // errorList.className = "no-list hs-error-msgs inputs-list " + config.errorClass;
+      // errorList.setAttribute("role", "alert");
+      // errorList.style.display = "none";
+      // var errorItem = document.createElement("li");
+      // var errorLabel = document.createElement("label");
+      // errorLabel.className = "hs-error-msg hs-main-font-element";
+      // errorLabel.textContent = config.message;
+      // errorItem.appendChild(errorLabel);
+      // errorList.appendChild(errorItem);
+      // wrapper.appendChild(errorList);
+    // }
+    // input.addEventListener("blur", function () {
+      // var value = duplicateValue(config, input);
+      // if (!duplicateCheckable(config, value)) return;
+      // var dial = duplicateDial(config, input);
+      // checkDuplicate(config, value, dial).then(function (exists) {
+        // if (duplicateValue(config, input) !== value) return;
+        // if (exists) showDuplicateError(config, input); else clearDuplicateError(config, input);
+      // });
+    // });
+    // input.addEventListener("input", function () {
+      // clearDuplicateError(config, input);
+    // });
+    // if (formRoot && !duplicateSubmitGates[config.errorClass]) {
+      // duplicateSubmitGates[config.errorClass] = true;
       // Bound once for the lifetime of the form: formRoot survives the field
       // re-renders, so the gate re-resolves the input each time it fires
       // rather than closing over a node that may since have been replaced.
-      formRoot.addEventListener("submit", function (e) {
-        var current = duplicateFieldInput(config);
-        if (!current) return;
-        var value = duplicateValue(config, current);
-        if (!duplicateCheckable(config, value)) return;
-        var dial = duplicateDial(config, current);
-        if (duplicateVerdict(config, value, dial) === false) return;
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        if (duplicateVerdict(config, value, dial) === true) {
-          showDuplicateError(config, current);
-          scrollErrorIntoView(fieldWrapper(current) || current);
-          current.focus();
-          return;
-        }
+      // formRoot.addEventListener("submit", function (e) {
+        // var current = duplicateFieldInput(config);
+        // if (!current) return;
+        // var value = duplicateValue(config, current);
+        // if (!duplicateCheckable(config, value)) return;
+        // var dial = duplicateDial(config, current);
+        // if (duplicateVerdict(config, value, dial) === false) return;
+        // e.preventDefault();
+        // e.stopImmediatePropagation();
+        // if (duplicateVerdict(config, value, dial) === true) {
+          // showDuplicateError(config, current);
+          // scrollErrorIntoView(fieldWrapper(current) || current);
+          // current.focus();
+          // return;
+        // }
         // Verdict still in flight (or blur never fired) — resolve it, then
         // either surface the duplicate error or re-submit; the cached result
         // lets the re-submission pass straight through this gate.
-        checkDuplicate(config, value, dial).then(function (exists) {
-          var latest = duplicateFieldInput(config);
-          if (!latest || duplicateValue(config, latest) !== value) return;
-          if (exists) {
-            showDuplicateError(config, latest);
-            scrollErrorIntoView(fieldWrapper(latest) || latest);
-            latest.focus();
-            return;
-          }
-          if (typeof formRoot.requestSubmit === "function") {
-            formRoot.requestSubmit();
-          } else {
-            var submitButton = formRoot.querySelector('input[type="submit"], button[type="submit"]');
-            if (submitButton) submitButton.click();
-          }
-        });
-      }, true);
-    }
-  }
+        // checkDuplicate(config, value, dial).then(function (exists) {
+          // var latest = duplicateFieldInput(config);
+          // if (!latest || duplicateValue(config, latest) !== value) return;
+          // if (exists) {
+            // showDuplicateError(config, latest);
+            // scrollErrorIntoView(fieldWrapper(latest) || latest);
+            // latest.focus();
+            // return;
+          // }
+          // if (typeof formRoot.requestSubmit === "function") {
+            // formRoot.requestSubmit();
+          // } else {
+            // var submitButton = formRoot.querySelector('input[type="submit"], button[type="submit"]');
+            // if (submitButton) submitButton.click();
+          // }
+        // });
+      // }, true);
+    // }
+  // }
   /* =========================================================
      STUDENT PHONE NUMBER — country code + number segmentation
      -----------------------------------------------------------
@@ -3640,15 +3834,22 @@ var ContourForm1Logic = function () {
     qAll(FIELD_SELECTORS.contactType).forEach(function (radio) {
       radio.addEventListener("change", updateGuardianFieldLabels);
     });
-    enforceEmailTempValidation();
+    enforceAllContactFormatValidation();
     injectStudentPhoneStyles();
     enhanceStudentPhoneField();
     watchStudentPhoneField();
     enforceStudentPhoneValidation();
+    enforceGuardianStudentEmailValidation();
+    watchContactFields();
+    // Duplicate/unique contact checking is parked, not removed: a prefilled
+    // link is by definition an existing contact, so every one of these fires
+    // on a legitimate return signup. The implementation below is kept intact,
+    // commented out, ready to come back once the rules for who is allowed to
+    // re-use an address are settled.
     // After enhanceStudentPhoneField(): it rebuilds the student phone control,
     // and binding earlier would attach the check to a discarded input.
-    enforceAllDuplicateValidation();
-    watchDuplicateFields();
+    // enforceAllDuplicateValidation();
+    // watchDuplicateFields();
     enforceFieldRequiredValidation("programInterest", "Please select a program.", "contour-program-interest-error", anyProgramInterestOptionEligible);
     enforceFieldRequiredValidation("campus", "Please select a campus.", "contour-campus-error", isFieldWrapVisible);
     enforceFieldRequiredValidation("interestedSubjects", "Please select at least one subject.", "contour-subjects-error", isFieldWrapVisible);
