@@ -2509,6 +2509,9 @@ var ContourForm1Logic = function () {
     var placeholder = document.createElement("option");
     placeholder.value = "";
     placeholder.textContent = REGION_PLACEHOLDER;
+    // Disabled, like the placeholder on every HubSpot select on this form: it
+    // is what the closed box reads before a choice is made, not a choice.
+    placeholder.disabled = true;
     select.appendChild(placeholder);
     options.forEach(function (region) {
       var opt = document.createElement("option");
@@ -3076,8 +3079,6 @@ var ContourForm1Logic = function () {
     ".hs-form.contour-sections-on hr.contour-section-divider { display: none !important; }" +
     // --- helper note under a field that is waiting on an earlier answer -----
     ".hs-form .contour-disabled-hint { margin-top: 6px; font-size: 12.5px; line-height: 1.4; color: #6b7280; }" +
-    // --- accepted contact detail -------------------------------------------
-    ".hs-form .contour-field-ok > .input { position: relative; }" + '.hs-form .contour-field-ok > .input::after { content: "\\2713"; position: absolute; right: 14px; top: 20px; color: #2f9e44; font-size: 14px; font-weight: 700; line-height: 1; pointer-events: none; animation: contour-badge-in 220ms ' + REVEAL_EASE + ' both; }' +
     // --- error summary ------------------------------------------------------
     ".hs-form .contour-error-rollup--list { align-items: flex-start; }" + ".hs-form .contour-error-rollup--list::before { margin-top: 1px; }" + ".hs-form .contour-error-summary__body { flex: 1 1 auto; min-width: 0; }" + ".hs-form .contour-error-summary__title { margin: 0 0 9px !important; padding: 0 !important; font-size: 0.95rem !important; font-weight: 700 !important; line-height: 1.35 !important; color: #8A0C22 !important; }" + ".hs-form .contour-error-summary__list { display: flex; flex-wrap: wrap; gap: 7px 8px; margin: 0 !important; padding: 0 !important; list-style: none; }" + ".hs-form .contour-error-summary__list li { width: auto !important; flex: 0 0 auto !important; margin: 0 !important; padding: 0 !important; }" + ".hs-form .contour-error-summary__link { display: inline-block; appearance: none; -webkit-appearance: none; border: 1px solid rgba(200, 16, 46, 0.30); border-radius: 999px; background: #FFFFFF; color: #8A0C22; padding: 5px 12px; font: inherit; font-size: 12.5px; font-weight: 600; line-height: 1.3; cursor: pointer; transition: background-color .15s ease, border-color .15s ease, color .15s ease; }" + ".hs-form .contour-error-summary__link:hover { background: #c8102e; border-color: #c8102e; color: #FFFFFF; }" + ".hs-form .contour-error-summary__link:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(200, 16, 46, 0.25); }";
     document.head.appendChild(style);
@@ -3670,6 +3671,7 @@ var ContourForm1Logic = function () {
     }
   ];
   var CONTACT_FORMAT_BOUND_ATTR = "data-contour-format-check";
+  var CONTACT_FORMAT_TOUCHED_ATTR = "data-contour-format-touched";
   var contactFormatSubmitGates = {};
   // HubSpot's intl-phone widget — used by the guardian "phone" field, the only
   // one carrying useCountryCodeSelect — renders three siblings: a country
@@ -3724,14 +3726,66 @@ var ContourForm1Logic = function () {
     });
     if (!stillShowing) input.classList.remove("invalid", "error");
   }
+  // What was actually typed, with the country code taken off. HubSpot's widget
+  // seeds the box with the dial code as soon as a country is picked, so counting
+  // every digit reads a freshly opened "+91" as a two-digit phone number. The
+  // longest matching code wins, so a shorter one that is a prefix of the real
+  // one is never mistaken for it.
+  function phoneNationalDigits(value) {
+    var digits = value.replace(/\D/g, "");
+    if (value.charAt(0) !== "+") return digits;
+    var dial = "";
+    for (var i = 0; i < PHONE_DIAL_CODES.length; i++) {
+      var code = PHONE_DIAL_CODES[i][0];
+      if (code.length > dial.length && digits.indexOf(code) === 0) dial = code;
+    }
+    return digits.slice(dial.length);
+  }
   function contactFormatIsValid(config, input) {
     var value = (input.value || "").trim();
     // Blank is HubSpot's own required error to report, not ours.
     if (value === "") return true;
     if (config.kind === "email") return EMAIL_PATTERN.test(value);
     if (!PHONE_ALLOWED_CHARS.test(value)) return false;
-    var digits = value.replace(/\D/g, "");
-    return digits.length >= STUDENT_PHONE_MIN_DIGITS && digits.length <= STUDENT_PHONE_MAX_DIGITS;
+    var national = phoneNationalDigits(value);
+    // Dial code and nothing else. HubSpot's own required error owns that state
+    // — ours would stack a second line under it saying the same thing twice.
+    if (national === "") return true;
+    return national.length >= STUDENT_PHONE_MIN_DIGITS && national.length <= STUDENT_PHONE_MAX_DIGITS;
+  }
+  // HubSpot runs its own validation on the guardian phone box — required, its
+  // own character rule, and an in-range check — and renders each in the same
+  // .hs-error-msgs markup ours uses. Two red lines saying much the same thing
+  // is worse than either alone, so when HubSpot has already spoken its message
+  // wins and ours stays hidden. The student phone field never hits this: its
+  // control is rebuilt here with the dial code seeded, so HubSpot has nothing
+  // to say about it and studentPhoneState() is the only voice.
+  function nativeErrorShowing(input) {
+    var wrapper = fieldWrapper(input) || input.parentElement;
+    if (!wrapper) return false;
+    return Array.prototype.some.call(wrapper.querySelectorAll(".hs-error-msgs"), function (el) {
+      return el.style.display !== "none" && el.className.indexOf("contour-") === -1 && el.textContent.trim() !== "";
+    });
+  }
+  // allowShow is false until the person has left the field at least once, so a
+  // box they have not reached yet is never marked wrong.
+  function refreshContactFormatError(config, input, allowShow) {
+    if (contactFormatIsValid(config, input) || nativeErrorShowing(input)) {
+      clearContourError(input, config.errorClass);
+      return;
+    }
+    if (allowShow) showContourError(input, config.errorClass);
+  }
+  function contactFormatTouched(input) {
+    return input.getAttribute(CONTACT_FORMAT_TOUCHED_ATTR) === "1";
+  }
+  // Called from the form observer, so ours appears the moment HubSpot withdraws
+  // its own message and disappears again the moment HubSpot posts one.
+  function refreshAllContactFormatErrors() {
+    CONTACT_FORMAT_FIELDS.forEach(function (config) {
+      var input = typableInput(q(config.selector));
+      if (input) refreshContactFormatError(config, input, contactFormatTouched(input));
+    });
   }
   function enforceContactFormatField(config) {
     var input = typableInput(q(config.selector));
@@ -3742,13 +3796,13 @@ var ContourForm1Logic = function () {
     input.setAttribute(CONTACT_FORMAT_BOUND_ATTR, "1");
     ensureContourError(input, config.errorClass, config.message);
     input.addEventListener("blur", function () {
-      if (contactFormatIsValid(config, input)) clearContourError(input, config.errorClass);else showContourError(input, config.errorClass);
-      updateContactFieldOk(input);
+      input.setAttribute(CONTACT_FORMAT_TOUCHED_ATTR, "1");
+      refreshContactFormatError(config, input, true);
       syncFieldErrorAria();
     });
     input.addEventListener("input", function () {
-      if (contactFormatIsValid(config, input)) clearContourError(input, config.errorClass);
-      updateContactFieldOk(input);
+      // Typing only ever takes the message away; it comes back on the way out.
+      refreshContactFormatError(config, input, false);
     });
     if (formRoot && !contactFormatSubmitGates[config.errorClass]) {
       contactFormatSubmitGates[config.errorClass] = true;
@@ -3763,7 +3817,8 @@ var ContourForm1Logic = function () {
         showError: function () {
           var current = typableInput(q(config.selector));
           if (!current) return;
-          showContourError(current, config.errorClass);
+          current.setAttribute(CONTACT_FORMAT_TOUCHED_ATTR, "1");
+          refreshContactFormatError(config, current, true);
           reportFieldError(fieldWrapper(current) || current, current);
         },
         anchor: function () {
@@ -3772,18 +3827,6 @@ var ContourForm1Logic = function () {
         }
       });
     }
-  }
-  // A contact detail that passes gets a quiet tick. Four boxes on this form
-  // can be rejected for their shape alone, and silence after typing one reads
-  // as "did that register?".
-  function updateContactFieldOk(input) {
-    var wrap = fieldWrapper(input);
-    if (!wrap) return;
-    var value = (input.value || "").trim();
-    var showing = Array.prototype.some.call(wrap.querySelectorAll(".hs-error-msgs"), function (el) {
-      return el.style.display !== "none";
-    });
-    wrap.classList.toggle("contour-field-ok", value !== "" && !showing);
   }
   function enforceAllContactFormatValidation() {
     CONTACT_FORMAT_FIELDS.forEach(enforceContactFormatField);
@@ -3798,6 +3841,7 @@ var ContourForm1Logic = function () {
     var observer = new MutationObserver(function () {
       enforceAllContactFormatValidation();
       enforceGuardianStudentEmailValidation();
+      refreshAllContactFormatErrors();
     });
     observer.observe(formRoot, {
       childList: true,
