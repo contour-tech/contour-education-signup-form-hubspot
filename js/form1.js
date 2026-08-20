@@ -49,10 +49,10 @@ var ContourForm1Logic = function () {
     // LOCAL DRAFT CACHE block for what is deliberately never stored.
     localDraft: true,
     // Checks the addresses this submission would create a contact for against
-    // HubSpot before letting the form go, so nobody quietly gets a second
-    // record. Never runs on a prefilled link — see the DUPLICATE EMAIL GUARD
-    // block for which box is checked on which flow.
-    duplicateEmailCheck: true
+    // HubSpot before letting the form go. Parked with the DUPLICATE EMAIL
+    // GUARD block — deduplication is moving to the backend, and this comes
+    // back as the "email me my pre-fill link" enhancement.
+    // duplicateEmailCheck: true
   };
   function featureEnabled(name) {
     var overrides = window.ContourForm1Config;
@@ -4304,7 +4304,7 @@ var ContourForm1Logic = function () {
     var observer = new MutationObserver(function () {
       enforceAllContactFormatValidation();
       enforceGuardianStudentEmailValidation();
-      enforceDuplicateEmailValidation();
+      // enforceDuplicateEmailValidation(); // parked — see DUPLICATE EMAIL GUARD
       refreshAllContactFormatErrors();
     });
     observer.observe(formRoot, {
@@ -4395,257 +4395,250 @@ var ContourForm1Logic = function () {
     }
   }
   /* =========================================================
-     DUPLICATE EMAIL GUARD
+     DUPLICATE EMAIL GUARD — PARKED (Amrit, 20 Aug 2026)
      -----------------------------------------------------------
-     The point of it is to stop a second contact being created for someone
-     who already has one, so what gets checked is every box on the page that
-     holds the address of a person this submission would create:
+     Kept in full and commented out rather than deleted. The team has put the
+     frontend blocking on hold: too many edge cases resolve wrong in a check
+     that can only say "already registered", so deduplication moves to the
+     backend, and this comes back as part of a friendlier enhancement —
+     when the address is found, offer to email the person their pre-fill
+     link (built from the HubSpot record ID the match returned) so they can
+     add subjects through the landing page instead of being turned away
+     (Akshay, Slack). Until then the form does no HubSpot cross-checking of
+     email fields at all; the format validation above stays as it is.
 
-       Student flow   "Your Email" (email_2), and "Student Email"
-                      (student_email) as well if the form ever shows it —
-                      both are addresses for the student being signed up.
-       Guardian flow  "Student Email" only. The guardian's own address in
-                      email_2 is deliberately never checked: a parent signing
-                      a sibling up is already in HubSpot and is entitled to
-                      come back, and finding and associating that existing
-                      guardian is the post-submission workflow's job, not a
-                      reason to turn them away here (Faraz, Wassim).
-
-     Each address goes to the prefetch function's /exists route, which matches
-     it against the contact `email` property alone — the narrowed rule Wassim
-     settled on. The phone checks that used to sit here are gone with it.
-
-     Nothing fires when the form was opened with ?student_id=: a prefilled
-     link IS an existing contact, so the address is certain to be found and
-     blocking it would block the one journey the link exists to serve. That is
-     the only exemption — internal mode is checked like any other session,
-     because a staff member taking a signup has the same reason as anyone else
-     not to create a second record (Amrit, 20 Aug 2026).
-
-     A verdict is cached per address, so blur then submit is one lookup, and a
-     network failure fails open — an outage must never lock signups out.
+     What the parked version does: checks every box holding the address of a
+     person the submission would create — email_2 and student_email on the
+     Student flow, student_email only on the Guardian flow, since a guardian
+     registering a sibling is entitled to come back — against the contact
+     `email` property alone, via the prefetch function's /exists route.
+     Verdicts are cached per address, network failures fail open, a submit
+     that beats the first lookup is held and resolved, and ?student_id= is
+     the one exemption. Reinstating it means uncommenting this block, its
+     two enforceDuplicateEmailValidation() calls (the form observer and
+     init()), and the duplicateEmailCheck feature flag.
      ========================================================= */
-  var DUPLICATE_EMAIL_ERROR_CLASS = "contour-duplicate-email-error";
-  var DUPLICATE_EMAIL_BOUND_ATTR = "data-contour-duplicate-check";
-  // guardianFlow: whether the box still holds a checkable address once the
-  // Guardian flow is chosen. Only email_2 changes hands — it is the student's
-  // own address on the Student flow and the guardian's on the Guardian one.
-  var DUPLICATE_EMAIL_SLOTS = [{
-    key: "own",
-    selector: FIELD_SELECTORS.emailTemp,
-    guardianFlow: false,
-    message: "This email is already registered with us. Please use the personalised sign-up link we sent you, or contact our team."
-  }, {
-    key: "student",
-    selector: FIELD_SELECTORS.studentEmail,
-    guardianFlow: true,
-    message: "This student email is already registered with us. Please use the personalised sign-up link we sent you, or contact our team."
-  }];
-  var duplicateEmailResults = {};
-  var duplicateEmailPending = {};
-  var duplicateEmailGatesBound = {};
-  var duplicateEmailPendingGateBound = false;
-  var duplicateEmailContactTypeBound = false;
-  function duplicateEmailCheckEnabled() {
-    if (!featureEnabled("duplicateEmailCheck") || !PREFETCH_ENDPOINT) return false;
-    return getUrlParam(STUDENT_ID_PARAM).trim() === "";
-  }
-  // The box this slot names, but only while it is in play: on the page, on
-  // screen, and holding an address this flow is meant to check.
-  function duplicateEmailSlotInput(slot) {
-    if (!duplicateEmailCheckEnabled()) return null;
-    if (isGuardianContactType() && !slot.guardianFlow) return null;
-    var input = q(slot.selector);
-    if (!input) return null;
-    // student_email lives in the Contact Type dependent group: HubSpot leaves
-    // it on the page for a moment after the flow switches away from it.
-    var wrap = fieldWrapper(input);
-    if (wrap && !isFieldWrapVisible(wrap)) return null;
-    return input;
-  }
-  function duplicateEmailSlotsInPlay() {
-    var entries = [];
-    DUPLICATE_EMAIL_SLOTS.forEach(function (slot) {
-      var input = duplicateEmailSlotInput(slot);
-      if (input) entries.push({ slot: slot, input: input });
-    });
-    return entries;
-  }
-  function duplicateEmailValue(input) {
-    return ((input && input.value) || "").trim().toLowerCase();
-  }
-  // Worth a lookup: a complete address the endpoint will accept. Both shapes
-  // are applied because the endpoint rejects anything its own EMAIL_SHAPE
-  // fails, and a 400 is a wasted round trip.
-  function duplicateEmailCheckable(value) {
-    return value !== "" && value.length <= 254 && EMAIL_PATTERN.test(value) && EMAIL_SHAPE.test(value);
-  }
-  // true (registered), false (clear), or null for "not looked up yet".
-  function duplicateEmailVerdict(value) {
-    return Object.prototype.hasOwnProperty.call(duplicateEmailResults, value) ? duplicateEmailResults[value] : null;
-  }
-  function lookupDuplicateEmail(value) {
-    if (Object.prototype.hasOwnProperty.call(duplicateEmailResults, value)) {
-      return Promise.resolve(duplicateEmailResults[value]);
-    }
-    if (duplicateEmailPending[value]) return duplicateEmailPending[value];
-    var request = fetch(PREFETCH_ENDPOINT + "/exists?email=" + encodeURIComponent(value)).then(function (res) {
-      if (!res.ok) throw new Error("HTTP " + res.status);
-      return res.json();
-    }).then(function (data) {
-      duplicateEmailResults[value] = !!(data && data.exists);
-      return duplicateEmailResults[value];
-    }).catch(function (err) {
-      // Fail open: a signup must never be blocked by our own outage.
-      console.warn("Contour Form 1 logic: duplicate email check failed:", err);
-      duplicateEmailResults[value] = false;
-      return false;
-    }).then(function (exists) {
-      delete duplicateEmailPending[value];
-      return exists;
-    });
-    duplicateEmailPending[value] = request;
-    return request;
-  }
-  // An unknown verdict passes here; duplicateEmailPendingGate() resolves it.
-  function duplicateEmailSlotIsValid(slot) {
-    var input = duplicateEmailSlotInput(slot);
-    if (!input) return true;
-    var value = duplicateEmailValue(input);
-    if (!duplicateEmailCheckable(value)) return true;
-    return duplicateEmailVerdict(value) !== true;
-  }
-  function updateDuplicateEmailError(slot) {
-    var input = q(slot.selector);
-    if (!input) return;
-    ensureContourError(input, DUPLICATE_EMAIL_ERROR_CLASS, slot.message);
-    if (duplicateEmailSlotIsValid(slot)) {
-      clearContourError(input, DUPLICATE_EMAIL_ERROR_CLASS);
-      return;
-    }
-    showContourError(input, DUPLICATE_EMAIL_ERROR_CLASS);
-  }
-  // Switching flow moves which box counts as whose, so a message raised
-  // against an address that is no longer being checked must not be left
-  // behind under the new label — and one that is still standing has to stay.
-  function refreshDuplicateEmailErrors() {
-    DUPLICATE_EMAIL_SLOTS.forEach(updateDuplicateEmailError);
-  }
-  function checkDuplicateEmailOnBlur(slot) {
-    var input = duplicateEmailSlotInput(slot);
-    if (!input) return;
-    var value = duplicateEmailValue(input);
-    if (!duplicateEmailCheckable(value)) {
-      clearContourError(input, DUPLICATE_EMAIL_ERROR_CLASS);
-      return;
-    }
-    lookupDuplicateEmail(value).then(function () {
-      // Typed on since the lookup left: whatever is in the box now owns the
-      // verdict, and its own blur will ask for it.
-      if (duplicateEmailValue(input) !== value) return;
-      updateDuplicateEmailError(slot);
-      syncFieldErrorAria();
-    });
-  }
-  // A submit can arrive before an address has ever been looked up — autofill
-  // then Enter never blurs the field. The registered validators are
-  // synchronous, so unknown verdicts are resolved here instead: block this
-  // round quietly, and once the answers land either raise the messages or
-  // send the form on its way. Bound after runSubmitGate, so a round already
-  // blocked by another field never reaches this and never spends a lookup;
-  // the cached verdicts then take the re-submission straight through.
-  function duplicateEmailPendingGate(e) {
-    if (!duplicateEmailCheckEnabled()) return;
-    var waiting = [];
-    duplicateEmailSlotsInPlay().forEach(function (entry) {
-      var value = duplicateEmailValue(entry.input);
-      if (!duplicateEmailCheckable(value)) return;
-      if (duplicateEmailVerdict(value) !== null) return;
-      waiting.push(value);
-    });
-    if (waiting.length === 0) return;
-    e.preventDefault();
-    e.stopImmediatePropagation();
-    Promise.all(waiting.map(lookupDuplicateEmail)).then(function () {
-      var flagged = [];
-      DUPLICATE_EMAIL_SLOTS.forEach(function (slot) {
-        updateDuplicateEmailError(slot);
-        if (duplicateEmailSlotIsValid(slot)) return;
-        var input = duplicateEmailSlotInput(slot);
-        if (input) flagged.push({ wrap: fieldWrapper(input) || input, input: input });
-      });
-      if (flagged.length === 0) {
-        // Clean, and now cached: the same click, finished.
-        if (typeof formRoot.requestSubmit === "function") {
-          formRoot.requestSubmit();
-        } else {
-          var button = submitButtonEl();
-          if (button) button.click();
-        }
-        return;
-      }
-      markSubmitBusy(false);
-      // The verdicts can land a second or more after the click, by which time
-      // the caret may have moved on. Always scroll to the reason the submit
-      // did nothing, but only take focus if nothing else holds it.
-      var active = document.activeElement;
-      var caretIsFree = !active || active === document.body || active.type === "submit" || active.tagName === "BUTTON";
-      reportFieldError(flagged[0].wrap, caretIsFree ? flagged[0].input : null);
-      showFormErrorSummary(flagged.map(function (item) {
-        return item.wrap;
-      }));
-      syncFieldErrorAria();
-    });
-  }
-  function enforceDuplicateEmailValidation() {
-    if (!duplicateEmailCheckEnabled()) return;
-    if (!duplicateEmailContactTypeBound) {
-      duplicateEmailContactTypeBound = true;
-      onContactTypeChange(refreshDuplicateEmailErrors);
-    }
-    DUPLICATE_EMAIL_SLOTS.forEach(function (slot) {
-      // Bound whether or not the slot is in play right now: which of them is
-      // is decided when an event fires, not here. student_email is not even in
-      // the DOM until the Guardian flow is chosen, and HubSpot rebuilds either
-      // box when its own validation fires, so this runs from the form observer
-      // and skips an input that already carries the check.
-      var input = q(slot.selector);
-      if (!input) return;
-      if (input.getAttribute(DUPLICATE_EMAIL_BOUND_ATTR) !== "1") {
-        input.setAttribute(DUPLICATE_EMAIL_BOUND_ATTR, "1");
-        input.addEventListener("blur", function () {
-          checkDuplicateEmailOnBlur(slot);
-        });
-        input.addEventListener("input", function () {
-          // Typing only ever takes the message away; it comes back on the way out.
-          clearContourError(input, DUPLICATE_EMAIL_ERROR_CLASS);
-        });
-      }
-      if (formRoot && !duplicateEmailGatesBound[slot.key]) {
-        duplicateEmailGatesBound[slot.key] = true;
-        // One validator per box, so a summary that names both can name both.
-        registerSubmitValidator({
-          isValid: function () {
-            return duplicateEmailSlotIsValid(slot);
-          },
-          showError: function () {
-            var current = duplicateEmailSlotInput(slot);
-            if (!current) return;
-            updateDuplicateEmailError(slot);
-            reportFieldError(fieldWrapper(current) || current, current);
-          },
-          anchor: function () {
-            var current = duplicateEmailSlotInput(slot);
-            return current ? fieldWrapper(current) || current : null;
-          }
-        });
-      }
-    });
-    if (formRoot && !duplicateEmailPendingGateBound) {
-      duplicateEmailPendingGateBound = true;
-      formRoot.addEventListener("submit", duplicateEmailPendingGate, true);
-    }
-  }
+  // var DUPLICATE_EMAIL_ERROR_CLASS = "contour-duplicate-email-error";
+  // var DUPLICATE_EMAIL_BOUND_ATTR = "data-contour-duplicate-check";
+  // // guardianFlow: whether the box still holds a checkable address once the
+  // // Guardian flow is chosen. Only email_2 changes hands — it is the student's
+  // // own address on the Student flow and the guardian's on the Guardian one.
+  // var DUPLICATE_EMAIL_SLOTS = [{
+    // key: "own",
+    // selector: FIELD_SELECTORS.emailTemp,
+    // guardianFlow: false,
+    // message: "This email is already registered with us. Please use the personalised sign-up link we sent you, or contact our team."
+  // }, {
+    // key: "student",
+    // selector: FIELD_SELECTORS.studentEmail,
+    // guardianFlow: true,
+    // message: "This student email is already registered with us. Please use the personalised sign-up link we sent you, or contact our team."
+  // }];
+  // var duplicateEmailResults = {};
+  // var duplicateEmailPending = {};
+  // var duplicateEmailGatesBound = {};
+  // var duplicateEmailPendingGateBound = false;
+  // var duplicateEmailContactTypeBound = false;
+  // function duplicateEmailCheckEnabled() {
+    // if (!featureEnabled("duplicateEmailCheck") || !PREFETCH_ENDPOINT) return false;
+    // return getUrlParam(STUDENT_ID_PARAM).trim() === "";
+  // }
+  // // The box this slot names, but only while it is in play: on the page, on
+  // // screen, and holding an address this flow is meant to check.
+  // function duplicateEmailSlotInput(slot) {
+    // if (!duplicateEmailCheckEnabled()) return null;
+    // if (isGuardianContactType() && !slot.guardianFlow) return null;
+    // var input = q(slot.selector);
+    // if (!input) return null;
+    // // student_email lives in the Contact Type dependent group: HubSpot leaves
+    // // it on the page for a moment after the flow switches away from it.
+    // var wrap = fieldWrapper(input);
+    // if (wrap && !isFieldWrapVisible(wrap)) return null;
+    // return input;
+  // }
+  // function duplicateEmailSlotsInPlay() {
+    // var entries = [];
+    // DUPLICATE_EMAIL_SLOTS.forEach(function (slot) {
+      // var input = duplicateEmailSlotInput(slot);
+      // if (input) entries.push({ slot: slot, input: input });
+    // });
+    // return entries;
+  // }
+  // function duplicateEmailValue(input) {
+    // return ((input && input.value) || "").trim().toLowerCase();
+  // }
+  // // Worth a lookup: a complete address the endpoint will accept. Both shapes
+  // // are applied because the endpoint rejects anything its own EMAIL_SHAPE
+  // // fails, and a 400 is a wasted round trip.
+  // function duplicateEmailCheckable(value) {
+    // return value !== "" && value.length <= 254 && EMAIL_PATTERN.test(value) && EMAIL_SHAPE.test(value);
+  // }
+  // // true (registered), false (clear), or null for "not looked up yet".
+  // function duplicateEmailVerdict(value) {
+    // return Object.prototype.hasOwnProperty.call(duplicateEmailResults, value) ? duplicateEmailResults[value] : null;
+  // }
+  // function lookupDuplicateEmail(value) {
+    // if (Object.prototype.hasOwnProperty.call(duplicateEmailResults, value)) {
+      // return Promise.resolve(duplicateEmailResults[value]);
+    // }
+    // if (duplicateEmailPending[value]) return duplicateEmailPending[value];
+    // var request = fetch(PREFETCH_ENDPOINT + "/exists?email=" + encodeURIComponent(value)).then(function (res) {
+      // if (!res.ok) throw new Error("HTTP " + res.status);
+      // return res.json();
+    // }).then(function (data) {
+      // duplicateEmailResults[value] = !!(data && data.exists);
+      // return duplicateEmailResults[value];
+    // }).catch(function (err) {
+      // // Fail open: a signup must never be blocked by our own outage.
+      // console.warn("Contour Form 1 logic: duplicate email check failed:", err);
+      // duplicateEmailResults[value] = false;
+      // return false;
+    // }).then(function (exists) {
+      // delete duplicateEmailPending[value];
+      // return exists;
+    // });
+    // duplicateEmailPending[value] = request;
+    // return request;
+  // }
+  // // An unknown verdict passes here; duplicateEmailPendingGate() resolves it.
+  // function duplicateEmailSlotIsValid(slot) {
+    // var input = duplicateEmailSlotInput(slot);
+    // if (!input) return true;
+    // var value = duplicateEmailValue(input);
+    // if (!duplicateEmailCheckable(value)) return true;
+    // return duplicateEmailVerdict(value) !== true;
+  // }
+  // function updateDuplicateEmailError(slot) {
+    // var input = q(slot.selector);
+    // if (!input) return;
+    // ensureContourError(input, DUPLICATE_EMAIL_ERROR_CLASS, slot.message);
+    // if (duplicateEmailSlotIsValid(slot)) {
+      // clearContourError(input, DUPLICATE_EMAIL_ERROR_CLASS);
+      // return;
+    // }
+    // showContourError(input, DUPLICATE_EMAIL_ERROR_CLASS);
+  // }
+  // // Switching flow moves which box counts as whose, so a message raised
+  // // against an address that is no longer being checked must not be left
+  // // behind under the new label — and one that is still standing has to stay.
+  // function refreshDuplicateEmailErrors() {
+    // DUPLICATE_EMAIL_SLOTS.forEach(updateDuplicateEmailError);
+  // }
+  // function checkDuplicateEmailOnBlur(slot) {
+    // var input = duplicateEmailSlotInput(slot);
+    // if (!input) return;
+    // var value = duplicateEmailValue(input);
+    // if (!duplicateEmailCheckable(value)) {
+      // clearContourError(input, DUPLICATE_EMAIL_ERROR_CLASS);
+      // return;
+    // }
+    // lookupDuplicateEmail(value).then(function () {
+      // // Typed on since the lookup left: whatever is in the box now owns the
+      // // verdict, and its own blur will ask for it.
+      // if (duplicateEmailValue(input) !== value) return;
+      // updateDuplicateEmailError(slot);
+      // syncFieldErrorAria();
+    // });
+  // }
+  // // A submit can arrive before an address has ever been looked up — autofill
+  // // then Enter never blurs the field. The registered validators are
+  // // synchronous, so unknown verdicts are resolved here instead: block this
+  // // round quietly, and once the answers land either raise the messages or
+  // // send the form on its way. Bound after runSubmitGate, so a round already
+  // // blocked by another field never reaches this and never spends a lookup;
+  // // the cached verdicts then take the re-submission straight through.
+  // function duplicateEmailPendingGate(e) {
+    // if (!duplicateEmailCheckEnabled()) return;
+    // var waiting = [];
+    // duplicateEmailSlotsInPlay().forEach(function (entry) {
+      // var value = duplicateEmailValue(entry.input);
+      // if (!duplicateEmailCheckable(value)) return;
+      // if (duplicateEmailVerdict(value) !== null) return;
+      // waiting.push(value);
+    // });
+    // if (waiting.length === 0) return;
+    // e.preventDefault();
+    // e.stopImmediatePropagation();
+    // Promise.all(waiting.map(lookupDuplicateEmail)).then(function () {
+      // var flagged = [];
+      // DUPLICATE_EMAIL_SLOTS.forEach(function (slot) {
+        // updateDuplicateEmailError(slot);
+        // if (duplicateEmailSlotIsValid(slot)) return;
+        // var input = duplicateEmailSlotInput(slot);
+        // if (input) flagged.push({ wrap: fieldWrapper(input) || input, input: input });
+      // });
+      // if (flagged.length === 0) {
+        // // Clean, and now cached: the same click, finished.
+        // if (typeof formRoot.requestSubmit === "function") {
+          // formRoot.requestSubmit();
+        // } else {
+          // var button = submitButtonEl();
+          // if (button) button.click();
+        // }
+        // return;
+      // }
+      // markSubmitBusy(false);
+      // // The verdicts can land a second or more after the click, by which time
+      // // the caret may have moved on. Always scroll to the reason the submit
+      // // did nothing, but only take focus if nothing else holds it.
+      // var active = document.activeElement;
+      // var caretIsFree = !active || active === document.body || active.type === "submit" || active.tagName === "BUTTON";
+      // reportFieldError(flagged[0].wrap, caretIsFree ? flagged[0].input : null);
+      // showFormErrorSummary(flagged.map(function (item) {
+        // return item.wrap;
+      // }));
+      // syncFieldErrorAria();
+    // });
+  // }
+  // function enforceDuplicateEmailValidation() {
+    // if (!duplicateEmailCheckEnabled()) return;
+    // if (!duplicateEmailContactTypeBound) {
+      // duplicateEmailContactTypeBound = true;
+      // onContactTypeChange(refreshDuplicateEmailErrors);
+    // }
+    // DUPLICATE_EMAIL_SLOTS.forEach(function (slot) {
+      // // Bound whether or not the slot is in play right now: which of them is
+      // // is decided when an event fires, not here. student_email is not even in
+      // // the DOM until the Guardian flow is chosen, and HubSpot rebuilds either
+      // // box when its own validation fires, so this runs from the form observer
+      // // and skips an input that already carries the check.
+      // var input = q(slot.selector);
+      // if (!input) return;
+      // if (input.getAttribute(DUPLICATE_EMAIL_BOUND_ATTR) !== "1") {
+        // input.setAttribute(DUPLICATE_EMAIL_BOUND_ATTR, "1");
+        // input.addEventListener("blur", function () {
+          // checkDuplicateEmailOnBlur(slot);
+        // });
+        // input.addEventListener("input", function () {
+          // // Typing only ever takes the message away; it comes back on the way out.
+          // clearContourError(input, DUPLICATE_EMAIL_ERROR_CLASS);
+        // });
+      // }
+      // if (formRoot && !duplicateEmailGatesBound[slot.key]) {
+        // duplicateEmailGatesBound[slot.key] = true;
+        // // One validator per box, so a summary that names both can name both.
+        // registerSubmitValidator({
+          // isValid: function () {
+            // return duplicateEmailSlotIsValid(slot);
+          // },
+          // showError: function () {
+            // var current = duplicateEmailSlotInput(slot);
+            // if (!current) return;
+            // updateDuplicateEmailError(slot);
+            // reportFieldError(fieldWrapper(current) || current, current);
+          // },
+          // anchor: function () {
+            // var current = duplicateEmailSlotInput(slot);
+            // return current ? fieldWrapper(current) || current : null;
+          // }
+        // });
+      // }
+    // });
+    // if (formRoot && !duplicateEmailPendingGateBound) {
+      // duplicateEmailPendingGateBound = true;
+      // formRoot.addEventListener("submit", duplicateEmailPendingGate, true);
+    // }
+  // }
   /* =========================================================
      STUDENT PHONE NUMBER — country code + number segmentation
      -----------------------------------------------------------
@@ -5294,7 +5287,7 @@ var ContourForm1Logic = function () {
     watchStudentPhoneField();
     enforceStudentPhoneValidation();
     enforceGuardianStudentEmailValidation();
-    enforceDuplicateEmailValidation();
+    // enforceDuplicateEmailValidation(); // parked — see DUPLICATE EMAIL GUARD
     watchContactFields();
     enforceFieldRequiredValidation("programInterest", "Please select a program.", "contour-program-interest-error", anyProgramInterestOptionEligible);
     enforceFieldRequiredValidation("campus", "Please select a campus.", "contour-campus-error", isFieldWrapVisible);
