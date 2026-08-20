@@ -43,18 +43,13 @@ const LEGACY_CONTACT_PROPERTIES = ["student_phone"];
 // Loose shape check only — HubSpot search does the authoritative matching.
 const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-// Properties the form can write an email into; a hit on any of them means
-// this address already has an entry.
-// Emails are matched across every property that can hold one, whichever field
-// was typed into: the contact's own, the stand-in used by the form, the
-// student/guardian pair, and contact_email (Amitav).
-const EMAIL_MATCH_PROPERTIES = [
-  "email",
-  "email_2",
-  "student_email",
-  "guardian_email",
-  "contact_email"
-];
+// The one property /exists matches an address against (Wassim): `email` is
+// the contact's own address and the only one that identifies the person the
+// record is for. The wider net that used to be cast here — email_2,
+// student_email, guardian_email, contact_email — found a student in their own
+// guardian's record and vice versa, so a legitimate signup was read as a
+// duplicate of itself.
+const EMAIL_MATCH_PROPERTIES = ["email"];
 // Both phone fields search every phone property (Amitav). mobilephone matters
 // most here: ~7.5k contacts carry a number there and nowhere else, so leaving
 // it out missed real duplicates.
@@ -303,8 +298,11 @@ functions.http("prefetch", async (req, res) => {
   }
 
   if (req.path && req.path.endsWith("/exists")) {
-    // ?email= and ?phone= are both accepted so one endpoint serves the four
-    // duplicate-checked fields (student/guardian email and phone).
+    // ?email= is what the form asks for: one address, the student's, matched
+    // against the contact `email` property. ?phone= is kept working — the
+    // number matching below is the hard part and would have to be rebuilt
+    // from scratch — but no field calls it since the unique-phone rule was
+    // dropped (Wassim).
     const email = String(req.query.email || "").trim().toLowerCase();
     const phone = String(req.query.phone || "").trim();
     // The country select the form is showing, so a number typed without a
