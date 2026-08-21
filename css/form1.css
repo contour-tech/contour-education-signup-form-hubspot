@@ -1001,6 +1001,10 @@ form.hsForm {
   text-align: center;
 }
 
+.contour-campus-name {
+  font-weight: 700;
+}
+
 .contour-campus-address {
   font-size: 0.8em;
   font-weight: 400;

@@ -447,6 +447,8 @@ var ContourForm1Logic = function () {
       span.classList.add("contour-campus-label");
       var mainSpan = document.createElement("span");
       mainSpan.className = "contour-campus-name";
+      // Inline because the live page only takes CSS shipped from this script.
+      mainSpan.style.fontWeight = "700";
       mainSpan.textContent = mainText;
       span.appendChild(mainSpan);
       span.appendChild(document.createTextNode(" "));
