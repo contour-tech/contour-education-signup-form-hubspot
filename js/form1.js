@@ -2438,6 +2438,16 @@ var ContourForm1Logic = function () {
     setSelectOrTextValue(FIELD_SELECTORS.referral, contact.referral);
     enforcePrefilledEmailLock();
   }
+  function stripStudentIdFromUrl() {
+    if (!window.history || typeof window.history.replaceState !== "function") return;
+    // Only the student_id pair goes; anything else on the URL (?type=internal,
+    // campaign tags) must survive.
+    var remaining = window.location.search.replace(/^\?/, "").split("&").filter(function (pair) {
+      return pair !== "" && pair.split("=")[0] !== STUDENT_ID_PARAM;
+    });
+    var url = window.location.pathname + (remaining.length ? "?" + remaining.join("&") : "") + window.location.hash;
+    window.history.replaceState(null, "", url);
+  }
   function getUrlParam(name) {
     var match = new RegExp("[?&]" + name + "=([^&#]*)").exec(window.location.search);
     return match ? decodeURIComponent(match[1].replace(/\+/g, " ")) : "";
@@ -2547,12 +2557,21 @@ var ContourForm1Logic = function () {
         if (prefetchedTrialSubjectCodes.length > 0 || prefetchedEnrolledSubjectCodes.length > 0) {
           setFieldLabelText("interestedSubjects", "Additional Subjects");
         }
-        // Prefetched trialling/enrolled subjects filter the option list, so
-        // re-evaluate now that the codes are known.
-        evaluateInterestedSubjectsOptions();
-        renderSubjectSummary();
-        renderUcatIntakeNote();
+        // The same React-settle refresh the draft path needs (see
+        // refreshDerivedFieldState) — it also folds the trialling/enrolled
+        // codes into the subject list now that they are known.
+        refreshDerivedFieldState();
+        scheduleDerivedStateRefresh();
       } else {
+        if (data && !data.found) {
+          // The server answered and the record is definitively gone, so the
+          // link is a dud. Take the parameter off the URL (no reload) so a
+          // refresh or a copied address behaves as a normal visit instead of
+          // re-asking for a contact that is not there. A network failure or
+          // timeout keeps the parameter: the record may exist, and a refresh
+          // should get to try again.
+          stripStudentIdFromUrl();
+        }
         // The link named a contact we could not fetch. Fall back to whatever
         // was typed on this browser rather than to a blank form.
         initDraftRestore();
@@ -2809,14 +2828,45 @@ var ContourForm1Logic = function () {
       applyDraftValue(name, values[name]);
     });
   }
+  /* Restoring values into HubSpot's selects is not enough on its own. The
+     embed is a React app: assigning .value and dispatching change updates one
+     field's state, but React re-renders the form between assignments, so any
+     evaluator that fires during the restore reads the OTHER selects as empty
+     — verified on staging, where the three change-driven evaluator runs each
+     saw exactly one of location/intake/year level. React then commits the
+     real values, but nothing runs the evaluators again, leaving the school
+     box and the program cards disabled behind filled-in answers until a
+     manual change fired one. So the whole derived layer is re-run on a
+     settle timer after any bulk fill, the same retry pattern
+     defaultContactTypeToStudent() uses for the same hydration reason. Each
+     pass is idempotent, so passes that land early or twice are harmless. */
+  function refreshDerivedFieldState() {
+    evaluateProgramInterestOptions();
+    evaluateInterestedSubjectsOptions();
+    evaluateCampusOptions();
+    evaluateYearLevelOptions();
+    evaluateSchoolFieldVisibility();
+    evaluateIntakeYearDependents();
+    applyPendingPrefill();
+    renderWelcomeConsultation();
+    renderSubjectSummary();
+    renderUcatIntakeNote();
+  }
+  function scheduleDerivedStateRefresh(tries) {
+    if (tries === undefined) tries = 6;
+    if (tries <= 0) return;
+    setTimeout(function () {
+      refreshDerivedFieldState();
+      scheduleDerivedStateRefresh(tries - 1);
+    }, 250);
+  }
   function initDraftRestore() {
     if (!draftCacheEnabled()) return false;
     var values = readDraft();
     if (!values || !draftHasAnswers(values)) return false;
     restoreDraft(values);
     renderDraftBanner();
-    renderSubjectSummary();
-    renderUcatIntakeNote();
+    scheduleDerivedStateRefresh();
     return true;
   }
   function initDraftCache() {
