@@ -864,7 +864,7 @@ var ContourForm1Logic = function () {
      box. No fields are ever hidden, so none of the tab error machinery
      is needed — it gates itself on the tab strip existing.
      ========================================================= */
-  function ensurePersonStaticHeader(id, anchorRow, withCorner) {
+  function ensurePersonStaticHeader(id, anchorRow, withCorner, isVisitor) {
     var existing = formRoot.querySelector('[data-contour-person-static="' + id + '"]');
     if (!anchorRow || !anchorRow.parentNode) {
       if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
@@ -880,18 +880,22 @@ var ContourForm1Logic = function () {
       var title = document.createElement("span");
       title.className = "contour-person-tabs__heading";
       title.textContent = (id === "student" ? "Student" : "Guardian") + " Contact Information";
-      // Two segments of equal weight left "which of these is me?" unanswered.
-      // The guardian header only ever exists on the Guardian flow, where the
-      // guardian is the one filling the form in — so the marker rides on it
-      // and never needs updating. The Student flow has a single segment and
-      // no ambiguity to resolve, so it carries no marker.
-      if (id === "guardian") {
-        var you = document.createElement("span");
-        you.className = "contour-person-tabs__you";
-        you.textContent = "You";
-        title.appendChild(you);
-      }
       existing.appendChild(title);
+    }
+    // "You" leads the segment belonging to whoever is filling the form in —
+    // the guardian on the Guardian flow, the student on their own. The student
+    // header serves both flows (their own fields on one, the child's on the
+    // other), so the marker is synced on every pass rather than written once
+    // at creation, and the heading's own text is never rewritten under it.
+    var heading = existing.querySelector(".contour-person-tabs__heading");
+    var marker = heading.querySelector(".contour-person-tabs__you");
+    if (isVisitor && !marker) {
+      marker = document.createElement("span");
+      marker.className = "contour-person-tabs__you";
+      marker.textContent = "You";
+      heading.insertBefore(marker, heading.firstChild);
+    } else if (!isVisitor && marker) {
+      marker.parentNode.removeChild(marker);
     }
     if (existing.nextSibling !== anchorRow) anchorRow.parentNode.insertBefore(existing, anchorRow);
   }
@@ -911,8 +915,8 @@ var ContourForm1Logic = function () {
     if (guardianRows.length === 0 || guardian && studentRows.length === 0) return;
     // The Student segment heads the box on both flows — over the student
     // fields on the Guardian flow, over the visitor's own fields otherwise.
-    ensurePersonStaticHeader("student", guardian ? studentRows[0] : guardianRows[0], true);
-    ensurePersonStaticHeader("guardian", guardian ? guardianRows[0] : null, false);
+    ensurePersonStaticHeader("student", guardian ? studentRows[0] : guardianRows[0], true, !guardian);
+    ensurePersonStaticHeader("guardian", guardian ? guardianRows[0] : null, false, true);
     clearPersonGroupHost();
     if (guardian) {
       // bottomCount 0: the box does not close after the student rows — the
@@ -1184,11 +1188,11 @@ var ContourForm1Logic = function () {
       // The bands are edges, not rows: the static headers hold one short line,
       // so they take tighter padding than the tab strip's touch targets.
       ".hs-form .contour-person-tabs--static { padding: 10px 24px; }" +
-      // "You" marks the segment belonging to whoever is filling the form in.
-      // Muted and separated by a middot so it reads as an annotation on the
+      // "You" leads the segment belonging to whoever is filling the form in.
+      // Muted and middot-separated so it reads as an annotation on the
       // heading rather than part of its name.
       '.hs-form .contour-person-tabs__you { color: rgba(12, 49, 102, 0.55); }' +
-      '.hs-form .contour-person-tabs__you::before { content: "\\00b7"; margin: 0 6px; }' +
+      '.hs-form .contour-person-tabs__you::after { content: "\\00b7"; margin: 0 6px; }' +
       // With the Guardian tab forward, the boundary between HubSpot's
       // dependent-field fieldset (holding the strip) and the guardian
       // fieldsets below it must close up so the box reads as one.
