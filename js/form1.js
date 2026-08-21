@@ -880,6 +880,17 @@ var ContourForm1Logic = function () {
       var title = document.createElement("span");
       title.className = "contour-person-tabs__heading";
       title.textContent = (id === "student" ? "Student" : "Guardian") + " Contact Information";
+      // Two segments of equal weight left "which of these is me?" unanswered.
+      // The guardian header only ever exists on the Guardian flow, where the
+      // guardian is the one filling the form in — so the marker rides on it
+      // and never needs updating. The Student flow has a single segment and
+      // no ambiguity to resolve, so it carries no marker.
+      if (id === "guardian") {
+        var you = document.createElement("span");
+        you.className = "contour-person-tabs__you";
+        you.textContent = "You";
+        title.appendChild(you);
+      }
       existing.appendChild(title);
     }
     if (existing.nextSibling !== anchorRow) anchorRow.parentNode.insertBefore(existing, anchorRow);
@@ -1170,6 +1181,14 @@ var ContourForm1Logic = function () {
       // drifts whenever validation errors change a segment's height).
       ".hs-form .contour-person-tabs--static { justify-content: flex-end; }" +
       ".hs-form .contour-person-tabs__heading { font-size: 11.5px; font-weight: 700; letter-spacing: 0.10em; text-transform: uppercase; color: #0C3166; }" +
+      // The bands are edges, not rows: the static headers hold one short line,
+      // so they take tighter padding than the tab strip's touch targets.
+      ".hs-form .contour-person-tabs--static { padding: 10px 24px; }" +
+      // "You" marks the segment belonging to whoever is filling the form in.
+      // Muted and separated by a middot so it reads as an annotation on the
+      // heading rather than part of its name.
+      '.hs-form .contour-person-tabs__you { color: rgba(12, 49, 102, 0.55); }' +
+      '.hs-form .contour-person-tabs__you::before { content: "\\00b7"; margin: 0 6px; }' +
       // With the Guardian tab forward, the boundary between HubSpot's
       // dependent-field fieldset (holding the strip) and the guardian
       // fieldsets below it must close up so the box reads as one.
