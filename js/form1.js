@@ -700,19 +700,30 @@ var ContourForm1Logic = function () {
        reads "Student First Name" via a visually-hidden prefix span, so
        two bare "First Name" chips can never appear in the error rollup.
 
-     Rendered as one "Contact Information" container on BOTH flows, with
-     a Student / Guardian tab strip on its top edge. The Guardian tab
-     exists only while the Guardian contact type is selected; the Student
-     flow shows the single Student tab over the person's own fields. Tabs
-     hide required fields, so the error summary work below auto-switches
-     to the tab holding an error and marks it — a guardian must never be
-     told a field is missing that they cannot see.
+     Rendered as one "Contact Information" container on BOTH flows. Two
+     renderings share the container and its pill-labelled top edge,
+     selected via personGroupsVariant in window.ContourForm1Config:
+     - "stacked" (default): both people visible at once — a "Student"
+       segment header, the four student fields, a "Guardian" segment
+       header, the four guardian fields, one continuous box. The team
+       preferred seeing both over switching (Angad, 21 Aug 2026).
+     - "tabs": the same box with a Student / Guardian tab strip, one
+       person visible at a time. Parked for possible reuse, not deleted
+       (Amrit, 21 Aug 2026). Tabs hide required fields, so the error
+       summary work below auto-switches to the tab holding an error and
+       marks it — that machinery no-ops while stacked is on.
 
-     Four other renderings (per-person cards, separator headings in three
-     alignments) were built and rejected in Luke's and Amrit's screenshot
-     reviews before tabs were finalised (21 Aug 2026) — see the session
-     changelog for that trail.
+     Four earlier renderings (per-person cards, separator headings in
+     three alignments) were built and rejected in screenshot reviews
+     before these — see the session changelog for that trail.
      ========================================================= */
+  var PERSON_GROUPS_VARIANT_DEFAULT = "stacked";
+  function personGroupsVariant() {
+    var overrides = window.ContourForm1Config;
+    var variant = overrides && overrides.personGroupsVariant;
+    if (variant === "stacked" || variant === "tabs") return variant;
+    return PERSON_GROUPS_VARIANT_DEFAULT;
+  }
   var PERSON_CARD_ROW_CLASS = "contour-person-card__row";
   var PERSON_GROUPS = [{
     id: "student",
@@ -801,11 +812,15 @@ var ContourForm1Logic = function () {
       node.classList.remove(PERSON_CARD_ROW_CLASS, PERSON_CARD_ROW_CLASS + "--" + group.id, PERSON_CARD_ROW_CLASS + "--bottom");
     });
   }
-  function applyPersonGroupRowClasses(group, rows) {
+  function applyPersonGroupRowClasses(group, rows, bottomCountOverride) {
+    // bottomCountOverride = 0 keeps a group's rows open-ended — stacked
+    // rendering runs the box straight through the student rows into the
+    // guardian segment, so only the last group closes the container.
+    var bottomCount = bottomCountOverride === undefined ? group.bottomCount : bottomCountOverride;
     clearPersonGroupClasses(group);
     rows.forEach(function (row, index) {
       row.classList.add(PERSON_CARD_ROW_CLASS, PERSON_CARD_ROW_CLASS + "--" + group.id);
-      if (index >= rows.length - group.bottomCount) row.classList.add(PERSON_CARD_ROW_CLASS + "--bottom");
+      if (index >= rows.length - bottomCount) row.classList.add(PERSON_CARD_ROW_CLASS + "--bottom");
     });
   }
   function clearPersonGroupHost() {
@@ -817,17 +832,98 @@ var ContourForm1Logic = function () {
     if (!formRoot) return;
     injectPersonGroupStyles();
     var guardian = isGuardianContactType();
-    if (!featureEnabled("personGroups")) {
-      teardownPersonTabs(guardian);
-      // The flag also owns the label state: with tabs gone the student
-      // fields go back to their native full labels. Guardian fields belong
-      // to the Your/Guardian relabel table, restored by teardown.
+    var enabled = featureEnabled("personGroups");
+    var variant = personGroupsVariant();
+    if (!enabled || variant !== "tabs") teardownPersonTabs(guardian);
+    if (!enabled || variant !== "stacked") teardownPersonStacked();
+    if (!enabled) {
+      // The flag also owns the label state: with the grouping gone the
+      // student fields go back to their native full labels. Guardian fields
+      // belong to the Your/Guardian relabel table, restored by the teardowns.
       PERSON_GROUPS[0].fields.forEach(function (config) {
         setPersonFieldLabel(config, false);
       });
       return;
     }
-    updatePersonTabs(guardian);
+    if (variant === "tabs") updatePersonTabs(guardian);else updatePersonStacked(guardian);
+  }
+  /* =========================================================
+     PERSON GROUP STACKED SEGMENTS — the "stacked" variant
+     -----------------------------------------------------------
+     The same Contact Information container as the tabs, with both people
+     visible at once: a static "Student" segment pill on the box's top
+     edge (with the corner label), the student fields, a "Guardian"
+     segment header partway down, the guardian fields, one continuous
+     box. No fields are ever hidden, so none of the tab error machinery
+     is needed — it gates itself on the tab strip existing.
+     ========================================================= */
+  function ensurePersonStaticHeader(id, anchorRow, withCorner) {
+    var existing = formRoot.querySelector('[data-contour-person-static="' + id + '"]');
+    if (!anchorRow || !anchorRow.parentNode) {
+      if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
+      return;
+    }
+    if (!existing) {
+      existing = document.createElement("div");
+      existing.setAttribute("data-contour-person-static", id);
+      existing.className = "contour-person-tabs contour-person-tabs--static" + (withCorner ? "" : " contour-person-tabs--mid");
+      var pill = document.createElement("span");
+      pill.className = "contour-person-tab is-active contour-person-tab--static";
+      pill.appendChild(document.createTextNode(id === "student" ? "Student" : "Guardian"));
+      var req = document.createElement("span");
+      req.className = "contour-person-tab__req";
+      req.setAttribute("aria-hidden", "true");
+      req.textContent = "*";
+      pill.appendChild(req);
+      existing.appendChild(pill);
+      if (withCorner) {
+        var title = document.createElement("span");
+        title.className = "contour-person-tabs__title";
+        title.textContent = "Contact Information";
+        existing.appendChild(title);
+      }
+    }
+    if (existing.nextSibling !== anchorRow) anchorRow.parentNode.insertBefore(existing, anchorRow);
+  }
+  function teardownPersonStacked() {
+    var headers = qAll("[data-contour-person-static]");
+    if (headers.length === 0) return;
+    headers.forEach(function (node) {
+      if (node.parentNode) node.parentNode.removeChild(node);
+    });
+    setPersonTabBridge(false);
+  }
+  function updatePersonStacked(guardian) {
+    var studentRows = guardian ? personGroupRows(PERSON_GROUPS[0]) : [];
+    var guardianRows = personGroupRows(PERSON_GROUPS[1]);
+    // Mid-render (the dependent group joins the DOM a beat after the radio
+    // changes): leave everything as is, the MutationObserver re-runs this.
+    if (guardianRows.length === 0 || guardian && studentRows.length === 0) return;
+    // The Student segment heads the box on both flows — over the student
+    // fields on the Guardian flow, over the visitor's own fields otherwise.
+    ensurePersonStaticHeader("student", guardian ? studentRows[0] : guardianRows[0], true);
+    ensurePersonStaticHeader("guardian", guardian ? guardianRows[0] : null, false);
+    clearPersonGroupHost();
+    if (guardian) {
+      // bottomCount 0: the box does not close after the student rows — the
+      // Guardian segment continues it.
+      applyPersonGroupRowClasses(PERSON_GROUPS[0], studentRows, 0);
+      if (studentRows[0].parentElement && studentRows[0].parentElement.classList.contains("hs-dependent-field")) {
+        studentRows[0].parentElement.classList.add("contour-person-group-host");
+      }
+    } else {
+      clearPersonGroupClasses(PERSON_GROUPS[0]);
+    }
+    applyPersonGroupRowClasses(PERSON_GROUPS[1], guardianRows);
+    setPersonTabBridge(guardian);
+    if (guardian) {
+      PERSON_GROUPS[0].fields.forEach(function (config) {
+        setPersonFieldLabel(config, true);
+      });
+    }
+    PERSON_GROUPS[1].fields.forEach(function (config) {
+      setPersonFieldLabel(config, true, guardian ? null : "Your");
+    });
   }
   /* =========================================================
      PERSON GROUP TABS — the "tabs" variant
@@ -975,8 +1071,10 @@ var ContourForm1Logic = function () {
       node.removeAttribute("data-contour-tab-hidden");
       node.style.removeProperty("display");
     });
-    setPersonTabBridge(false);
     if (!strip) return;
+    // The bridge is shared with the stacked rendering, so it only comes
+    // down here as part of dismantling an actual tab strip.
+    setPersonTabBridge(false);
     if (strip.parentNode) strip.parentNode.removeChild(strip);
     // The other variants re-apply their own label state right after this,
     // but the guardian fields on the Student flow are theirs to restore
@@ -1048,10 +1146,18 @@ var ContourForm1Logic = function () {
     // margin makes the strip sit 32px under the radio cards in every state
     // (12px + the 1.25rem gap it loses).
     ".hs-form .contour-person-group-host > .contour-person-tabs { margin: 32px 0 0; }" +
-    ".hs-form button.contour-person-tab { appearance: none; -webkit-appearance: none; border: 1px solid transparent; background: transparent; color: #0C3166; font: inherit; font-size: 14px; font-weight: 700; line-height: 1.3; padding: 7px 18px; border-radius: 999px; cursor: pointer; transition: background-color .15s ease, color .15s ease; }" +
+    ".hs-form button.contour-person-tab, .hs-form span.contour-person-tab { display: inline-block; appearance: none; -webkit-appearance: none; border: 1px solid transparent; background: transparent; color: #0C3166; font: inherit; font-size: 14px; font-weight: 700; line-height: 1.3; padding: 7px 18px; border-radius: 999px; cursor: pointer; transition: background-color .15s ease, color .15s ease; }" +
     ".hs-form button.contour-person-tab:not(.is-active):hover { background: rgba(12, 49, 102, 0.06); }" +
-    ".hs-form button.contour-person-tab.is-active { background: #0C3166; color: #FFFFFF; cursor: default; }" +
+    ".hs-form button.contour-person-tab.is-active, .hs-form span.contour-person-tab.is-active { background: #0C3166; color: #FFFFFF; cursor: default; }" +
     ".hs-form button.contour-person-tab:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(12, 49, 102, 0.25); }" +
+    // Static segment pills (stacked rendering): labels, not controls.
+    ".hs-form .contour-person-tab--static { pointer-events: none; }" +
+    // The Guardian segment header partway down the stacked box: square
+    // shoulders, hairlines above and below, flush against both segments.
+    ".hs-form .contour-person-tabs--mid { margin: 0; border-radius: 0; border-top-color: rgba(12, 49, 102, 0.08); }" +
+    // The host's 30px bottom margin ends the box on the tabs' Student view,
+    // but the stacked box runs on into the Guardian segment below it.
+    ".hs-form .hs-dependent-field.contour-person-group-host.contour-person-tabbridge { margin-bottom: 0 !important; }" +
     ".hs-form .contour-person-tab__req { margin-left: 3px; font-weight: 700; }" +
     // A resting tab holding blocked fields takes the error chips' colours —
     // the active tab shows its errors inline, so it stays as it is.
