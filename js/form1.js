@@ -147,7 +147,7 @@ var ContourForm1Logic = function () {
   // -> subject codes shown for intake 2027. Intake 2026 keeps the structured-
   // value logic (the matrix is a 2027 planning view and omits 2026-only
   // subjects like VSE Core).
-    // Keyed by intake year — the matrix is the single authority for which
+  // Keyed by intake year — the matrix is the single authority for which
   // subjects a location/year-level sees, for every intake it covers. The
   // structured year:/state: tokens on option values are only a fallback for
   // intakes with no grid here (e.g. a future intake added in HubSpot before
@@ -161,7 +161,7 @@ var ContourForm1Logic = function () {
   // this file learns about it). 2027 comes from the Curriculum Planning
   // Matrix tab; 2026 was generated from the 2026 option tokens on
   // 2026-08-21 so behaviour stayed identical — edit the grid, not tokens.
-  var SUBJECT_MATRIX = {"2026":{"VIC":{"Year 6":["VIC-MA07","VSE-FOEN","VSE-FOMA","VSE-FOWR"],"Year 7":["VIC-MA07","VIC-MA08","VSE-COEN","VSE-COMA","VSE-COWR"],"Year 8":["VIC-MA08","VIC-MA09","VSE-MAEN","VSE-MAMA","VSE-MAWR"],"Year 9":["VIC-MA09","VIC-MA10","VIC-MA1A"],"Year 10":["MD-INT","UCAT-ANZ-CORE","VCE-BI12","VCE-CH12","VCE-EL12","VCE-EN12","VCE-MM12","VCE-PH12","VCE-SM12","VIC-MA10","VIC-MA1A"],"Year 11":["MD-INT","UCAT-ANZ-CORE","VCE-BI12","VCE-BI34","VCE-CH12","VCE-CH34","VCE-EL12","VCE-EL34","VCE-EN12","VCE-EN34","VCE-MM12","VCE-MM34","VCE-PH12","VCE-PH34","VCE-SM12","VCE-SM34"],"Year 12":["MD-INT","UCAT-ANZ-MAST","VCE-BI34","VCE-CH34","VCE-EL34","VCE-EN34","VCE-MM34","VCE-PH34","VCE-SM34"],"Year 13":["MD-INT","UCAT-ANZ-MAST"],"Graduated":["MD-INT","UCAT-ANZ-MAST"]},"QLD":{"Year 6":["QLD-MA07"],"Year 7":["QLD-MA07","QLD-MA08"],"Year 8":["QLD-MA08","QLD-MA09"],"Year 9":["QLD-MA09","QLD-MA1A"],"Year 10":["MD-INT","QCE-BI12","QCE-CH12","QCE-MM12","QCE-PH12","QCE-SM12","QLD-MA1A","UCAT-ANZ-CORE"],"Year 11":["MD-INT","QCE-BI12","QCE-BI34","QCE-CH12","QCE-CH34","QCE-MM12","QCE-MM34","QCE-PH12","QCE-PH34","QCE-SM12","QCE-SM34","UCAT-ANZ-CORE"],"Year 12":["MD-INT","QCE-BI34","QCE-CH34","QCE-MM34","QCE-PH34","QCE-SM34","UCAT-ANZ-MAST"],"Year 13":["MD-INT","UCAT-ANZ-MAST"],"Graduated":["MD-INT","UCAT-ANZ-MAST"]},"WA":{"Year 10":["MD-INT","UCAT-ANZ-CORE"],"Year 11":["MD-INT","UCAT-ANZ-CORE"],"Year 12":["MD-INT","UCAT-ANZ-MAST"],"Year 13":["MD-INT","UCAT-ANZ-MAST"],"Graduated":["MD-INT","UCAT-ANZ-MAST"]},"SA":{"Year 10":["MD-INT","UCAT-ANZ-CORE"],"Year 11":["MD-INT","UCAT-ANZ-CORE"],"Year 12":["MD-INT","UCAT-ANZ-MAST"],"Year 13":["MD-INT","UCAT-ANZ-MAST"],"Graduated":["MD-INT","UCAT-ANZ-MAST"]},"NSW":{"Year 10":["MD-INT","UCAT-ANZ-CORE"],"Year 11":["MD-INT","UCAT-ANZ-CORE"],"Year 12":["MD-INT","UCAT-ANZ-MAST"],"Year 13":["MD-INT","UCAT-ANZ-MAST"],"Graduated":["MD-INT","UCAT-ANZ-MAST"]},"TAS":{"Year 10":["MD-INT","UCAT-ANZ-CORE"],"Year 11":["MD-INT","UCAT-ANZ-CORE"],"Year 12":["MD-INT","UCAT-ANZ-MAST"],"Year 13":["MD-INT","UCAT-ANZ-MAST"],"Graduated":["MD-INT","UCAT-ANZ-MAST"]},"ACT":{"Year 10":["MD-INT","UCAT-ANZ-CORE"],"Year 11":["MD-INT","UCAT-ANZ-CORE"],"Year 12":["MD-INT","UCAT-ANZ-MAST"],"Year 13":["MD-INT","UCAT-ANZ-MAST"],"Graduated":["MD-INT","UCAT-ANZ-MAST"]},"NT":{"Year 10":["MD-INT","UCAT-ANZ-CORE"],"Year 11":["MD-INT","UCAT-ANZ-CORE"],"Year 12":["MD-INT","UCAT-ANZ-MAST"],"Year 13":["MD-INT","UCAT-ANZ-MAST"],"Graduated":["MD-INT","UCAT-ANZ-MAST"]},"NZ":{"Year 10":["MD-INT","UCAT-ANZ-CORE"],"Year 11":["MD-INT","UCAT-ANZ-CORE"],"Year 12":["MD-INT","UCAT-ANZ-MAST"],"Year 13":["MD-INT","UCAT-ANZ-MAST"],"Graduated":["MD-INT","UCAT-ANZ-MAST"]},"UK":{"Year 10":["MD-INT","UCAT-UK-CORE"],"Year 11":["MD-INT","UCAT-UK-CORE"],"Year 12":["MD-INT","UCAT-UK-MAST"],"Year 13":["MD-INT","UCAT-UK-MAST"],"Graduated":["MD-INT","UCAT-UK-MAST"]},"INTERNATIONAL":{"Year 10":["MD-INT","UCAT-ANZ-CORE"],"Year 11":["MD-INT","UCAT-ANZ-CORE"],"Year 12":["MD-INT","UCAT-ANZ-MAST"],"Year 13":["MD-INT","UCAT-ANZ-MAST"],"Graduated":["MD-INT","UCAT-ANZ-MAST"]}},"2027":{"VIC":{"Year 5":["VSC-EN05","VSC-MA05","VSC-WR05"],"Year 6":["VIC-EN07","VIC-EN08","VIC-MA07","VIC-MA08","VIC-SC07","VIC-SC08","VSE-EN06","VSE-MA06","VSE-WR06"],"Year 7":["VIC-EN07","VIC-EN08","VIC-EN09","VIC-MA07","VIC-MA08","VIC-MA9A","VIC-SC07","VIC-SC08","VIC-SC09","VSE-EN07","VSE-MA07","VSE-WR07"],"Year 8":["VIC-EN08","VIC-EN09","VIC-EN10","VIC-MA08","VIC-MA1A","VIC-MA9A","VIC-SC08","VIC-SC09","VIC-SC10","VSE-EN08","VSE-MA08","VSE-WR08"],"Year 9":["VCE-BI12","VCE-CH12","VCE-EL12","VCE-EN12","VCE-MM12","VCE-PH12","VCE-SM12","VIC-EN09","VIC-EN10","VIC-MA1A","VIC-MA9A","VIC-SC09","VIC-SC10"],"Year 10":["MD-INT","UCAT-ANZ-CORE","VCE-BI12","VCE-BI34","VCE-CH12","VCE-CH34","VCE-EL12","VCE-EL34","VCE-EN12","VCE-EN34","VCE-MM12","VCE-MM34","VCE-PH12","VCE-PH34","VCE-SM12","VCE-SM34","VIC-EN10","VIC-MA1A","VIC-SC10"],"Year 11":["MD-INT","UCAT-ANZ-CORE","VCE-BI12","VCE-BI34","VCE-CH12","VCE-CH34","VCE-EL12","VCE-EL34","VCE-EN12","VCE-EN34","VCE-MM12","VCE-MM34","VCE-PH12","VCE-PH34","VCE-SM12","VCE-SM34"],"Year 12":["MD-INT","UCAT-ANZ-MAST","VCE-BI34","VCE-CH34","VCE-EL34","VCE-EN34","VCE-MM34","VCE-PH34","VCE-SM34"],"Graduated":["GAMSAT","MD-INT","UCAT-ANZ-MAST"]},"QLD":{"Year 6":["QLD-EN07","QLD-EN08","QLD-MA07","QLD-MA08","QLD-SC07","QLD-SC08"],"Year 7":["QLD-EN07","QLD-EN08","QLD-EN09","QLD-MA07","QLD-MA08","QLD-MA09","QLD-SC07","QLD-SC08","QLD-SC09"],"Year 8":["QLD-EN08","QLD-EN09","QLD-EN10","QLD-MA08","QLD-MA09","QLD-MA1A","QLD-SC08","QLD-SC09","QLD-SC10"],"Year 9":["QCE-BI12","QCE-CH12","QCE-MM12","QCE-PH12","QCE-SM12","QLD-EN09","QLD-EN10","QLD-MA09","QLD-MA1A","QLD-SC09","QLD-SC10"],"Year 10":["MD-INT","QCE-BI12","QCE-BI34","QCE-CH12","QCE-CH34","QCE-MM12","QCE-MM34","QCE-PH12","QCE-PH34","QCE-SM12","QCE-SM34","QLD-EN10","QLD-MA1A","QLD-SC10","UCAT-ANZ-CORE"],"Year 11":["MD-INT","QCE-BI12","QCE-BI34","QCE-CH12","QCE-CH34","QCE-MM12","QCE-MM34","QCE-PH12","QCE-PH34","QCE-SM12","QCE-SM34","UCAT-ANZ-CORE"],"Year 12":["MD-INT","QCE-BI34","QCE-CH34","QCE-MM34","QCE-PH34","QCE-SM34","UCAT-ANZ-MAST"],"Graduated":["GAMSAT","MD-INT","UCAT-ANZ-MAST"]},"WA":{"Year 10":["MD-INT","UCAT-ANZ-CORE"],"Year 11":["MD-INT","UCAT-ANZ-CORE"],"Year 12":["MD-INT","UCAT-ANZ-MAST"],"Graduated":["GAMSAT","MD-INT","UCAT-ANZ-MAST"]},"SA":{"Year 10":["MD-INT","UCAT-ANZ-CORE"],"Year 11":["MD-INT","UCAT-ANZ-CORE"],"Year 12":["MD-INT","UCAT-ANZ-MAST"],"Graduated":["GAMSAT","MD-INT","UCAT-ANZ-MAST"]},"NSW":{"Year 6":["NSW-EN07","NSW-EN08","NSW-MA07","NSW-MA08","NSW-SC07","NSW-SC08"],"Year 7":["NSW-EN07","NSW-EN08","NSW-EN09","NSW-MA07","NSW-MA08","NSW-MA09","NSW-SC07","NSW-SC08","NSW-SC09"],"Year 8":["NSW-EN08","NSW-EN09","NSW-EN10","NSW-MA08","NSW-MA09","NSW-MA10","NSW-SC08","NSW-SC09","NSW-SC10"],"Year 9":["NSW-EN09","NSW-EN10","NSW-MA09","NSW-MA10","NSW-SC09","NSW-SC10","PRE-BIOL","PRE-CHEM","PRE-MADV","PRE-MAE1","PRE-PHYS"],"Year 10":["HSC-BIOL","HSC-CHEM","HSC-MADV","HSC-MAE1","HSC-MAE2","HSC-PHYS","MD-INT","NSW-EN10","NSW-MA10","NSW-SC10","PRE-BIOL","PRE-CHEM","PRE-MADV","PRE-MAE1","PRE-PHYS","UCAT-ANZ-CORE"],"Year 11":["HSC-BIOL","HSC-CHEM","HSC-MADV","HSC-MAE1","HSC-MAE2","HSC-PHYS","MD-INT","PRE-BIOL","PRE-CHEM","PRE-MADV","PRE-MAE1","PRE-PHYS","UCAT-ANZ-CORE"],"Year 12":["HSC-BIOL","HSC-CHEM","HSC-MADV","HSC-MAE1","HSC-MAE2","HSC-PHYS","MD-INT","UCAT-ANZ-MAST"],"Graduated":["GAMSAT","MD-INT","UCAT-ANZ-MAST"]},"TAS":{"Year 10":["MD-INT","UCAT-ANZ-CORE"],"Year 11":["MD-INT","UCAT-ANZ-CORE"],"Year 12":["MD-INT","UCAT-ANZ-MAST"],"Graduated":["GAMSAT","MD-INT","UCAT-ANZ-MAST"]},"ACT":{"Year 10":["MD-INT","UCAT-ANZ-CORE"],"Year 11":["MD-INT","UCAT-ANZ-CORE"],"Year 12":["MD-INT","UCAT-ANZ-MAST"],"Graduated":["GAMSAT","MD-INT","UCAT-ANZ-MAST"]},"NT":{"Year 10":["MD-INT","UCAT-ANZ-CORE"],"Year 11":["MD-INT","UCAT-ANZ-CORE"],"Year 12":["MD-INT","UCAT-ANZ-MAST"],"Graduated":["GAMSAT","MD-INT","UCAT-ANZ-MAST"]},"NZ":{"Year 11":["MD-INT","UCAT-ANZ-CORE"],"Year 12":["MD-INT","UCAT-ANZ-CORE"],"Year 13":["MD-INT","UCAT-ANZ-MAST"],"Graduated":["GAMSAT","MD-INT","UCAT-ANZ-MAST"]},"UK":{"Year 10":["MD-INT","UCAT-UK-MAST"],"Year 11":["MD-INT","UCAT-UK-MAST"],"Year 12":["MD-INT","UCAT-UK-MAST"],"Year 13":["MD-INT","UCAT-UK-MAST"],"Graduated":["GAMSAT","MD-INT","UCAT-UK-MAST"]},"INTERNATIONAL":{"Year 10":["MD-INT","UCAT-ANZ-CORE"],"Year 11":["MD-INT","UCAT-ANZ-CORE"],"Year 12":["MD-INT","UCAT-ANZ-MAST"],"Year 13":["MD-INT","UCAT-ANZ-MAST"],"Graduated":["GAMSAT","MD-INT","UCAT-ANZ-MAST"]}}};
+  var SUBJECT_MATRIX = { "2026": { "VIC": { "Year 6": ["VIC-MA07", "VSE-FOEN", "VSE-FOMA", "VSE-FOWR"], "Year 7": ["VIC-MA07", "VIC-MA08", "VSE-COEN", "VSE-COMA", "VSE-COWR"], "Year 8": ["VIC-MA08", "VIC-MA09", "VSE-MAEN", "VSE-MAMA", "VSE-MAWR"], "Year 9": ["VIC-MA09", "VIC-MA10", "VIC-MA1A"], "Year 10": ["MD-INT", "UCAT-ANZ-CORE", "VCE-BI12", "VCE-CH12", "VCE-EL12", "VCE-EN12", "VCE-MM12", "VCE-PH12", "VCE-SM12", "VIC-MA10", "VIC-MA1A"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE", "VCE-BI12", "VCE-BI34", "VCE-CH12", "VCE-CH34", "VCE-EL12", "VCE-EL34", "VCE-EN12", "VCE-EN34", "VCE-MM12", "VCE-MM34", "VCE-PH12", "VCE-PH34", "VCE-SM12", "VCE-SM34"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST", "VCE-BI34", "VCE-CH34", "VCE-EL34", "VCE-EN34", "VCE-MM34", "VCE-PH34", "VCE-SM34"], "Year 13": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["MD-INT", "UCAT-ANZ-MAST"] }, "QLD": { "Year 6": ["QLD-MA07"], "Year 7": ["QLD-MA07", "QLD-MA08"], "Year 8": ["QLD-MA08", "QLD-MA09"], "Year 9": ["QLD-MA09", "QLD-MA1A"], "Year 10": ["MD-INT", "QCE-BI12", "QCE-CH12", "QCE-MM12", "QCE-PH12", "QCE-SM12", "QLD-MA1A", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "QCE-BI12", "QCE-BI34", "QCE-CH12", "QCE-CH34", "QCE-MM12", "QCE-MM34", "QCE-PH12", "QCE-PH34", "QCE-SM12", "QCE-SM34", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "QCE-BI34", "QCE-CH34", "QCE-MM34", "QCE-PH34", "QCE-SM34", "UCAT-ANZ-MAST"], "Year 13": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["MD-INT", "UCAT-ANZ-MAST"] }, "WA": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Year 13": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["MD-INT", "UCAT-ANZ-MAST"] }, "SA": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Year 13": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["MD-INT", "UCAT-ANZ-MAST"] }, "NSW": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Year 13": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["MD-INT", "UCAT-ANZ-MAST"] }, "TAS": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Year 13": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["MD-INT", "UCAT-ANZ-MAST"] }, "ACT": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Year 13": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["MD-INT", "UCAT-ANZ-MAST"] }, "NT": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Year 13": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["MD-INT", "UCAT-ANZ-MAST"] }, "NZ": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Year 13": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["MD-INT", "UCAT-ANZ-MAST"] }, "UK": { "Year 10": ["MD-INT", "UCAT-UK-CORE"], "Year 11": ["MD-INT", "UCAT-UK-CORE"], "Year 12": ["MD-INT", "UCAT-UK-MAST"], "Year 13": ["MD-INT", "UCAT-UK-MAST"], "Graduated": ["MD-INT", "UCAT-UK-MAST"] }, "INTERNATIONAL": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Year 13": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["MD-INT", "UCAT-ANZ-MAST"] } }, "2027": { "VIC": { "Year 5": ["VSC-EN05", "VSC-MA05", "VSC-WR05"], "Year 6": ["VIC-EN07", "VIC-EN08", "VIC-MA07", "VIC-MA08", "VIC-SC07", "VIC-SC08", "VSE-EN06", "VSE-MA06", "VSE-WR06"], "Year 7": ["VIC-EN07", "VIC-EN08", "VIC-EN09", "VIC-MA07", "VIC-MA08", "VIC-MA9A", "VIC-SC07", "VIC-SC08", "VIC-SC09", "VSE-EN07", "VSE-MA07", "VSE-WR07"], "Year 8": ["VIC-EN08", "VIC-EN09", "VIC-EN10", "VIC-MA08", "VIC-MA1A", "VIC-MA9A", "VIC-SC08", "VIC-SC09", "VIC-SC10", "VSE-EN08", "VSE-MA08", "VSE-WR08"], "Year 9": ["VCE-BI12", "VCE-CH12", "VCE-EL12", "VCE-EN12", "VCE-MM12", "VCE-PH12", "VCE-SM12", "VIC-EN09", "VIC-EN10", "VIC-MA1A", "VIC-MA9A", "VIC-SC09", "VIC-SC10"], "Year 10": ["MD-INT", "UCAT-ANZ-CORE", "VCE-BI12", "VCE-BI34", "VCE-CH12", "VCE-CH34", "VCE-EL12", "VCE-EL34", "VCE-EN12", "VCE-EN34", "VCE-MM12", "VCE-MM34", "VCE-PH12", "VCE-PH34", "VCE-SM12", "VCE-SM34", "VIC-EN10", "VIC-MA1A", "VIC-SC10"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE", "VCE-BI12", "VCE-BI34", "VCE-CH12", "VCE-CH34", "VCE-EL12", "VCE-EL34", "VCE-EN12", "VCE-EN34", "VCE-MM12", "VCE-MM34", "VCE-PH12", "VCE-PH34", "VCE-SM12", "VCE-SM34"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST", "VCE-BI34", "VCE-CH34", "VCE-EL34", "VCE-EN34", "VCE-MM34", "VCE-PH34", "VCE-SM34"], "Graduated": ["GAMSAT", "MD-INT", "UCAT-ANZ-MAST"] }, "QLD": { "Year 6": ["QLD-EN07", "QLD-EN08", "QLD-MA07", "QLD-MA08", "QLD-SC07", "QLD-SC08"], "Year 7": ["QLD-EN07", "QLD-EN08", "QLD-EN09", "QLD-MA07", "QLD-MA08", "QLD-MA09", "QLD-SC07", "QLD-SC08", "QLD-SC09"], "Year 8": ["QLD-EN08", "QLD-EN09", "QLD-EN10", "QLD-MA08", "QLD-MA09", "QLD-MA1A", "QLD-SC08", "QLD-SC09", "QLD-SC10"], "Year 9": ["QCE-BI12", "QCE-CH12", "QCE-MM12", "QCE-PH12", "QCE-SM12", "QLD-EN09", "QLD-EN10", "QLD-MA09", "QLD-MA1A", "QLD-SC09", "QLD-SC10"], "Year 10": ["MD-INT", "QCE-BI12", "QCE-BI34", "QCE-CH12", "QCE-CH34", "QCE-MM12", "QCE-MM34", "QCE-PH12", "QCE-PH34", "QCE-SM12", "QCE-SM34", "QLD-EN10", "QLD-MA1A", "QLD-SC10", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "QCE-BI12", "QCE-BI34", "QCE-CH12", "QCE-CH34", "QCE-MM12", "QCE-MM34", "QCE-PH12", "QCE-PH34", "QCE-SM12", "QCE-SM34", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "QCE-BI34", "QCE-CH34", "QCE-MM34", "QCE-PH34", "QCE-SM34", "UCAT-ANZ-MAST"], "Graduated": ["GAMSAT", "MD-INT", "UCAT-ANZ-MAST"] }, "WA": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["GAMSAT", "MD-INT", "UCAT-ANZ-MAST"] }, "SA": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["GAMSAT", "MD-INT", "UCAT-ANZ-MAST"] }, "NSW": { "Year 6": ["NSW-EN07", "NSW-EN08", "NSW-MA07", "NSW-MA08", "NSW-SC07", "NSW-SC08"], "Year 7": ["NSW-EN07", "NSW-EN08", "NSW-EN09", "NSW-MA07", "NSW-MA08", "NSW-MA09", "NSW-SC07", "NSW-SC08", "NSW-SC09"], "Year 8": ["NSW-EN08", "NSW-EN09", "NSW-EN10", "NSW-MA08", "NSW-MA09", "NSW-MA10", "NSW-SC08", "NSW-SC09", "NSW-SC10"], "Year 9": ["NSW-EN09", "NSW-EN10", "NSW-MA09", "NSW-MA10", "NSW-SC09", "NSW-SC10", "PRE-BIOL", "PRE-CHEM", "PRE-MADV", "PRE-MAE1", "PRE-PHYS"], "Year 10": ["HSC-BIOL", "HSC-CHEM", "HSC-MADV", "HSC-MAE1", "HSC-MAE2", "HSC-PHYS", "MD-INT", "NSW-EN10", "NSW-MA10", "NSW-SC10", "PRE-BIOL", "PRE-CHEM", "PRE-MADV", "PRE-MAE1", "PRE-PHYS", "UCAT-ANZ-CORE"], "Year 11": ["HSC-BIOL", "HSC-CHEM", "HSC-MADV", "HSC-MAE1", "HSC-MAE2", "HSC-PHYS", "MD-INT", "PRE-BIOL", "PRE-CHEM", "PRE-MADV", "PRE-MAE1", "PRE-PHYS", "UCAT-ANZ-CORE"], "Year 12": ["HSC-BIOL", "HSC-CHEM", "HSC-MADV", "HSC-MAE1", "HSC-MAE2", "HSC-PHYS", "MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["GAMSAT", "MD-INT", "UCAT-ANZ-MAST"] }, "TAS": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["GAMSAT", "MD-INT", "UCAT-ANZ-MAST"] }, "ACT": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["GAMSAT", "MD-INT", "UCAT-ANZ-MAST"] }, "NT": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["GAMSAT", "MD-INT", "UCAT-ANZ-MAST"] }, "NZ": { "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-CORE"], "Year 13": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["GAMSAT", "MD-INT", "UCAT-ANZ-MAST"] }, "UK": { "Year 10": ["MD-INT", "UCAT-UK-MAST"], "Year 11": ["MD-INT", "UCAT-UK-MAST"], "Year 12": ["MD-INT", "UCAT-UK-MAST"], "Year 13": ["MD-INT", "UCAT-UK-MAST"], "Graduated": ["GAMSAT", "MD-INT", "UCAT-UK-MAST"] }, "INTERNATIONAL": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Year 13": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["GAMSAT", "MD-INT", "UCAT-ANZ-MAST"] } } };
   // UCAT enrolments are closed until later in September 2026 (Ramodh via Luke,
   // 12 Aug 2026). While closed, the Welcome Consultation scheduler is hidden
   // for UCAT students. Flip UCAT_ENROLMENTS_OPEN back to true when enrolments
@@ -852,7 +852,7 @@ var ContourForm1Logic = function () {
       });
       return;
     }
-    if (variant === "tabs") updatePersonTabs(guardian);else updatePersonStacked(guardian);
+    if (variant === "tabs") updatePersonTabs(guardian); else updatePersonStacked(guardian);
   }
   /* =========================================================
      PERSON GROUP STACKED SEGMENTS — the "stacked" variant
@@ -1137,86 +1137,86 @@ var ContourForm1Logic = function () {
     var style = document.createElement("style");
     style.id = "contour-person-group-styles";
     style.textContent = "" +
-    ".contour-sr-only { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }" +
-    // --- tab strip: the container's top edge --------------------------------
-    ".hs-form .contour-person-tabs { display: flex; align-items: center; gap: 8px; box-sizing: border-box; width: 100%; flex: 0 0 100%; grid-column: 1 / -1; margin: 12px 0 0; padding: 14px 20px; background: " + cardBg + "; border: 1px solid " + line + "; border-bottom-color: rgba(12, 49, 102, 0.08); border-radius: 16px 16px 0 0; }" +
-    // With the Student tab forward the host container's row-gap is zeroed
-    // for the tile paint, which would also eat the gap above the strip — the
-    // margin makes the strip sit 32px under the radio cards in every state
-    // (12px + the 1.25rem gap it loses).
-    ".hs-form .contour-person-group-host > .contour-person-tabs { margin: 32px 0 0; }" +
-    ".hs-form button.contour-person-tab, .hs-form span.contour-person-tab { display: inline-block; appearance: none; -webkit-appearance: none; border: 1px solid transparent; background: transparent; color: #0C3166; font: inherit; font-size: 14px; font-weight: 700; line-height: 1.3; padding: 7px 18px; border-radius: 999px; cursor: pointer; transition: background-color .15s ease, color .15s ease; }" +
-    ".hs-form button.contour-person-tab:not(.is-active):hover { background: rgba(12, 49, 102, 0.06); }" +
-    ".hs-form button.contour-person-tab.is-active, .hs-form span.contour-person-tab.is-active { background: #0C3166; color: #FFFFFF; cursor: default; }" +
-    ".hs-form button.contour-person-tab:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(12, 49, 102, 0.25); }" +
-    // Static segment pills (stacked rendering): labels, not controls.
-    ".hs-form .contour-person-tab--static { pointer-events: none; }" +
-    // The Guardian segment header partway down the stacked box: square
-    // shoulders, hairlines above and below, flush against both segments.
-    ".hs-form .contour-person-tabs--mid { margin: 0; border-radius: 0; border-top-color: rgba(12, 49, 102, 0.08); }" +
-    // The host's 30px bottom margin ends the box on the tabs' Student view,
-    // but the stacked box runs on into the Guardian segment below it.
-    ".hs-form .hs-dependent-field.contour-person-group-host.contour-person-tabbridge { margin-bottom: 0 !important; }" +
-    ".hs-form .contour-person-tab__req { margin-left: 3px; font-weight: 700; }" +
-    // A resting tab holding blocked fields takes the error chips' colours —
-    // the active tab shows its errors inline, so it stays as it is.
-    ".hs-form button.contour-person-tab.is-errored:not(.is-active) { border-color: rgba(200, 16, 46, 0.30); background: rgba(200, 16, 46, 0.05); color: #8A0C22; }" +
-    ".hs-form button.contour-person-tab.is-errored:not(.is-active):hover { background: rgba(200, 16, 46, 0.10); }" +
-    ".hs-form .contour-person-tabs__title { margin-left: auto; font-size: 11.5px; font-weight: 700; letter-spacing: 0.10em; text-transform: uppercase; color: rgba(12, 49, 102, 0.55); }" +
-    // Static segment headings (stacked rendering): right-aligned in the
-    // form's theme navy rather than the corner label's muted tint (Amrit's
-    // review, 21 Aug 2026 — a per-segment left rail was also considered and
-    // dropped: with no wrapper nodes it needs a positioned overlay that
-    // drifts whenever validation errors change a segment's height).
-    ".hs-form .contour-person-tabs--static { justify-content: flex-end; }" +
-    ".hs-form .contour-person-tabs__heading { font-size: 11.5px; font-weight: 700; letter-spacing: 0.10em; text-transform: uppercase; color: #0C3166; }" +
-    // With the Guardian tab forward, the boundary between HubSpot's
-    // dependent-field fieldset (holding the strip) and the guardian
-    // fieldsets below it must close up so the box reads as one.
-    ".hs-form .contour-person-tabbridge { margin-bottom: 0 !important; }" +
-    // --- student tiles: flex children of .hs-dependent-field ----------------
-    // Gaps are zeroed and the tiles widened to an exact 50% so their painted
-    // backgrounds meet; the spacing the gaps provided moves into padding.
-    // margin-bottom matches the guardian bottom fieldset's 30px — with the
-    // Student tab forward this container ends the box, and its native
-    // 1.25rem margin left less room under the box than the Guardian tab.
-    ".hs-form .hs-dependent-field.contour-person-group-host { column-gap: 0 !important; row-gap: 0 !important; margin-bottom: 30px !important; }" +
-    ".hs-form .contour-person-group-host > .hs_student_first_name.contour-person-card__row, .hs-form .contour-person-group-host > .hs_student_last_name.contour-person-card__row, .hs-form .contour-person-group-host > .hs_student_email.contour-person-card__row, .hs-form .contour-person-group-host > .hs_student_phone_number.contour-person-card__row { flex: 0 0 50% !important; box-sizing: border-box; background: transparent; margin: 0 !important; padding: 12px 24px 20px; }" +
-    ".hs-form .contour-person-group-host > .hs_student_first_name.contour-person-card__row, .hs-form .contour-person-group-host > .hs_student_email.contour-person-card__row { border-left: 1px solid " + line + "; padding-right: 12px; }" +
-    ".hs-form .contour-person-group-host > .hs_student_last_name.contour-person-card__row, .hs-form .contour-person-group-host > .hs_student_phone_number.contour-person-card__row { border-right: 1px solid " + line + "; padding-left: 12px; }" +
-    ".hs-form .contour-person-card__row--student.contour-person-card__row--bottom { border-bottom: 1px solid " + line + "; }" +
-    // padding-bottom rides on these two, not the shared rule above — the
-    // 50%-tile rule outweighs the shared one and its 20px would win.
-    ".hs-form .contour-person-group-host > .hs_student_email.contour-person-card__row--bottom { border-radius: 0 0 0 16px; padding-bottom: 24px; }" +
-    ".hs-form .contour-person-group-host > .hs_student_phone_number.contour-person-card__row--bottom { border-radius: 0 0 16px 0; padding-bottom: 24px; }" +
-    // --- guardian rows: whole top-level fieldsets ---------------------------
-    // The fieldsets take the same flex geometry as the student tiles —
-    // HubSpot's own form-columns-2 layout (floats, 95% inputs, field
-    // margins) gave the Guardian tab different gutters and bottom padding
-    // than the Student tab.
-    ".hs-form fieldset.contour-person-card__row--guardian { display: flex; flex-wrap: wrap; box-sizing: border-box; background: transparent; border-left: 1px solid " + line + "; border-right: 1px solid " + line + "; margin: 0 !important; max-width: none; padding: 0; }" +
-    ".hs-form fieldset.contour-person-card__row--guardian > .hs-form-field { float: none !important; flex: 0 0 50%; width: 50% !important; box-sizing: border-box; margin: 0 !important; padding: 12px 12px 20px 24px; }" +
-    ".hs-form fieldset.contour-person-card__row--guardian > .hs-form-field + .hs-form-field { padding: 12px 24px 20px 12px; }" +
-    ".hs-form fieldset.contour-person-card__row--guardian .hs-input:not([type=\"checkbox\"]):not([type=\"radio\"]):not(.contour-intl-phone__country):not(.contour-intl-phone__number) { width: 100% !important; }" +
-    // HubSpot's intl-phone widget carries a clearfix ::after; in its column
-    // flex layout that pseudo-element is a flex item and adds one phantom
-    // 8px gap under the number box, pushing the guardian tab's bottom
-    // padding out of step with the student tab's.
-    '.hs-form fieldset.contour-person-card__row--guardian .hs-fieldtype-intl-phone::after { content: none; }' +
-    ".hs-form fieldset.contour-person-card__row--guardian.contour-person-card__row--bottom { border-bottom: 1px solid " + line + "; border-radius: 0 0 16px 16px; margin-bottom: 30px !important; }" +
-    ".hs-form fieldset.contour-person-card__row--guardian.contour-person-card__row--bottom > .hs-form-field { padding-bottom: 24px; }" +
-    // --- mobile: tiles stack, so side borders and the bottom edge move ------
-    "@media screen and (max-width: 767px) {" +
-    " .hs-form .contour-person-tabs { padding: 12px 14px; gap: 6px; }" +
-    " .hs-form button.contour-person-tab { padding: 6px 14px; font-size: 13.5px; }" +
-    " .hs-form .contour-person-tabs__title { display: none; }" +
-    " .hs-form .contour-person-group-host > .hs_student_first_name.contour-person-card__row, .hs-form .contour-person-group-host > .hs_student_last_name.contour-person-card__row, .hs-form .contour-person-group-host > .hs_student_email.contour-person-card__row, .hs-form .contour-person-group-host > .hs_student_phone_number.contour-person-card__row { flex: 0 0 100% !important; border-left: 1px solid " + line + "; border-right: 1px solid " + line + "; padding: 10px 20px 16px; }" +
-    " .hs-form fieldset.contour-person-card__row--guardian > .hs-form-field, .hs-form fieldset.contour-person-card__row--guardian > .hs-form-field + .hs-form-field { flex: 0 0 100%; width: 100% !important; padding: 10px 20px 16px; }" +
-    " .hs-form fieldset.contour-person-card__row--guardian.contour-person-card__row--bottom > .hs-form-field { padding-bottom: 16px; }" +
-    " .hs-form .contour-person-group-host > .hs_student_email.contour-person-card__row--bottom { border-bottom: none; border-radius: 0; padding-bottom: 16px; }" +
-    " .hs-form .contour-person-group-host > .hs_student_phone_number.contour-person-card__row--bottom { border-radius: 0 0 16px 16px; padding-bottom: 16px; }" +
-    " .hs-form fieldset.contour-person-card__row--guardian.contour-person-card__row--bottom > .hs-form-field { padding-bottom: 16px; }" +
-    "}";
+      ".contour-sr-only { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }" +
+      // --- tab strip: the container's top edge --------------------------------
+      ".hs-form .contour-person-tabs { display: flex; align-items: center; gap: 8px; box-sizing: border-box; width: 100%; flex: 0 0 100%; grid-column: 1 / -1; margin: 12px 0 0; padding: 14px 20px; background: " + cardBg + "; border: 1px solid " + line + "; border-bottom-color: rgba(12, 49, 102, 0.08); border-radius: 16px 16px 0 0; }" +
+      // With the Student tab forward the host container's row-gap is zeroed
+      // for the tile paint, which would also eat the gap above the strip — the
+      // margin makes the strip sit 32px under the radio cards in every state
+      // (12px + the 1.25rem gap it loses).
+      ".hs-form .contour-person-group-host > .contour-person-tabs { margin: 32px 0 0; }" +
+      ".hs-form button.contour-person-tab, .hs-form span.contour-person-tab { display: inline-block; appearance: none; -webkit-appearance: none; border: 1px solid transparent; background: transparent; color: #0C3166; font: inherit; font-size: 14px; font-weight: 700; line-height: 1.3; padding: 7px 18px; border-radius: 999px; cursor: pointer; transition: background-color .15s ease, color .15s ease; }" +
+      ".hs-form button.contour-person-tab:not(.is-active):hover { background: rgba(12, 49, 102, 0.06); }" +
+      ".hs-form button.contour-person-tab.is-active, .hs-form span.contour-person-tab.is-active { background: #0C3166; color: #FFFFFF; cursor: default; }" +
+      ".hs-form button.contour-person-tab:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(12, 49, 102, 0.25); }" +
+      // Static segment pills (stacked rendering): labels, not controls.
+      ".hs-form .contour-person-tab--static { pointer-events: none; }" +
+      // The Guardian segment header partway down the stacked box: square
+      // shoulders, hairlines above and below, flush against both segments.
+      ".hs-form .contour-person-tabs--mid { margin: 0; border-radius: 0; border-top-color: rgba(12, 49, 102, 0.08); }" +
+      // The host's 30px bottom margin ends the box on the tabs' Student view,
+      // but the stacked box runs on into the Guardian segment below it.
+      ".hs-form .hs-dependent-field.contour-person-group-host.contour-person-tabbridge { margin-bottom: 0 !important; }" +
+      ".hs-form .contour-person-tab__req { margin-left: 3px; font-weight: 700; }" +
+      // A resting tab holding blocked fields takes the error chips' colours —
+      // the active tab shows its errors inline, so it stays as it is.
+      ".hs-form button.contour-person-tab.is-errored:not(.is-active) { border-color: rgba(200, 16, 46, 0.30); background: rgba(200, 16, 46, 0.05); color: #8A0C22; }" +
+      ".hs-form button.contour-person-tab.is-errored:not(.is-active):hover { background: rgba(200, 16, 46, 0.10); }" +
+      ".hs-form .contour-person-tabs__title { margin-left: auto; font-size: 11.5px; font-weight: 700; letter-spacing: 0.10em; text-transform: uppercase; color: rgba(12, 49, 102, 0.55); }" +
+      // Static segment headings (stacked rendering): right-aligned in the
+      // form's theme navy rather than the corner label's muted tint (Amrit's
+      // review, 21 Aug 2026 — a per-segment left rail was also considered and
+      // dropped: with no wrapper nodes it needs a positioned overlay that
+      // drifts whenever validation errors change a segment's height).
+      ".hs-form .contour-person-tabs--static { justify-content: flex-end; }" +
+      ".hs-form .contour-person-tabs__heading { font-size: 11.5px; font-weight: 700; letter-spacing: 0.10em; text-transform: uppercase; color: #0C3166; }" +
+      // With the Guardian tab forward, the boundary between HubSpot's
+      // dependent-field fieldset (holding the strip) and the guardian
+      // fieldsets below it must close up so the box reads as one.
+      ".hs-form .contour-person-tabbridge { margin-bottom: 0 !important; }" +
+      // --- student tiles: flex children of .hs-dependent-field ----------------
+      // Gaps are zeroed and the tiles widened to an exact 50% so their painted
+      // backgrounds meet; the spacing the gaps provided moves into padding.
+      // margin-bottom matches the guardian bottom fieldset's 30px — with the
+      // Student tab forward this container ends the box, and its native
+      // 1.25rem margin left less room under the box than the Guardian tab.
+      ".hs-form .hs-dependent-field.contour-person-group-host { column-gap: 0 !important; row-gap: 0 !important; margin-bottom: 30px !important; }" +
+      ".hs-form .contour-person-group-host > .hs_student_first_name.contour-person-card__row, .hs-form .contour-person-group-host > .hs_student_last_name.contour-person-card__row, .hs-form .contour-person-group-host > .hs_student_email.contour-person-card__row, .hs-form .contour-person-group-host > .hs_student_phone_number.contour-person-card__row { flex: 0 0 50% !important; box-sizing: border-box; background: transparent; margin: 0 !important; padding: 12px 24px 20px; }" +
+      ".hs-form .contour-person-group-host > .hs_student_first_name.contour-person-card__row, .hs-form .contour-person-group-host > .hs_student_email.contour-person-card__row { border-left: 1px solid " + line + "; padding-right: 12px; }" +
+      ".hs-form .contour-person-group-host > .hs_student_last_name.contour-person-card__row, .hs-form .contour-person-group-host > .hs_student_phone_number.contour-person-card__row { border-right: 1px solid " + line + "; padding-left: 12px; }" +
+      ".hs-form .contour-person-card__row--student.contour-person-card__row--bottom { border-bottom: 1px solid " + line + "; }" +
+      // padding-bottom rides on these two, not the shared rule above — the
+      // 50%-tile rule outweighs the shared one and its 20px would win.
+      ".hs-form .contour-person-group-host > .hs_student_email.contour-person-card__row--bottom { border-radius: 0 0 0 16px; padding-bottom: 24px; }" +
+      ".hs-form .contour-person-group-host > .hs_student_phone_number.contour-person-card__row--bottom { border-radius: 0 0 16px 0; padding-bottom: 24px; }" +
+      // --- guardian rows: whole top-level fieldsets ---------------------------
+      // The fieldsets take the same flex geometry as the student tiles —
+      // HubSpot's own form-columns-2 layout (floats, 95% inputs, field
+      // margins) gave the Guardian tab different gutters and bottom padding
+      // than the Student tab.
+      ".hs-form fieldset.contour-person-card__row--guardian { display: flex; flex-wrap: wrap; box-sizing: border-box; background: transparent; border-left: 1px solid " + line + "; border-right: 1px solid " + line + "; margin: 0 !important; max-width: none; padding: 0; }" +
+      ".hs-form fieldset.contour-person-card__row--guardian > .hs-form-field { float: none !important; flex: 0 0 50%; width: 50% !important; box-sizing: border-box; margin: 0 !important; padding: 12px 12px 20px 24px; }" +
+      ".hs-form fieldset.contour-person-card__row--guardian > .hs-form-field + .hs-form-field { padding: 12px 24px 20px 12px; }" +
+      ".hs-form fieldset.contour-person-card__row--guardian .hs-input:not([type=\"checkbox\"]):not([type=\"radio\"]):not(.contour-intl-phone__country):not(.contour-intl-phone__number) { width: 100% !important; }" +
+      // HubSpot's intl-phone widget carries a clearfix ::after; in its column
+      // flex layout that pseudo-element is a flex item and adds one phantom
+      // 8px gap under the number box, pushing the guardian tab's bottom
+      // padding out of step with the student tab's.
+      '.hs-form fieldset.contour-person-card__row--guardian .hs-fieldtype-intl-phone::after { content: none; }' +
+      ".hs-form fieldset.contour-person-card__row--guardian.contour-person-card__row--bottom { border-bottom: 1px solid " + line + "; border-radius: 0 0 16px 16px; margin-bottom: 30px !important; }" +
+      ".hs-form fieldset.contour-person-card__row--guardian.contour-person-card__row--bottom > .hs-form-field { padding-bottom: 24px; }" +
+      // --- mobile: tiles stack, so side borders and the bottom edge move ------
+      "@media screen and (max-width: 767px) {" +
+      " .hs-form .contour-person-tabs { padding: 12px 14px; gap: 6px; }" +
+      " .hs-form button.contour-person-tab { padding: 6px 14px; font-size: 13.5px; }" +
+      " .hs-form .contour-person-tabs__title { display: none; }" +
+      " .hs-form .contour-person-group-host > .hs_student_first_name.contour-person-card__row, .hs-form .contour-person-group-host > .hs_student_last_name.contour-person-card__row, .hs-form .contour-person-group-host > .hs_student_email.contour-person-card__row, .hs-form .contour-person-group-host > .hs_student_phone_number.contour-person-card__row { flex: 0 0 100% !important; border-left: 1px solid " + line + "; border-right: 1px solid " + line + "; padding: 10px 20px 16px; }" +
+      " .hs-form fieldset.contour-person-card__row--guardian > .hs-form-field, .hs-form fieldset.contour-person-card__row--guardian > .hs-form-field + .hs-form-field { flex: 0 0 100%; width: 100% !important; padding: 10px 20px 16px; }" +
+      " .hs-form fieldset.contour-person-card__row--guardian.contour-person-card__row--bottom > .hs-form-field { padding-bottom: 16px; }" +
+      " .hs-form .contour-person-group-host > .hs_student_email.contour-person-card__row--bottom { border-bottom: none; border-radius: 0; padding-bottom: 16px; }" +
+      " .hs-form .contour-person-group-host > .hs_student_phone_number.contour-person-card__row--bottom { border-radius: 0 0 16px 16px; padding-bottom: 16px; }" +
+      " .hs-form fieldset.contour-person-card__row--guardian.contour-person-card__row--bottom > .hs-form-field { padding-bottom: 16px; }" +
+      "}";
     document.head.appendChild(style);
   }
   function enhanceContactTypeIllustrations() {
@@ -1894,7 +1894,7 @@ var ContourForm1Logic = function () {
   // the sheet is the central reference for what students see. Applied
   // before the heuristic relabels, which stay as fallback for unmapped
   // codes. Display-only: submitted structured values are untouched.
-  var SUBJECT_SIGNUP_NAMES = {"GAMSAT":"GAMSAT","HSC-BIOL":"HSC Biology (Year 12)","HSC-CHEM":"HSC Chemistry (Year 12)","HSC-MADV":"HSC Maths Advanced (Year 12)","HSC-MAE1":"HSC Maths Extension 1 (Year 12)","HSC-MAE2":"HSC Maths Extension 2 (Year 12)","HSC-PHYS":"HSC Physics (Year 12)","MD-INT":"Medical & Dental Interviews","NSW-EN07":"Year 7 English","NSW-EN08":"Year 8 English","NSW-EN09":"Year 9 English","NSW-EN10":"Year 10 English","NSW-MA07":"Year 7 Maths","NSW-MA08":"Year 8 Maths","NSW-MA09":"Year 9 Maths","NSW-MA10":"Year 10 Maths","NSW-SC07":"Year 7 Science","NSW-SC08":"Year 8 Science","NSW-SC09":"Year 9 Science","NSW-SC10":"Year 10 Science","PRE-BIOL":"Prelim Biology (Year 11)","PRE-CHEM":"Prelim Chemistry (Year 11)","PRE-MADV":"Prelim Maths Advanced (Year 11)","PRE-MAE1":"Prelim Maths Extension 1 (Year 11)","PRE-PHYS":"Prelim Physics (Year 11)","QCE-BI12":"QCE Biology (Year 11)","QCE-BI34":"QCE Biology (Year 12)","QCE-CH12":"QCE Chemistry (Year 11)","QCE-CH34":"QCE Chemistry (Year 12)","QCE-MM12":"QCE Methods (Year 11)","QCE-MM34":"QCE Methods (Year 12)","QCE-PH12":"QCE Physics (Year 11)","QCE-PH34":"QCE Physics (Year 12)","QCE-SM12":"QCE Specialist Maths (Year 11)","QCE-SM34":"QCE Specialist Maths (Year 12)","QLD-EN07":"Year 7 English","QLD-EN08":"Year 8 English","QLD-EN09":"Year 9 English","QLD-EN10":"Year 10 English","QLD-MA07":"Year 7 Maths","QLD-MA08":"Year 8 Maths","QLD-MA09":"Year 9 Maths","QLD-MA1A":"Year 10 Maths","QLD-SC07":"Year 7 Science","QLD-SC08":"Year 8 Science","QLD-SC09":"Year 9 Science","QLD-SC10":"Year 10 Science","UCAT-ANZ-CORE":"UCAT","UCAT-ANZ-MAST":"UCAT","UCAT-UK-CORE":"UCAT","UCAT-UK-MAST":"UCAT","VCE-BI12":"VCE Biology 1/2","VCE-BI34":"VCE Biology 3/4","VCE-BI34-INT2":"-","VCE-BI34-INT3":"-","VCE-CH12":"VCE Chemistry 1/2","VCE-CH34":"VCE Chemistry 3/4","VCE-CH34-INT2":"-","VCE-CH34-INT3":"-","VCE-EL12":"VCE English Language 1/2","VCE-EL34":"VCE English Language 3/4","VCE-EN12":"VCE English 1/2","VCE-EN34":"VCE English 3/4","VCE-MM12":"VCE Methods 1/2","VCE-MM34":"VCE Methods 3/4","VCE-MM34-INT2":"VCE Mathematical Methods 3/4 Intensive","VCE-MM34-INT3":"VCE Mathematical Methods 3/4 Intensive","VCE-PH12":"VCE Physics 1/2","VCE-PH34":"VCE Physics 3/4","VCE-PH34-INT2":"-","VCE-PH34-INT3":"-","VCE-SM12":"VCE Specialist Maths 1/2","VCE-SM34":"VCE Specialist Maths 3/4","VCE-SM34-INT2":"VCE Specialist Mathematics 3/4 Intensive","VCE-SM34-INT3":"VCE Specialist Mathematics 3/4 Intensive","VIC-EN07":"Year 7 English","VIC-EN08":"Year 8 English","VIC-EN09":"Year 9 English","VIC-EN10":"Year 10 English","VIC-MA07":"Year 7 Maths","VIC-MA08":"Year 8 Maths","VIC-MA09":"Year 9 Maths","VIC-MA1A":"Year 10 Advanced Maths","VIC-MA9A":"Year 9 Advanced Maths","VIC-SC07":"Year 7 Science","VIC-SC08":"Year 8 Science","VIC-SC09":"Year 9 Science","VIC-SC10":"Year 10 Science","VSC-EN05":"Scholarship English","VSC-MA05":"Scholarship Maths","VSC-WR05":"Scholarship Writing","VSE-COEN":"Selective Entry English","VSE-COMA":"Selective Entry Maths","VSE-COWR":"Selective Entry Writing","VSE-EN06":"Selective Entry English","VSE-EN07":"Selective Entry English","VSE-EN08":"Selective Entry English","VSE-MA06":"Selective Entry Maths","VSE-MA07":"Selective Entry Maths","VSE-MA08":"Selective Entry Maths","VSE-WR06":"Selective Entry Writing","VSE-WR07":"Selective Entry Writing","VSE-WR08":"Selective Entry Writing"};
+  var SUBJECT_SIGNUP_NAMES = { "GAMSAT": "GAMSAT", "HSC-BIOL": "HSC Biology (Year 12)", "HSC-CHEM": "HSC Chemistry (Year 12)", "HSC-MADV": "HSC Maths Advanced (Year 12)", "HSC-MAE1": "HSC Maths Extension 1 (Year 12)", "HSC-MAE2": "HSC Maths Extension 2 (Year 12)", "HSC-PHYS": "HSC Physics (Year 12)", "MD-INT": "Medical & Dental Interviews", "NSW-EN07": "Year 7 English", "NSW-EN08": "Year 8 English", "NSW-EN09": "Year 9 English", "NSW-EN10": "Year 10 English", "NSW-MA07": "Year 7 Maths", "NSW-MA08": "Year 8 Maths", "NSW-MA09": "Year 9 Maths", "NSW-MA10": "Year 10 Maths", "NSW-SC07": "Year 7 Science", "NSW-SC08": "Year 8 Science", "NSW-SC09": "Year 9 Science", "NSW-SC10": "Year 10 Science", "PRE-BIOL": "Prelim Biology (Year 11)", "PRE-CHEM": "Prelim Chemistry (Year 11)", "PRE-MADV": "Prelim Maths Advanced (Year 11)", "PRE-MAE1": "Prelim Maths Extension 1 (Year 11)", "PRE-PHYS": "Prelim Physics (Year 11)", "QCE-BI12": "QCE Biology (Year 11)", "QCE-BI34": "QCE Biology (Year 12)", "QCE-CH12": "QCE Chemistry (Year 11)", "QCE-CH34": "QCE Chemistry (Year 12)", "QCE-MM12": "QCE Methods (Year 11)", "QCE-MM34": "QCE Methods (Year 12)", "QCE-PH12": "QCE Physics (Year 11)", "QCE-PH34": "QCE Physics (Year 12)", "QCE-SM12": "QCE Specialist Maths (Year 11)", "QCE-SM34": "QCE Specialist Maths (Year 12)", "QLD-EN07": "Year 7 English", "QLD-EN08": "Year 8 English", "QLD-EN09": "Year 9 English", "QLD-EN10": "Year 10 English", "QLD-MA07": "Year 7 Maths", "QLD-MA08": "Year 8 Maths", "QLD-MA09": "Year 9 Maths", "QLD-MA1A": "Year 10 Maths", "QLD-SC07": "Year 7 Science", "QLD-SC08": "Year 8 Science", "QLD-SC09": "Year 9 Science", "QLD-SC10": "Year 10 Science", "UCAT-ANZ-CORE": "UCAT", "UCAT-ANZ-MAST": "UCAT", "UCAT-UK-CORE": "UCAT", "UCAT-UK-MAST": "UCAT", "VCE-BI12": "VCE Biology 1/2", "VCE-BI34": "VCE Biology 3/4", "VCE-BI34-INT2": "-", "VCE-BI34-INT3": "-", "VCE-CH12": "VCE Chemistry 1/2", "VCE-CH34": "VCE Chemistry 3/4", "VCE-CH34-INT2": "-", "VCE-CH34-INT3": "-", "VCE-EL12": "VCE English Language 1/2", "VCE-EL34": "VCE English Language 3/4", "VCE-EN12": "VCE English 1/2", "VCE-EN34": "VCE English 3/4", "VCE-MM12": "VCE Methods 1/2", "VCE-MM34": "VCE Methods 3/4", "VCE-MM34-INT2": "VCE Mathematical Methods 3/4 Intensive", "VCE-MM34-INT3": "VCE Mathematical Methods 3/4 Intensive", "VCE-PH12": "VCE Physics 1/2", "VCE-PH34": "VCE Physics 3/4", "VCE-PH34-INT2": "-", "VCE-PH34-INT3": "-", "VCE-SM12": "VCE Specialist Maths 1/2", "VCE-SM34": "VCE Specialist Maths 3/4", "VCE-SM34-INT2": "VCE Specialist Mathematics 3/4 Intensive", "VCE-SM34-INT3": "VCE Specialist Mathematics 3/4 Intensive", "VIC-EN07": "Year 7 English", "VIC-EN08": "Year 8 English", "VIC-EN09": "Year 9 English", "VIC-EN10": "Year 10 English", "VIC-MA07": "Year 7 Maths", "VIC-MA08": "Year 8 Maths", "VIC-MA09": "Year 9 Maths", "VIC-MA1A": "Year 10 Advanced Maths", "VIC-MA9A": "Year 9 Advanced Maths", "VIC-SC07": "Year 7 Science", "VIC-SC08": "Year 8 Science", "VIC-SC09": "Year 9 Science", "VIC-SC10": "Year 10 Science", "VSC-EN05": "Scholarship English", "VSC-MA05": "Scholarship Maths", "VSC-WR05": "Scholarship Writing", "VSE-COEN": "Selective Entry English", "VSE-COMA": "Selective Entry Maths", "VSE-COWR": "Selective Entry Writing", "VSE-EN06": "Selective Entry English", "VSE-EN07": "Selective Entry English", "VSE-EN08": "Selective Entry English", "VSE-MA06": "Selective Entry Maths", "VSE-MA07": "Selective Entry Maths", "VSE-MA08": "Selective Entry Maths", "VSE-WR06": "Selective Entry Writing", "VSE-WR07": "Selective Entry Writing", "VSE-WR08": "Selective Entry Writing" };
   function applySignupName(opt, classification) {
     var name = classification.code && SUBJECT_SIGNUP_NAMES[classification.code];
     if (!name) return;
@@ -2664,7 +2664,7 @@ var ContourForm1Logic = function () {
     if (!store) return;
     try {
       store.removeItem(DRAFT_STORAGE_KEY);
-    } catch (err) {}
+    } catch (err) { }
   }
   // A field that is not in the DOM is left out rather than written as empty:
   // the Student block, the region select and the campus list all come and go
@@ -2992,7 +2992,7 @@ var ContourForm1Logic = function () {
     container.style.display = "none";
     var heading = document.createElement("div");
     heading.className = "contour-subject-summary__heading";
-    heading.textContent = "Your Subjects";
+    heading.textContent = "Subjects Summary";
     container.appendChild(heading);
     var grid = document.createElement("div");
     grid.className = "contour-subject-summary__grid";
@@ -3020,15 +3020,15 @@ var ContourForm1Logic = function () {
     var trialing = prefetchedTrialSubjectCodes.map(subjectCodeToLabel);
     var enrolled = prefetchedEnrolledSubjectCodes.map(subjectCodeToLabel);
     var columns = [{
-      title: "Interested Subject" + (interested.length === 1 ? "" : "s"),
+      title: "Your Interested Subject" + (interested.length === 1 ? "" : "s"),
       items: interested,
       chipClass: "contour-subject-chip--navy"
     }, {
-      title: "Trialing Subject" + (trialing.length === 1 ? "" : "s"),
+      title: "Your Trialing Subject" + (trialing.length === 1 ? "" : "s"),
       items: trialing,
       chipClass: "contour-subject-chip--lime"
     }, {
-      title: "Enrolled Subject" + (enrolled.length === 1 ? "" : "s"),
+      title: "Your Enrolled Subject" + (enrolled.length === 1 ? "" : "s"),
       items: enrolled,
       chipClass: "contour-subject-chip--blue"
     }];
@@ -3707,10 +3707,10 @@ var ContourForm1Logic = function () {
     var style = document.createElement("style");
     style.id = "contour-error-rollup-styles";
     style.textContent = "" + card + " { display: flex; align-items: center; gap: 12px; box-sizing: border-box; margin: 1.5rem 0 0 !important; padding: 14px 18px !important; border: 1px solid rgba(200, 16, 46, 0.22); border-left: 4px solid #c8102e; border-radius: 12px; background: #FDF3F4; box-shadow: 0 1px 3px rgba(200, 16, 46, 0.08); list-style: none; }" + card + "::before { content: \"!\"; flex: 0 0 auto; display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background: #c8102e; color: #FFFFFF; font-size: 13px; font-weight: 700; line-height: 1; }" + card + " ul, " + card + " .hs-error-msgs { margin: 0 !important; padding: 0 !important; list-style: none; }" +
-    // The page header sets .hs-form .hs-error-msgs li { display: block;
-    // width: 100% } with !important, which would push the badge out of a flex
-    // row, so the width has to be handed back explicitly.
-    card + " li, " + card + " label { width: auto !important; flex: 1 1 auto; margin: 0 !important; padding: 0 !important; color: #8A0C22 !important; font-size: 0.95rem !important; font-weight: 600 !important; line-height: 1.4 !important; }" + "@media (prefers-reduced-motion: no-preference) { " + card + " { animation: contour-rollup-in 0.22s ease-out; } }" + "@keyframes contour-rollup-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }";
+      // The page header sets .hs-form .hs-error-msgs li { display: block;
+      // width: 100% } with !important, which would push the badge out of a flex
+      // row, so the width has to be handed back explicitly.
+      card + " li, " + card + " label { width: auto !important; flex: 1 1 auto; margin: 0 !important; padding: 0 !important; color: #8A0C22 !important; font-size: 0.95rem !important; font-weight: 600 !important; line-height: 1.4 !important; }" + "@media (prefers-reduced-motion: no-preference) { " + card + " { animation: contour-rollup-in 0.22s ease-out; } }" + "@keyframes contour-rollup-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }";
     document.head.appendChild(style);
   }
   function tagErrorRollup() {
@@ -3964,11 +3964,11 @@ var ContourForm1Logic = function () {
     failures.forEach(function (validator) {
       try {
         validator.showError();
-      } catch (err) {}
+      } catch (err) { }
       var wrap = null;
       try {
         wrap = validator.anchor();
-      } catch (err) {}
+      } catch (err) { }
       if (wrap && flagged.indexOf(wrap) === -1) flagged.push(wrap);
     });
     native.forEach(function (wrap) {
@@ -4030,7 +4030,7 @@ var ContourForm1Logic = function () {
       // the submit button rather than stranding it in a collapsed group.
       box.setAttribute("data-contour-section", "finish");
       var submitWrap = formRoot.querySelector(".hs_submit");
-      if (submitWrap && submitWrap.parentNode) submitWrap.parentNode.insertBefore(box, submitWrap);else formRoot.appendChild(box);
+      if (submitWrap && submitWrap.parentNode) submitWrap.parentNode.insertBefore(box, submitWrap); else formRoot.appendChild(box);
     }
     box.innerHTML = "";
     var body = document.createElement("div");
@@ -4089,7 +4089,7 @@ var ContourForm1Logic = function () {
       if (btn.getAttribute("data-contour-busy") === "1") return;
       btn.setAttribute("data-contour-busy", "1");
       btn.setAttribute("data-contour-label", btn.tagName === "INPUT" ? btn.value : btn.textContent);
-      if (btn.tagName === "INPUT") btn.value = "Submitting…";else btn.textContent = "Submitting…";
+      if (btn.tagName === "INPUT") btn.value = "Submitting…"; else btn.textContent = "Submitting…";
       btn.classList.add("contour-submit--busy");
       btn.setAttribute("aria-busy", "true");
       // A busy state that never lifts is worse than none, so it always expires
@@ -4105,7 +4105,7 @@ var ContourForm1Logic = function () {
     if (btn.getAttribute("data-contour-busy") !== "1") return;
     btn.removeAttribute("data-contour-busy");
     var label = btn.getAttribute("data-contour-label") || "Submit";
-    if (btn.tagName === "INPUT") btn.value = label;else btn.textContent = label;
+    if (btn.tagName === "INPUT") btn.value = label; else btn.textContent = label;
     btn.classList.remove("contour-submit--busy");
     btn.removeAttribute("aria-busy");
   }
@@ -4147,35 +4147,35 @@ var ContourForm1Logic = function () {
     var style = document.createElement("style");
     style.id = "contour-motion-styles";
     style.textContent = "" +
-    // --- motion primitives -------------------------------------------------
-    "@keyframes contour-reveal-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }" + "@keyframes contour-form-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }" + "@keyframes contour-error-in { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: none; } }" + "@keyframes contour-badge-in { from { opacity: 0; transform: scale(0.4); } 70% { transform: scale(1.12); } to { opacity: 1; transform: scale(1); } }" +
-    "@media (prefers-reduced-motion: no-preference) {" + "  .contour-reveal { animation: contour-reveal-in 420ms " + REVEAL_EASE + " both; }" + "  .contour-form-enter { animation: contour-form-in 380ms " + REVEAL_EASE + " both; }" + "  .hs-form .hs-error-msgs:not(.contour-error-rollup) { animation: contour-error-in 200ms ease-out both; }" + "  .hs-form .contour-program-card--selected .contour-program-card__badge { animation: contour-badge-in 220ms " + REVEAL_EASE + " both; }" + "}" +
-    // --- controls responding to the pointer and the keyboard ---------------
-    // The page header styles fields with a three-:not() selector, which
-    // outranks a plain class, so every contested property repeats the trio.
-    ".hs-form .hs-input" + notBox + " { transition: border-color .16s ease, box-shadow .16s ease, background-color .16s ease !important; }" + ".hs-form .hs-input" + notBox + ":hover:not(:disabled) { border-color: rgba(12, 49, 102, 0.34) !important; }" +
-    // :focus-visible rather than :focus, so the ring is there for a keyboard
-    // and absent for a mouse click.
-    ".hs-form .hs-input" + notBox + ":focus-visible { outline: none !important; border-color: #0540F2 !important; box-shadow: 0 0 0 3px rgba(5, 64, 242, 0.18) !important; }" + ".hs-form .hs-input" + notBox + ":focus:not(:focus-visible) { outline: none !important; box-shadow: none !important; }" + ".hs-form .hs-input.invalid" + notBox + ", .hs-form .hs-input.error" + notBox + " { border-color: #c8102e !important; box-shadow: 0 0 0 3px rgba(200, 16, 46, 0.10) !important; }" + ".hs-form select:disabled, .hs-form input:disabled { transition: opacity .16s ease, background-color .16s ease; }" +
-    // Selectable cards: the tick is animated above, the surface eases here.
-    ".hs-form .hs-form-checkbox-display, .hs-form .hs-form-radio-display, .hs-form .contour-program-card { transition: background-color .16s ease, border-color .16s ease, box-shadow .16s ease, transform .16s ease; }" + ".hs-form .hs-form-checkbox-display:active, .hs-form .hs-form-radio-display:active { transform: scale(0.985); }" + ".hs-form .hs-button:active { transform: translateY(0) scale(0.99); }" +
-    // --- submit button busy state ------------------------------------------
-    ".hs-form .hs-button.contour-submit--busy { pointer-events: none; opacity: 0.7; }" + '.hs-form .hs-button.contour-submit--busy::before { content: ""; width: 14px; height: 14px; border-radius: 50%; border: 2px solid rgba(12, 49, 102, 0.3); border-top-color: #0C3166; animation: contour-spin 0.7s linear infinite; }' +
-    // --- section headers ----------------------------------------------------
-    // Widths are stated because the Guardian flow puts this header inside
-    // HubSpot's dependent-field container, which lays its children out in
-    // columns — without them the heading sits beside the first field.
-    // The title sits on the right as a pill, with the rule line filling the
-    // space to its left — the line IS the section divider, so the header
-    // carries no border of its own and the hr dividers below stand down
-    // whenever headers are on (Amrit, 21 Aug 2026).
-    ".hs-form .contour-section-header { display: flex; align-items: center; justify-content: flex-end; gap: 14px; box-sizing: border-box; width: 100%; flex: 0 0 100%; grid-column: 1 / -1; margin: 34px 0 20px; }" + ".hs-form .contour-section-header:first-child { margin-top: 0; }" + '.hs-form .contour-section-header::before { content: ""; flex: 1 1 auto; height: 1px; background: linear-gradient(90deg, rgba(12, 49, 102, 0), rgba(12, 49, 102, 0.18)); }' + ".hs-form .contour-section-header__title { flex: 0 0 auto; font-size: 12px; font-weight: 700; letter-spacing: 0.10em; text-transform: uppercase; color: #0C3166; padding: 6px 14px; border: 1px solid rgba(12, 49, 102, 0.16); border-radius: 999px; background: #FFFFFF; }" +
-    // The three rules predate the headers and would double up with them.
-    ".hs-form.contour-section-headers-on hr.contour-section-divider { display: none !important; }" +
-    // --- helper note under a field that is waiting on an earlier answer -----
-    ".hs-form .contour-disabled-hint { margin-top: 6px; font-size: 12.5px; line-height: 1.4; color: #6b7280; }" +
-    // --- error summary ------------------------------------------------------
-    ".hs-form .contour-error-rollup--list { align-items: flex-start; }" + ".hs-form .contour-error-rollup--list::before { margin-top: 1px; }" + ".hs-form .contour-error-summary__body { flex: 1 1 auto; min-width: 0; }" + ".hs-form .contour-error-summary__title { margin: 0 0 9px !important; padding: 0 !important; font-size: 0.95rem !important; font-weight: 700 !important; line-height: 1.35 !important; color: #8A0C22 !important; }" + ".hs-form .contour-error-summary__list { display: flex; flex-wrap: wrap; gap: 7px 8px; margin: 0 !important; padding: 0 !important; list-style: none; }" + ".hs-form .contour-error-summary__list li { width: auto !important; flex: 0 0 auto !important; margin: 0 !important; padding: 0 !important; }" + ".hs-form .contour-error-summary__link { display: inline-block; appearance: none; -webkit-appearance: none; border: 1px solid rgba(200, 16, 46, 0.30); border-radius: 999px; background: #FFFFFF; color: #8A0C22; padding: 5px 12px; font: inherit; font-size: 12.5px; font-weight: 600; line-height: 1.3; cursor: pointer; transition: background-color .15s ease, border-color .15s ease, color .15s ease; }" + ".hs-form .contour-error-summary__link:hover { background: #c8102e; border-color: #c8102e; color: #FFFFFF; }" + ".hs-form .contour-error-summary__link:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(200, 16, 46, 0.25); }";
+      // --- motion primitives -------------------------------------------------
+      "@keyframes contour-reveal-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }" + "@keyframes contour-form-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }" + "@keyframes contour-error-in { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: none; } }" + "@keyframes contour-badge-in { from { opacity: 0; transform: scale(0.4); } 70% { transform: scale(1.12); } to { opacity: 1; transform: scale(1); } }" +
+      "@media (prefers-reduced-motion: no-preference) {" + "  .contour-reveal { animation: contour-reveal-in 420ms " + REVEAL_EASE + " both; }" + "  .contour-form-enter { animation: contour-form-in 380ms " + REVEAL_EASE + " both; }" + "  .hs-form .hs-error-msgs:not(.contour-error-rollup) { animation: contour-error-in 200ms ease-out both; }" + "  .hs-form .contour-program-card--selected .contour-program-card__badge { animation: contour-badge-in 220ms " + REVEAL_EASE + " both; }" + "}" +
+      // --- controls responding to the pointer and the keyboard ---------------
+      // The page header styles fields with a three-:not() selector, which
+      // outranks a plain class, so every contested property repeats the trio.
+      ".hs-form .hs-input" + notBox + " { transition: border-color .16s ease, box-shadow .16s ease, background-color .16s ease !important; }" + ".hs-form .hs-input" + notBox + ":hover:not(:disabled) { border-color: rgba(12, 49, 102, 0.34) !important; }" +
+      // :focus-visible rather than :focus, so the ring is there for a keyboard
+      // and absent for a mouse click.
+      ".hs-form .hs-input" + notBox + ":focus-visible { outline: none !important; border-color: #0540F2 !important; box-shadow: 0 0 0 3px rgba(5, 64, 242, 0.18) !important; }" + ".hs-form .hs-input" + notBox + ":focus:not(:focus-visible) { outline: none !important; box-shadow: none !important; }" + ".hs-form .hs-input.invalid" + notBox + ", .hs-form .hs-input.error" + notBox + " { border-color: #c8102e !important; box-shadow: 0 0 0 3px rgba(200, 16, 46, 0.10) !important; }" + ".hs-form select:disabled, .hs-form input:disabled { transition: opacity .16s ease, background-color .16s ease; }" +
+      // Selectable cards: the tick is animated above, the surface eases here.
+      ".hs-form .hs-form-checkbox-display, .hs-form .hs-form-radio-display, .hs-form .contour-program-card { transition: background-color .16s ease, border-color .16s ease, box-shadow .16s ease, transform .16s ease; }" + ".hs-form .hs-form-checkbox-display:active, .hs-form .hs-form-radio-display:active { transform: scale(0.985); }" + ".hs-form .hs-button:active { transform: translateY(0) scale(0.99); }" +
+      // --- submit button busy state ------------------------------------------
+      ".hs-form .hs-button.contour-submit--busy { pointer-events: none; opacity: 0.7; }" + '.hs-form .hs-button.contour-submit--busy::before { content: ""; width: 14px; height: 14px; border-radius: 50%; border: 2px solid rgba(12, 49, 102, 0.3); border-top-color: #0C3166; animation: contour-spin 0.7s linear infinite; }' +
+      // --- section headers ----------------------------------------------------
+      // Widths are stated because the Guardian flow puts this header inside
+      // HubSpot's dependent-field container, which lays its children out in
+      // columns — without them the heading sits beside the first field.
+      // The title sits on the right as a pill, with the rule line filling the
+      // space to its left — the line IS the section divider, so the header
+      // carries no border of its own and the hr dividers below stand down
+      // whenever headers are on (Amrit, 21 Aug 2026).
+      ".hs-form .contour-section-header { display: flex; align-items: center; justify-content: flex-end; gap: 14px; box-sizing: border-box; width: 100%; flex: 0 0 100%; grid-column: 1 / -1; margin: 34px 0 20px; }" + ".hs-form .contour-section-header:first-child { margin-top: 0; }" + '.hs-form .contour-section-header::before { content: ""; flex: 1 1 auto; height: 1px; background: linear-gradient(90deg, rgba(12, 49, 102, 0), rgba(12, 49, 102, 0.18)); }' + ".hs-form .contour-section-header__title { flex: 0 0 auto; font-size: 12px; font-weight: 700; letter-spacing: 0.10em; text-transform: uppercase; color: #0C3166; padding: 6px 14px; border: 1px solid rgba(12, 49, 102, 0.16); border-radius: 999px; background: #FFFFFF; }" +
+      // The three rules predate the headers and would double up with them.
+      ".hs-form.contour-section-headers-on hr.contour-section-divider { display: none !important; }" +
+      // --- helper note under a field that is waiting on an earlier answer -----
+      ".hs-form .contour-disabled-hint { margin-top: 6px; font-size: 12.5px; line-height: 1.4; color: #6b7280; }" +
+      // --- error summary ------------------------------------------------------
+      ".hs-form .contour-error-rollup--list { align-items: flex-start; }" + ".hs-form .contour-error-rollup--list::before { margin-top: 1px; }" + ".hs-form .contour-error-summary__body { flex: 1 1 auto; min-width: 0; }" + ".hs-form .contour-error-summary__title { margin: 0 0 9px !important; padding: 0 !important; font-size: 0.95rem !important; font-weight: 700 !important; line-height: 1.35 !important; color: #8A0C22 !important; }" + ".hs-form .contour-error-summary__list { display: flex; flex-wrap: wrap; gap: 7px 8px; margin: 0 !important; padding: 0 !important; list-style: none; }" + ".hs-form .contour-error-summary__list li { width: auto !important; flex: 0 0 auto !important; margin: 0 !important; padding: 0 !important; }" + ".hs-form .contour-error-summary__link { display: inline-block; appearance: none; -webkit-appearance: none; border: 1px solid rgba(200, 16, 46, 0.30); border-radius: 999px; background: #FFFFFF; color: #8A0C22; padding: 5px 12px; font: inherit; font-size: 12.5px; font-weight: 600; line-height: 1.3; cursor: pointer; transition: background-color .15s ease, border-color .15s ease, color .15s ease; }" + ".hs-form .contour-error-summary__link:hover { background: #c8102e; border-color: #c8102e; color: #FFFFFF; }" + ".hs-form .contour-error-summary__link:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(200, 16, 46, 0.25); }";
     document.head.appendChild(style);
   }
   /* =========================================================
@@ -4283,7 +4283,7 @@ var ContourForm1Logic = function () {
         return;
       }
       var index = indices.length > 0 ? indices[0] : -1;
-      if (index === -1) index = state.current;else state.current = index;
+      if (index === -1) index = state.current; else state.current = index;
       groups[index].push(node);
     });
   }
@@ -4406,7 +4406,7 @@ var ContourForm1Logic = function () {
     }
     if (node.getAttribute(SECTION_HIDDEN_ATTR) !== "1") return;
     var previous = node.getAttribute(SECTION_PREV_DISPLAY_ATTR) || "";
-    if (previous) node.style.display = previous;else node.style.removeProperty("display");
+    if (previous) node.style.display = previous; else node.style.removeProperty("display");
     node.removeAttribute(SECTION_HIDDEN_ATTR);
     node.removeAttribute(SECTION_PREV_DISPLAY_ATTR);
   }
@@ -5116,15 +5116,15 @@ var ContourForm1Logic = function () {
   // // Guardian flow is chosen. Only email_2 changes hands — it is the student's
   // // own address on the Student flow and the guardian's on the Guardian one.
   // var DUPLICATE_EMAIL_SLOTS = [{
-    // key: "own",
-    // selector: FIELD_SELECTORS.emailTemp,
-    // guardianFlow: false,
-    // message: "This email is already registered with us. Please use the personalised sign-up link we sent you, or contact our team."
+  // key: "own",
+  // selector: FIELD_SELECTORS.emailTemp,
+  // guardianFlow: false,
+  // message: "This email is already registered with us. Please use the personalised sign-up link we sent you, or contact our team."
   // }, {
-    // key: "student",
-    // selector: FIELD_SELECTORS.studentEmail,
-    // guardianFlow: true,
-    // message: "This student email is already registered with us. Please use the personalised sign-up link we sent you, or contact our team."
+  // key: "student",
+  // selector: FIELD_SELECTORS.studentEmail,
+  // guardianFlow: true,
+  // message: "This student email is already registered with us. Please use the personalised sign-up link we sent you, or contact our team."
   // }];
   // var duplicateEmailResults = {};
   // var duplicateEmailPending = {};
@@ -5132,105 +5132,105 @@ var ContourForm1Logic = function () {
   // var duplicateEmailPendingGateBound = false;
   // var duplicateEmailContactTypeBound = false;
   // function duplicateEmailCheckEnabled() {
-    // if (!featureEnabled("duplicateEmailCheck") || !PREFETCH_ENDPOINT) return false;
-    // return getUrlParam(STUDENT_ID_PARAM).trim() === "";
+  // if (!featureEnabled("duplicateEmailCheck") || !PREFETCH_ENDPOINT) return false;
+  // return getUrlParam(STUDENT_ID_PARAM).trim() === "";
   // }
   // // The box this slot names, but only while it is in play: on the page, on
   // // screen, and holding an address this flow is meant to check.
   // function duplicateEmailSlotInput(slot) {
-    // if (!duplicateEmailCheckEnabled()) return null;
-    // if (isGuardianContactType() && !slot.guardianFlow) return null;
-    // var input = q(slot.selector);
-    // if (!input) return null;
-    // // student_email lives in the Contact Type dependent group: HubSpot leaves
-    // // it on the page for a moment after the flow switches away from it.
-    // var wrap = fieldWrapper(input);
-    // if (wrap && !isFieldWrapVisible(wrap)) return null;
-    // return input;
+  // if (!duplicateEmailCheckEnabled()) return null;
+  // if (isGuardianContactType() && !slot.guardianFlow) return null;
+  // var input = q(slot.selector);
+  // if (!input) return null;
+  // // student_email lives in the Contact Type dependent group: HubSpot leaves
+  // // it on the page for a moment after the flow switches away from it.
+  // var wrap = fieldWrapper(input);
+  // if (wrap && !isFieldWrapVisible(wrap)) return null;
+  // return input;
   // }
   // function duplicateEmailSlotsInPlay() {
-    // var entries = [];
-    // DUPLICATE_EMAIL_SLOTS.forEach(function (slot) {
-      // var input = duplicateEmailSlotInput(slot);
-      // if (input) entries.push({ slot: slot, input: input });
-    // });
-    // return entries;
+  // var entries = [];
+  // DUPLICATE_EMAIL_SLOTS.forEach(function (slot) {
+  // var input = duplicateEmailSlotInput(slot);
+  // if (input) entries.push({ slot: slot, input: input });
+  // });
+  // return entries;
   // }
   // function duplicateEmailValue(input) {
-    // return ((input && input.value) || "").trim().toLowerCase();
+  // return ((input && input.value) || "").trim().toLowerCase();
   // }
   // // Worth a lookup: a complete address the endpoint will accept. Both shapes
   // // are applied because the endpoint rejects anything its own EMAIL_SHAPE
   // // fails, and a 400 is a wasted round trip.
   // function duplicateEmailCheckable(value) {
-    // return value !== "" && value.length <= 254 && EMAIL_PATTERN.test(value) && EMAIL_SHAPE.test(value);
+  // return value !== "" && value.length <= 254 && EMAIL_PATTERN.test(value) && EMAIL_SHAPE.test(value);
   // }
   // // true (registered), false (clear), or null for "not looked up yet".
   // function duplicateEmailVerdict(value) {
-    // return Object.prototype.hasOwnProperty.call(duplicateEmailResults, value) ? duplicateEmailResults[value] : null;
+  // return Object.prototype.hasOwnProperty.call(duplicateEmailResults, value) ? duplicateEmailResults[value] : null;
   // }
   // function lookupDuplicateEmail(value) {
-    // if (Object.prototype.hasOwnProperty.call(duplicateEmailResults, value)) {
-      // return Promise.resolve(duplicateEmailResults[value]);
-    // }
-    // if (duplicateEmailPending[value]) return duplicateEmailPending[value];
-    // var request = fetch(PREFETCH_ENDPOINT + "/exists?email=" + encodeURIComponent(value)).then(function (res) {
-      // if (!res.ok) throw new Error("HTTP " + res.status);
-      // return res.json();
-    // }).then(function (data) {
-      // duplicateEmailResults[value] = !!(data && data.exists);
-      // return duplicateEmailResults[value];
-    // }).catch(function (err) {
-      // // Fail open: a signup must never be blocked by our own outage.
-      // console.warn("Contour Form 1 logic: duplicate email check failed:", err);
-      // duplicateEmailResults[value] = false;
-      // return false;
-    // }).then(function (exists) {
-      // delete duplicateEmailPending[value];
-      // return exists;
-    // });
-    // duplicateEmailPending[value] = request;
-    // return request;
+  // if (Object.prototype.hasOwnProperty.call(duplicateEmailResults, value)) {
+  // return Promise.resolve(duplicateEmailResults[value]);
+  // }
+  // if (duplicateEmailPending[value]) return duplicateEmailPending[value];
+  // var request = fetch(PREFETCH_ENDPOINT + "/exists?email=" + encodeURIComponent(value)).then(function (res) {
+  // if (!res.ok) throw new Error("HTTP " + res.status);
+  // return res.json();
+  // }).then(function (data) {
+  // duplicateEmailResults[value] = !!(data && data.exists);
+  // return duplicateEmailResults[value];
+  // }).catch(function (err) {
+  // // Fail open: a signup must never be blocked by our own outage.
+  // console.warn("Contour Form 1 logic: duplicate email check failed:", err);
+  // duplicateEmailResults[value] = false;
+  // return false;
+  // }).then(function (exists) {
+  // delete duplicateEmailPending[value];
+  // return exists;
+  // });
+  // duplicateEmailPending[value] = request;
+  // return request;
   // }
   // // An unknown verdict passes here; duplicateEmailPendingGate() resolves it.
   // function duplicateEmailSlotIsValid(slot) {
-    // var input = duplicateEmailSlotInput(slot);
-    // if (!input) return true;
-    // var value = duplicateEmailValue(input);
-    // if (!duplicateEmailCheckable(value)) return true;
-    // return duplicateEmailVerdict(value) !== true;
+  // var input = duplicateEmailSlotInput(slot);
+  // if (!input) return true;
+  // var value = duplicateEmailValue(input);
+  // if (!duplicateEmailCheckable(value)) return true;
+  // return duplicateEmailVerdict(value) !== true;
   // }
   // function updateDuplicateEmailError(slot) {
-    // var input = q(slot.selector);
-    // if (!input) return;
-    // ensureContourError(input, DUPLICATE_EMAIL_ERROR_CLASS, slot.message);
-    // if (duplicateEmailSlotIsValid(slot)) {
-      // clearContourError(input, DUPLICATE_EMAIL_ERROR_CLASS);
-      // return;
-    // }
-    // showContourError(input, DUPLICATE_EMAIL_ERROR_CLASS);
+  // var input = q(slot.selector);
+  // if (!input) return;
+  // ensureContourError(input, DUPLICATE_EMAIL_ERROR_CLASS, slot.message);
+  // if (duplicateEmailSlotIsValid(slot)) {
+  // clearContourError(input, DUPLICATE_EMAIL_ERROR_CLASS);
+  // return;
+  // }
+  // showContourError(input, DUPLICATE_EMAIL_ERROR_CLASS);
   // }
   // // Switching flow moves which box counts as whose, so a message raised
   // // against an address that is no longer being checked must not be left
   // // behind under the new label — and one that is still standing has to stay.
   // function refreshDuplicateEmailErrors() {
-    // DUPLICATE_EMAIL_SLOTS.forEach(updateDuplicateEmailError);
+  // DUPLICATE_EMAIL_SLOTS.forEach(updateDuplicateEmailError);
   // }
   // function checkDuplicateEmailOnBlur(slot) {
-    // var input = duplicateEmailSlotInput(slot);
-    // if (!input) return;
-    // var value = duplicateEmailValue(input);
-    // if (!duplicateEmailCheckable(value)) {
-      // clearContourError(input, DUPLICATE_EMAIL_ERROR_CLASS);
-      // return;
-    // }
-    // lookupDuplicateEmail(value).then(function () {
-      // // Typed on since the lookup left: whatever is in the box now owns the
-      // // verdict, and its own blur will ask for it.
-      // if (duplicateEmailValue(input) !== value) return;
-      // updateDuplicateEmailError(slot);
-      // syncFieldErrorAria();
-    // });
+  // var input = duplicateEmailSlotInput(slot);
+  // if (!input) return;
+  // var value = duplicateEmailValue(input);
+  // if (!duplicateEmailCheckable(value)) {
+  // clearContourError(input, DUPLICATE_EMAIL_ERROR_CLASS);
+  // return;
+  // }
+  // lookupDuplicateEmail(value).then(function () {
+  // // Typed on since the lookup left: whatever is in the box now owns the
+  // // verdict, and its own blur will ask for it.
+  // if (duplicateEmailValue(input) !== value) return;
+  // updateDuplicateEmailError(slot);
+  // syncFieldErrorAria();
+  // });
   // }
   // // A submit can arrive before an address has ever been looked up — autofill
   // // then Enter never blurs the field. The registered validators are
@@ -5240,96 +5240,96 @@ var ContourForm1Logic = function () {
   // // blocked by another field never reaches this and never spends a lookup;
   // // the cached verdicts then take the re-submission straight through.
   // function duplicateEmailPendingGate(e) {
-    // if (!duplicateEmailCheckEnabled()) return;
-    // var waiting = [];
-    // duplicateEmailSlotsInPlay().forEach(function (entry) {
-      // var value = duplicateEmailValue(entry.input);
-      // if (!duplicateEmailCheckable(value)) return;
-      // if (duplicateEmailVerdict(value) !== null) return;
-      // waiting.push(value);
-    // });
-    // if (waiting.length === 0) return;
-    // e.preventDefault();
-    // e.stopImmediatePropagation();
-    // Promise.all(waiting.map(lookupDuplicateEmail)).then(function () {
-      // var flagged = [];
-      // DUPLICATE_EMAIL_SLOTS.forEach(function (slot) {
-        // updateDuplicateEmailError(slot);
-        // if (duplicateEmailSlotIsValid(slot)) return;
-        // var input = duplicateEmailSlotInput(slot);
-        // if (input) flagged.push({ wrap: fieldWrapper(input) || input, input: input });
-      // });
-      // if (flagged.length === 0) {
-        // // Clean, and now cached: the same click, finished.
-        // if (typeof formRoot.requestSubmit === "function") {
-          // formRoot.requestSubmit();
-        // } else {
-          // var button = submitButtonEl();
-          // if (button) button.click();
-        // }
-        // return;
-      // }
-      // markSubmitBusy(false);
-      // // The verdicts can land a second or more after the click, by which time
-      // // the caret may have moved on. Always scroll to the reason the submit
-      // // did nothing, but only take focus if nothing else holds it.
-      // var active = document.activeElement;
-      // var caretIsFree = !active || active === document.body || active.type === "submit" || active.tagName === "BUTTON";
-      // reportFieldError(flagged[0].wrap, caretIsFree ? flagged[0].input : null);
-      // showFormErrorSummary(flagged.map(function (item) {
-        // return item.wrap;
-      // }));
-      // syncFieldErrorAria();
-    // });
+  // if (!duplicateEmailCheckEnabled()) return;
+  // var waiting = [];
+  // duplicateEmailSlotsInPlay().forEach(function (entry) {
+  // var value = duplicateEmailValue(entry.input);
+  // if (!duplicateEmailCheckable(value)) return;
+  // if (duplicateEmailVerdict(value) !== null) return;
+  // waiting.push(value);
+  // });
+  // if (waiting.length === 0) return;
+  // e.preventDefault();
+  // e.stopImmediatePropagation();
+  // Promise.all(waiting.map(lookupDuplicateEmail)).then(function () {
+  // var flagged = [];
+  // DUPLICATE_EMAIL_SLOTS.forEach(function (slot) {
+  // updateDuplicateEmailError(slot);
+  // if (duplicateEmailSlotIsValid(slot)) return;
+  // var input = duplicateEmailSlotInput(slot);
+  // if (input) flagged.push({ wrap: fieldWrapper(input) || input, input: input });
+  // });
+  // if (flagged.length === 0) {
+  // // Clean, and now cached: the same click, finished.
+  // if (typeof formRoot.requestSubmit === "function") {
+  // formRoot.requestSubmit();
+  // } else {
+  // var button = submitButtonEl();
+  // if (button) button.click();
+  // }
+  // return;
+  // }
+  // markSubmitBusy(false);
+  // // The verdicts can land a second or more after the click, by which time
+  // // the caret may have moved on. Always scroll to the reason the submit
+  // // did nothing, but only take focus if nothing else holds it.
+  // var active = document.activeElement;
+  // var caretIsFree = !active || active === document.body || active.type === "submit" || active.tagName === "BUTTON";
+  // reportFieldError(flagged[0].wrap, caretIsFree ? flagged[0].input : null);
+  // showFormErrorSummary(flagged.map(function (item) {
+  // return item.wrap;
+  // }));
+  // syncFieldErrorAria();
+  // });
   // }
   // function enforceDuplicateEmailValidation() {
-    // if (!duplicateEmailCheckEnabled()) return;
-    // if (!duplicateEmailContactTypeBound) {
-      // duplicateEmailContactTypeBound = true;
-      // onContactTypeChange(refreshDuplicateEmailErrors);
-    // }
-    // DUPLICATE_EMAIL_SLOTS.forEach(function (slot) {
-      // // Bound whether or not the slot is in play right now: which of them is
-      // // is decided when an event fires, not here. student_email is not even in
-      // // the DOM until the Guardian flow is chosen, and HubSpot rebuilds either
-      // // box when its own validation fires, so this runs from the form observer
-      // // and skips an input that already carries the check.
-      // var input = q(slot.selector);
-      // if (!input) return;
-      // if (input.getAttribute(DUPLICATE_EMAIL_BOUND_ATTR) !== "1") {
-        // input.setAttribute(DUPLICATE_EMAIL_BOUND_ATTR, "1");
-        // input.addEventListener("blur", function () {
-          // checkDuplicateEmailOnBlur(slot);
-        // });
-        // input.addEventListener("input", function () {
-          // // Typing only ever takes the message away; it comes back on the way out.
-          // clearContourError(input, DUPLICATE_EMAIL_ERROR_CLASS);
-        // });
-      // }
-      // if (formRoot && !duplicateEmailGatesBound[slot.key]) {
-        // duplicateEmailGatesBound[slot.key] = true;
-        // // One validator per box, so a summary that names both can name both.
-        // registerSubmitValidator({
-          // isValid: function () {
-            // return duplicateEmailSlotIsValid(slot);
-          // },
-          // showError: function () {
-            // var current = duplicateEmailSlotInput(slot);
-            // if (!current) return;
-            // updateDuplicateEmailError(slot);
-            // reportFieldError(fieldWrapper(current) || current, current);
-          // },
-          // anchor: function () {
-            // var current = duplicateEmailSlotInput(slot);
-            // return current ? fieldWrapper(current) || current : null;
-          // }
-        // });
-      // }
-    // });
-    // if (formRoot && !duplicateEmailPendingGateBound) {
-      // duplicateEmailPendingGateBound = true;
-      // formRoot.addEventListener("submit", duplicateEmailPendingGate, true);
-    // }
+  // if (!duplicateEmailCheckEnabled()) return;
+  // if (!duplicateEmailContactTypeBound) {
+  // duplicateEmailContactTypeBound = true;
+  // onContactTypeChange(refreshDuplicateEmailErrors);
+  // }
+  // DUPLICATE_EMAIL_SLOTS.forEach(function (slot) {
+  // // Bound whether or not the slot is in play right now: which of them is
+  // // is decided when an event fires, not here. student_email is not even in
+  // // the DOM until the Guardian flow is chosen, and HubSpot rebuilds either
+  // // box when its own validation fires, so this runs from the form observer
+  // // and skips an input that already carries the check.
+  // var input = q(slot.selector);
+  // if (!input) return;
+  // if (input.getAttribute(DUPLICATE_EMAIL_BOUND_ATTR) !== "1") {
+  // input.setAttribute(DUPLICATE_EMAIL_BOUND_ATTR, "1");
+  // input.addEventListener("blur", function () {
+  // checkDuplicateEmailOnBlur(slot);
+  // });
+  // input.addEventListener("input", function () {
+  // // Typing only ever takes the message away; it comes back on the way out.
+  // clearContourError(input, DUPLICATE_EMAIL_ERROR_CLASS);
+  // });
+  // }
+  // if (formRoot && !duplicateEmailGatesBound[slot.key]) {
+  // duplicateEmailGatesBound[slot.key] = true;
+  // // One validator per box, so a summary that names both can name both.
+  // registerSubmitValidator({
+  // isValid: function () {
+  // return duplicateEmailSlotIsValid(slot);
+  // },
+  // showError: function () {
+  // var current = duplicateEmailSlotInput(slot);
+  // if (!current) return;
+  // updateDuplicateEmailError(slot);
+  // reportFieldError(fieldWrapper(current) || current, current);
+  // },
+  // anchor: function () {
+  // var current = duplicateEmailSlotInput(slot);
+  // return current ? fieldWrapper(current) || current : null;
+  // }
+  // });
+  // }
+  // });
+  // if (formRoot && !duplicateEmailPendingGateBound) {
+  // duplicateEmailPendingGateBound = true;
+  // formRoot.addEventListener("submit", duplicateEmailPendingGate, true);
+  // }
   // }
   /* =========================================================
      STUDENT PHONE NUMBER — country code + number segmentation
