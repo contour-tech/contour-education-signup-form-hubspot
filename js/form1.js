@@ -471,6 +471,9 @@ var ContourForm1Logic = function () {
     style.textContent = "" +
       // overflow stays visible so the corner badge can straddle the outline.
       ".hs-form .contour-program-card { position: relative; }" +
+      // Breathing room between the "Select all that apply" helper and the
+      // card row (Angad) — the helper's own 8px margin was too tight.
+      ".hs-form .hs-form-field ul.contour-program-card-list { margin-top: 16px; }" +
       // Card background: transparent on hover — the translucent highlighter
       // tint fades in only while the card is selected.
       ".hs-form .contour-program-card::before { content: \"\"; position: absolute; inset: 0; border-radius: inherit; background: var(--contour-card-accent-soft, transparent); opacity: 0; transition: opacity 0.5s ease; pointer-events: none; }" +
@@ -513,6 +516,8 @@ var ContourForm1Logic = function () {
       var config = matchCardConfig(inputEl, index);
       var nativeWrapper = inputEl.closest("li") || inputEl.parentElement;
       var sharedParent = nativeWrapper.parentNode;
+      var cardList = nativeWrapper.closest("ul");
+      if (cardList) cardList.classList.add("contour-program-card-list");
       var card = document.createElement("label");
       card.className = "contour-program-card";
       if (config && config.accent) {
