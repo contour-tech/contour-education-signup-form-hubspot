@@ -102,10 +102,12 @@ var ContourForm1Logic = function () {
   var REGION_OTHER_CODE = "UK-OTH";
   var REGION_OTHER_NAME = "My region isn't listed";
   var REGION_PLACEHOLDER = "Please Select";
-  // accent/accentSoft/accentContrast reuse the retired pill palette per
-  // brand: hover wipes in the soft tint, selection keeps the accent on the
-  // border, ring and badge. accentContrast is the badge tick colour (navy on
-  // the lime TestPrep accent, white elsewhere).
+  // All three brands share the highlighter accent (Angad, 19 Aug Slack —
+  // "rather than OG blue, can we make that highlighter"): hover wipes in the
+  // soft tint, selection keeps the accent on the border and ring. The soft
+  // tint runs stronger than the old blue's 0.08 because the lime is so light
+  // it vanishes at that opacity. accentContrast is navy so anything drawn on
+  // the lime stays legible.
   var PROGRAM_CARD_CONFIG = [{
     match: /education|tutoring/i,
     title: "High School Tutoring",
@@ -116,27 +118,27 @@ var ContourForm1Logic = function () {
     // wordmark ends at x=362 and the suffix starts at x=380 in every logo,
     // so the clip sits at the x=371 midpoint of that gap over each width.
     logoTintRight: "45.4%",
-    accent: "#3478F7",
-    accentSoft: "rgba(52, 120, 247, 0.08)",
-    accentContrast: "#FFFFFF"
+    accent: "#D7FC3D",
+    accentSoft: "rgba(215, 252, 61, 0.18)",
+    accentContrast: "#0C3166"
   }, {
     match: /test\s*prep|selective/i,
     title: "Selective Entry & Scholarship",
     description: "Preparing junior students for selective school examinations",
     logoUrl: "https://cdn.prod.website-files.com/696ed06d2e62378f0a51f2d4/6a0bbed5fdbd2c829b5e4e7c_Final%20TESTPREP%20Charcoal%20horizontal%20logo.svg",
     logoTintRight: "41.8%",
-    accent: "#3478F7",
-    accentSoft: "rgba(52, 120, 247, 0.08)",
-    accentContrast: "#FFFFFF"
+    accent: "#D7FC3D",
+    accentSoft: "rgba(215, 252, 61, 0.18)",
+    accentContrast: "#0C3166"
   }, {
     match: /med\s*prep|ucat/i,
     title: "Medical Entry",
     description: "UCAT tutoring and medical interview coaching",
     logoUrl: "https://cdn.prod.website-files.com/696ed06d2e62378f0a51f2d4/6a0bbed5058c7ec65b1a454e_Final%20MEDPREP%20Charcoal%20horizontal%20logo.svg",
     logoTintRight: "39.9%",
-    accent: "#3478F7",
-    accentSoft: "rgba(52, 120, 247, 0.08)",
-    accentContrast: "#FFFFFF"
+    accent: "#D7FC3D",
+    accentSoft: "rgba(215, 252, 61, 0.18)",
+    accentContrast: "#0C3166"
   }];
   var UK_TOKEN = "United Kingdom";
   var UCAT_UK_PATTERN = /UCAT\s*\(UK\)/i;
@@ -471,24 +473,24 @@ var ContourForm1Logic = function () {
     style.textContent = "" +
       // overflow stays visible so the corner badge can straddle the outline.
       ".hs-form .contour-program-card { position: relative; }" +
-      // Card background: transparent on hover — the translucent blue tint
-      // fades in only while the card is selected.
+      // Card background: transparent on hover — the translucent highlighter
+      // tint fades in only while the card is selected.
       ".hs-form .contour-program-card::before { content: \"\"; position: absolute; inset: 0; border-radius: inherit; background: var(--contour-card-accent-soft, transparent); opacity: 0; transition: opacity 0.5s ease; pointer-events: none; }" +
       ".hs-form .contour-program-card--selected::before { opacity: 1; }" +
-      // Hover: just the logo and the outline light up in Contour blue.
-      ".hs-form .contour-program-card:hover { border-color: var(--contour-card-accent, #3478F7); }" +
+      // Hover: just the logo and the outline light up in the highlighter accent.
+      ".hs-form .contour-program-card:hover { border-color: var(--contour-card-accent, #D7FC3D); }" +
       // Selected: bolder border (2px ring on top of the 1px border).
-      ".hs-form .contour-program-card--selected { border-color: var(--contour-card-accent, #3478F7); box-shadow: 0 0 0 2px var(--contour-card-accent, #3478F7); }" +
+      ".hs-form .contour-program-card--selected { border-color: var(--contour-card-accent, #D7FC3D); box-shadow: 0 0 0 2px var(--contour-card-accent, #D7FC3D); }" +
       // Badge: always green, centred SVG tick, pinned half-out on the
       // top-right corner of the outline with a white ring so it never
       // overlaps the card content.
       ".hs-form .contour-program-card .contour-program-card__badge { top: -9px; right: -9px; width: 22px; height: 22px; background-color: #2f9e44; color: #FFFFFF; box-shadow: 0 0 0 2px #FFFFFF; z-index: 1; }" +
       ".hs-form .contour-program-card .contour-program-card__badge svg { display: block; }" +
-      // Logo: Contour-blue copy stacked on the charcoal original, wiped in
+      // Logo: highlighter copy stacked on the charcoal original, wiped in
       // from the left via clip-path. Filter chain recolours the charcoal SVG
-      // to #3478F7 (brightness(0) first, then rotate to the blue).
+      // to #D7FC3D (brightness(0) first, then rotate to the lime).
       ".hs-form .contour-program-card__logo-placeholder--has-logo { position: relative; }" +
-      ".hs-form .contour-program-card__logo-tint { position: absolute; top: 0; left: 0; height: 100%; width: auto; max-width: 100%; object-fit: contain; pointer-events: none; filter: brightness(0) saturate(100%) invert(42%) sepia(85%) saturate(3550%) hue-rotate(211deg) brightness(100%) contrast(94%); clip-path: inset(0 100% 0 0); transition: clip-path 0.7s ease; }" +
+      ".hs-form .contour-program-card__logo-tint { position: absolute; top: 0; left: 0; height: 100%; width: auto; max-width: 100%; object-fit: contain; pointer-events: none; filter: brightness(0) saturate(100%) invert(91%) sepia(87%) saturate(588%) hue-rotate(14deg) brightness(104%) contrast(98%); clip-path: inset(0 100% 0 0); transition: clip-path 0.7s ease; }" +
       ".hs-form .contour-program-card:hover .contour-program-card__logo-tint, .hs-form .contour-program-card--selected .contour-program-card__logo-tint { clip-path: inset(0 var(--contour-logo-tint-right, 0%) 0 0); }";
     document.head.appendChild(style);
   }
