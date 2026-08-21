@@ -869,21 +869,13 @@ var ContourForm1Logic = function () {
       existing = document.createElement("div");
       existing.setAttribute("data-contour-person-static", id);
       existing.className = "contour-person-tabs contour-person-tabs--static" + (withCorner ? "" : " contour-person-tabs--mid");
-      var pill = document.createElement("span");
-      pill.className = "contour-person-tab is-active contour-person-tab--static";
-      pill.appendChild(document.createTextNode(id === "student" ? "Student" : "Guardian"));
-      var req = document.createElement("span");
-      req.className = "contour-person-tab__req";
-      req.setAttribute("aria-hidden", "true");
-      req.textContent = "*";
-      pill.appendChild(req);
-      existing.appendChild(pill);
-      if (withCorner) {
-        var title = document.createElement("span");
-        title.className = "contour-person-tabs__title";
-        title.textContent = "Contact Information";
-        existing.appendChild(title);
-      }
+      // Plain small-caps headers, no pills — "Student Contact Information" /
+      // "Guardian Contact Information" say everything the pill plus corner
+      // label used to (Amrit's review, 21 Aug 2026).
+      var title = document.createElement("span");
+      title.className = "contour-person-tabs__heading";
+      title.textContent = (id === "student" ? "Student" : "Guardian") + " Contact Information";
+      existing.appendChild(title);
     }
     if (existing.nextSibling !== anchorRow) anchorRow.parentNode.insertBefore(existing, anchorRow);
   }
@@ -1166,6 +1158,9 @@ var ContourForm1Logic = function () {
     ".hs-form button.contour-person-tab.is-errored:not(.is-active) { border-color: rgba(200, 16, 46, 0.30); background: rgba(200, 16, 46, 0.05); color: #8A0C22; }" +
     ".hs-form button.contour-person-tab.is-errored:not(.is-active):hover { background: rgba(200, 16, 46, 0.10); }" +
     ".hs-form .contour-person-tabs__title { margin-left: auto; font-size: 11.5px; font-weight: 700; letter-spacing: 0.10em; text-transform: uppercase; color: rgba(12, 49, 102, 0.55); }" +
+    // Static segment headings (stacked rendering): same voice as the corner
+    // label, sitting left where the pill used to be.
+    ".hs-form .contour-person-tabs__heading { font-size: 11.5px; font-weight: 700; letter-spacing: 0.10em; text-transform: uppercase; color: rgba(12, 49, 102, 0.55); }" +
     // With the Guardian tab forward, the boundary between HubSpot's
     // dependent-field fieldset (holding the strip) and the guardian
     // fieldsets below it must close up so the box reads as one.
@@ -1177,7 +1172,7 @@ var ContourForm1Logic = function () {
     // Student tab forward this container ends the box, and its native
     // 1.25rem margin left less room under the box than the Guardian tab.
     ".hs-form .hs-dependent-field.contour-person-group-host { column-gap: 0 !important; row-gap: 0 !important; margin-bottom: 30px !important; }" +
-    ".hs-form .contour-person-group-host > .hs_student_first_name.contour-person-card__row, .hs-form .contour-person-group-host > .hs_student_last_name.contour-person-card__row, .hs-form .contour-person-group-host > .hs_student_email.contour-person-card__row, .hs-form .contour-person-group-host > .hs_student_phone_number.contour-person-card__row { flex: 0 0 50% !important; box-sizing: border-box; background: " + cardBg + "; margin: 0 !important; padding: 12px 24px 20px; }" +
+    ".hs-form .contour-person-group-host > .hs_student_first_name.contour-person-card__row, .hs-form .contour-person-group-host > .hs_student_last_name.contour-person-card__row, .hs-form .contour-person-group-host > .hs_student_email.contour-person-card__row, .hs-form .contour-person-group-host > .hs_student_phone_number.contour-person-card__row { flex: 0 0 50% !important; box-sizing: border-box; background: transparent; margin: 0 !important; padding: 12px 24px 20px; }" +
     ".hs-form .contour-person-group-host > .hs_student_first_name.contour-person-card__row, .hs-form .contour-person-group-host > .hs_student_email.contour-person-card__row { border-left: 1px solid " + line + "; padding-right: 12px; }" +
     ".hs-form .contour-person-group-host > .hs_student_last_name.contour-person-card__row, .hs-form .contour-person-group-host > .hs_student_phone_number.contour-person-card__row { border-right: 1px solid " + line + "; padding-left: 12px; }" +
     ".hs-form .contour-person-card__row--student.contour-person-card__row--bottom { border-bottom: 1px solid " + line + "; }" +
@@ -1190,7 +1185,7 @@ var ContourForm1Logic = function () {
     // HubSpot's own form-columns-2 layout (floats, 95% inputs, field
     // margins) gave the Guardian tab different gutters and bottom padding
     // than the Student tab.
-    ".hs-form fieldset.contour-person-card__row--guardian { display: flex; flex-wrap: wrap; box-sizing: border-box; background: " + cardBg + "; border-left: 1px solid " + line + "; border-right: 1px solid " + line + "; margin: 0 !important; max-width: none; padding: 0; }" +
+    ".hs-form fieldset.contour-person-card__row--guardian { display: flex; flex-wrap: wrap; box-sizing: border-box; background: transparent; border-left: 1px solid " + line + "; border-right: 1px solid " + line + "; margin: 0 !important; max-width: none; padding: 0; }" +
     ".hs-form fieldset.contour-person-card__row--guardian > .hs-form-field { float: none !important; flex: 0 0 50%; width: 50% !important; box-sizing: border-box; margin: 0 !important; padding: 12px 12px 20px 24px; }" +
     ".hs-form fieldset.contour-person-card__row--guardian > .hs-form-field + .hs-form-field { padding: 12px 24px 20px 12px; }" +
     ".hs-form fieldset.contour-person-card__row--guardian .hs-input:not([type=\"checkbox\"]):not([type=\"radio\"]):not(.contour-intl-phone__country):not(.contour-intl-phone__number) { width: 100% !important; }" +
@@ -5362,6 +5357,19 @@ var ContourForm1Logic = function () {
   var STUDENT_PHONE_DEFAULT_ISO = "au";
   var STUDENT_PHONE_MIN_DIGITS = 7;
   var STUDENT_PHONE_MAX_DIGITS = 20;
+  // HubSpot's native intl-phone widget (the guardian/Your Phone field) geo-
+  // detects the visitor's country and seeds its box with the dial code
+  // ("+91" in India) before this code ever runs. The student widget mirrors
+  // that answer instead of always opening on Australia, so the two phone
+  // fields greet the visitor the same way (Amrit, 21 Aug 2026). The dial
+  // code is read off the seeded value rather than HubSpot's select, whose
+  // option format is theirs to change.
+  function detectedPhoneIso() {
+    var nativeInput = formRoot ? formRoot.querySelector('.hs-fieldtype-intl-phone input[type="tel"]') : null;
+    var value = nativeInput ? (nativeInput.value || "").trim() : "";
+    var parts = value.charAt(0) === "+" ? splitE164(value) : null;
+    return parts ? parts.iso : STUDENT_PHONE_DEFAULT_ISO;
+  }
   var studentPhoneCountries = null;
   function getStudentPhoneCountries() {
     if (studentPhoneCountries) return studentPhoneCountries;
@@ -5461,7 +5469,7 @@ var ContourForm1Logic = function () {
     input.setAttribute("autocomplete", "tel");
     var existing = (input.value || "").trim();
     var existingParts = existing.charAt(0) === "+" ? splitE164(existing) : null;
-    selectStudentPhoneCountry(select, existingParts ? existingParts.iso : STUDENT_PHONE_DEFAULT_ISO);
+    selectStudentPhoneCountry(select, existingParts ? existingParts.iso : detectedPhoneIso());
     // Seed the dial code straight away (no input/change events — this isn't the
     // user typing), matching how HubSpot's own widget shows "+61" on load.
     input.value = existing === "" ? formatStudentPhone(studentPhoneDial(select), "") : input.value;
