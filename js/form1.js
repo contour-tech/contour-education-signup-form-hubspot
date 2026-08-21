@@ -102,12 +102,11 @@ var ContourForm1Logic = function () {
   var REGION_OTHER_CODE = "UK-OTH";
   var REGION_OTHER_NAME = "My region isn't listed";
   var REGION_PLACEHOLDER = "Please Select";
-  // All three brands share the highlighter accent (Angad, 19 Aug Slack —
-  // "rather than OG blue, can we make that highlighter"): hover wipes in the
-  // soft tint, selection keeps the accent on the border and ring. The soft
-  // tint runs stronger than the old blue's 0.08 because the lime is so light
-  // it vanishes at that opacity. accentContrast is navy so anything drawn on
-  // the lime stays legible.
+  // All three brands share the highlighter accent on the border, ring and
+  // selected wash (Angad, 19 Aug Slack); the logo tint stays Contour blue —
+  // the all-lime pass looked worse. The soft tint runs stronger than the old
+  // blue's 0.08 because the lime is so light it vanishes at that opacity.
+  // accentContrast is navy so anything drawn on the lime stays legible.
   var PROGRAM_CARD_CONFIG = [{
     match: /education|tutoring/i,
     title: "High School Tutoring",
@@ -486,11 +485,13 @@ var ContourForm1Logic = function () {
       // overlaps the card content.
       ".hs-form .contour-program-card .contour-program-card__badge { top: -9px; right: -9px; width: 22px; height: 22px; background-color: #2f9e44; color: #FFFFFF; box-shadow: 0 0 0 2px #FFFFFF; z-index: 1; }" +
       ".hs-form .contour-program-card .contour-program-card__badge svg { display: block; }" +
-      // Logo: highlighter copy stacked on the charcoal original, wiped in
+      // Logo: Contour-blue copy stacked on the charcoal original, wiped in
       // from the left via clip-path. Filter chain recolours the charcoal SVG
-      // to #D7FC3D (brightness(0) first, then rotate to the lime).
+      // to #3478F7 (brightness(0) first, then rotate to the blue). The logo
+      // deliberately stays blue while the border/ring/wash take the
+      // highlighter — lime wordmarks read poorly (Angad).
       ".hs-form .contour-program-card__logo-placeholder--has-logo { position: relative; }" +
-      ".hs-form .contour-program-card__logo-tint { position: absolute; top: 0; left: 0; height: 100%; width: auto; max-width: 100%; object-fit: contain; pointer-events: none; filter: brightness(0) saturate(100%) invert(91%) sepia(87%) saturate(588%) hue-rotate(14deg) brightness(104%) contrast(98%); clip-path: inset(0 100% 0 0); transition: clip-path 0.7s ease; }" +
+      ".hs-form .contour-program-card__logo-tint { position: absolute; top: 0; left: 0; height: 100%; width: auto; max-width: 100%; object-fit: contain; pointer-events: none; filter: brightness(0) saturate(100%) invert(42%) sepia(85%) saturate(3550%) hue-rotate(211deg) brightness(100%) contrast(94%); clip-path: inset(0 100% 0 0); transition: clip-path 0.7s ease; }" +
       ".hs-form .contour-program-card:hover .contour-program-card__logo-tint, .hs-form .contour-program-card--selected .contour-program-card__logo-tint { clip-path: inset(0 var(--contour-logo-tint-right, 0%) 0 0); }";
     document.head.appendChild(style);
   }
