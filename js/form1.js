@@ -1407,19 +1407,10 @@ var ContourForm1Logic = function () {
     if (codeInput && codeInput.value) setHiddenValue(FIELD_SELECTORS.schoolCode, "");
     if (acaraInput && acaraInput.value) setHiddenValue(FIELD_SELECTORS.acaraId, "");
   }
-  var schoolDescDefault = null;
-  // HubSpot ships the school helper text as two sentences: how to search, then
-  // what to do when the school is missing. Showing both up front made the
-  // second one easy to miss (Amitav), so it is split — the lead stays under the
-  // field, and a hint below the input coaches the student through the search:
-  // keep typing until there is enough to search on, then, if nothing matched,
-  // type the full name and keep it. Stopping at a few characters and leaving a
-  // partial name is the case this prevents. The trailing sentence is matched on
-  // "can't find" rather than by index, so a reworded description degrades to
-  // lead-only rather than mangled text.
-  // Added to the always-on helper text so the advice is there before anyone
-  // gets stuck, not only after a search comes back empty.
-  var SCHOOL_LEAD_EXTRA = "Type the full name so we can find it.";
+  // HubSpot's shipped helper text is replaced wholesale with this shorter copy
+  // (Angad): one instruction up front, and the "can't find it" advice moves to
+  // the not-found hint below the input so it appears exactly when relevant.
+  var schoolDescDefault = "Type your school's full name.";
   function schoolNoun() {
     return isGraduatedSelected() ? "university" : "school";
   }
@@ -1427,13 +1418,7 @@ var ContourForm1Logic = function () {
     return "Keep typing to see your " + schoolNoun() + ".";
   }
   function schoolNotFoundHint() {
-    return "Nothing yet. Try typing the full " + schoolNoun() + " name. If it's still not there, just leave it as you've typed it.";
-  }
-  function splitSchoolDesc(text) {
-    var full = (text || "").trim();
-    var match = full.match(/^(.*?[.!?])\s*([^.!?]*can't find[^]*)$/i);
-    if (!match) return { lead: full, fallback: "" };
-    return { lead: match[1].trim(), fallback: match[2].trim() };
+    return "Can't find it? Leave the full name as you've typed it and continue.";
   }
   function updateSchoolFieldGraduateMode() {
     var input = q(FIELD_SELECTORS.schoolText);
@@ -1445,9 +1430,6 @@ var ContourForm1Logic = function () {
     setFieldLabelText("schoolText", isGraduated ? (intake ? "University in " + intake : "Current University") : intake ? "School in " + intake : "Current School");
     var desc = wrap.querySelector(".hs-field-desc");
     if (!desc) return;
-    if (schoolDescDefault === null) {
-      schoolDescDefault = splitSchoolDesc(desc.textContent).lead + " " + SCHOOL_LEAD_EXTRA;
-    }
     if (!isGraduated) {
       desc.textContent = schoolDescDefault;
       if (GRAD_QUICK_LEGACY_VALUES.indexOf(input.value) !== -1) {
@@ -2378,7 +2360,7 @@ var ContourForm1Logic = function () {
   function renderDraftBanner() {
     renderRestoreBanner({
       title: "Picked up where you left off",
-      text: "We've put back what you had started on this device. Nothing has been sent to us yet — check it over and finish when you're ready.",
+      text: "We saved what you'd started on this device and filled it back in. Nothing has been sent to us yet, so take a look and finish whenever you're ready.",
       linkText: "Starting fresh? Clear the form"
     });
   }
