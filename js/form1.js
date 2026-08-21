@@ -45,9 +45,17 @@ var ContourForm1Logic = function () {
     // off the whole form is present from the start, as it was before.
     progressiveSections: false,
     // Headings above each section. Parked rather than deleted: the only one
-    // actually wanted is the Student / Guardian split, and that is being
-    // designed as its own change (Amrit, 20 Aug 2026).
+    // actually wanted is the Student / Guardian split, and that ships as
+    // personGroups below (Amrit, 20 Aug 2026).
     sectionHeaders: false,
+    // On the Guardian flow, heads the four student fields and the four
+    // guardian fields with a "Student Details" / "Guardian Details" group
+    // heading so the labels stop repeating whose field is whose (Luke,
+    // 19 Aug 2026). How the groups render is a separate knob —
+    // personGroupsVariant, next to the PERSON_GROUPS table below — because
+    // the full card treatment was judged too heavy and parked (Amrit,
+    // 21 Aug 2026).
+    personGroups: true,
     // Mirrors the answers into localStorage as they are given and offers them
     // back on the next visit from the same browser. On by default — see the
     // LOCAL DRAFT CACHE block for what is deliberately never stored.
@@ -655,6 +663,10 @@ var ContourForm1Logic = function () {
     for (var i = 0; i < spans.length; i++) {
       if (!/hs-form-required/.test(spans[i].className)) {
         spans[i].textContent = text;
+        // This write clobbers any person-group label state (visible text plus
+        // hidden prefix span), so the marker saying it is applied goes too —
+        // otherwise updatePersonGroups() would skip re-shortening the label.
+        spans[i].removeAttribute("data-contour-label-mode");
         return;
       }
     }
@@ -667,6 +679,238 @@ var ContourForm1Logic = function () {
     GUARDIAN_RELABEL_FIELDS.forEach(function (config) {
       setLabelTextForField(config.selector, guardian ? config.guardian : config.your);
     });
+    updatePersonGroups();
+  }
+  /* =========================================================
+     STUDENT / GUARDIAN PERSON GROUP CARDS
+     -----------------------------------------------------------
+     On the Guardian flow the form collects two people, and prefixing all
+     eight field labels ("Student First Name", "Guardian First Name", ...)
+     reads as a wall of repetition (Luke, 19 Aug 2026). Instead, each
+     person's four fields are grouped into a card headed "Student" or
+     "Guardian" once, and the labels inside drop their prefix.
+
+     Two constraints shape the implementation:
+     - Nodes are never moved or wrapped: HubSpot re-renders swap nodes
+       mid-flow, so the "card" is a header element inserted BEFORE the
+       group plus classes painted ON the existing rows — the student rows
+       are the field wrappers themselves (direct flex children of
+       .hs-dependent-field), the guardian rows are top-level fieldsets.
+     - The prefix stays in the DOM for screen readers and the error
+       summary: the visible label is "First Name" but the label element
+       reads "Student First Name" via a visually-hidden prefix span, so
+       two bare "First Name" chips can never appear in the error rollup.
+
+     Three variants, because the full card read as too much chrome
+     (Luke's screenshot review, 21 Aug 2026). Selected via
+     personGroupsVariant in window.ContourForm1Config:
+     - "short-labels" (default): a right-aligned separator heading —
+       "Student Details" / "Guardian Details" — plus the shortened field
+       labels. No card paint.
+     - "labels-kept": the same separator heading only; every field label
+       stays exactly as it was ("Student First Name", "Guardian Email").
+     - "card": the parked full treatment — tinted card, painted rows,
+       shortened labels, headed just "Student" / "Guardian".
+     ========================================================= */
+  var PERSON_GROUPS_VARIANT_DEFAULT = "short-labels";
+  function personGroupsVariant() {
+    var overrides = window.ContourForm1Config;
+    var variant = overrides && overrides.personGroupsVariant;
+    if (variant === "card" || variant === "labels-kept" || variant === "short-labels") return variant;
+    return PERSON_GROUPS_VARIANT_DEFAULT;
+  }
+  var PERSON_GROUP_HEADER_CLASS = "contour-person-header";
+  var PERSON_CARD_ROW_CLASS = "contour-person-card__row";
+  var PERSON_GROUPS = [{
+    id: "student",
+    title: "Student",
+    // On desktop the last TWO rows are the card's bottom edge (email and
+    // phone sit side by side); the mobile stylesheet stands the email
+    // field's bottom border down again when the tiles stack.
+    bottomCount: 2,
+    fields: [
+      { selector: FIELD_SELECTORS.studentFirstName, prefix: "Student", visible: "First Name" },
+      { selector: FIELD_SELECTORS.studentLastName, prefix: "Student", visible: "Last Name" },
+      { selector: FIELD_SELECTORS.studentEmail, prefix: "Student", visible: "Email" },
+      { selector: FIELD_SELECTORS.studentPhone, prefix: "Student", visible: "Phone Number" }
+    ]
+  }, {
+    id: "guardian",
+    title: "Guardian",
+    bottomCount: 1,
+    fields: [
+      { selector: FIELD_SELECTORS.firstName, prefix: "Guardian", visible: "First Name" },
+      { selector: FIELD_SELECTORS.lastName, prefix: "Guardian", visible: "Last Name" },
+      { selector: FIELD_SELECTORS.emailTemp, prefix: "Guardian", visible: "Email" },
+      { selector: FIELD_SELECTORS.guardianPhone, prefix: "Guardian", visible: "Phone Number" }
+    ]
+  }];
+  function findLabelSpan(selector) {
+    var field = q(selector);
+    var wrap = field ? fieldWrapper(field) : null;
+    var label = wrap ? wrap.querySelector("label") : null;
+    if (!label) return null;
+    var spans = label.querySelectorAll("span");
+    for (var i = 0; i < spans.length; i++) {
+      if (!/hs-form-required/.test(spans[i].className)) return spans[i];
+    }
+    return null;
+  }
+  // Idempotent on purpose: this runs from a childList MutationObserver, so a
+  // write that re-creates identical nodes would retrigger the observer forever.
+  function setPersonFieldLabel(config, shortened) {
+    var span = findLabelSpan(config.selector);
+    if (!span) return;
+    var mode = shortened ? "short" : "full";
+    // The marker only ever arrives together with the matching content, and a
+    // HubSpot re-render replaces the whole span, marker included — so the
+    // marker alone says whether this span is already in the requested state.
+    if (span.getAttribute("data-contour-label-mode") === mode) return;
+    span.setAttribute("data-contour-label-mode", mode);
+    if (!shortened) {
+      span.textContent = config.prefix + " " + config.visible;
+      return;
+    }
+    span.textContent = "";
+    var sr = document.createElement("span");
+    sr.className = "contour-sr-only";
+    sr.textContent = config.prefix + " ";
+    span.appendChild(sr);
+    span.appendChild(document.createTextNode(config.visible));
+  }
+  // A group row is the node whose siblings lay out vertically: the field
+  // wrapper itself for the student fields (direct children of HubSpot's
+  // .hs-dependent-field container) and the enclosing top-level fieldset for
+  // the guardian pair rows.
+  function personGroupRow(fieldEl) {
+    var wrap = fieldEl ? fieldWrapper(fieldEl) : null;
+    if (!wrap) return null;
+    var row = wrap;
+    while (row.parentElement && row.parentElement !== formRoot && !(row.parentElement.classList && row.parentElement.classList.contains("hs-dependent-field"))) {
+      row = row.parentElement;
+    }
+    return row.parentElement ? row : null;
+  }
+  function personGroupRows(group) {
+    var rows = [];
+    group.fields.forEach(function (config) {
+      var row = personGroupRow(q(config.selector));
+      if (row && rows.indexOf(row) === -1) rows.push(row);
+    });
+    return rows;
+  }
+  function ensurePersonGroupHeader(group, firstRow, variant) {
+    var existing = formRoot.querySelector('[data-contour-person-header="' + group.id + '"]');
+    if (!firstRow || !firstRow.parentNode) {
+      if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
+      return;
+    }
+    if (!existing) {
+      existing = document.createElement("div");
+      existing.setAttribute("data-contour-person-header", group.id);
+      var label = document.createElement("span");
+      label.className = PERSON_GROUP_HEADER_CLASS + "__title";
+      existing.appendChild(label);
+    }
+    // Card variant is headed just "Student" — the card says the rest. The
+    // separator variants carry "Student Details", since the heading is all
+    // there is.
+    var title = variant === "card" ? group.title : group.title + " Details";
+    var className = PERSON_GROUP_HEADER_CLASS + " " + PERSON_GROUP_HEADER_CLASS + "--" + group.id + " " + PERSON_GROUP_HEADER_CLASS + (variant === "card" ? "--card" : "--separator");
+    if (existing.className !== className) existing.className = className;
+    if (existing.firstChild.textContent !== title) existing.firstChild.textContent = title;
+    if (existing.nextSibling !== firstRow) firstRow.parentNode.insertBefore(existing, firstRow);
+  }
+  function clearPersonGroupClasses(group) {
+    qAll("." + PERSON_CARD_ROW_CLASS + "--" + group.id).forEach(function (node) {
+      node.classList.remove(PERSON_CARD_ROW_CLASS, PERSON_CARD_ROW_CLASS + "--" + group.id, PERSON_CARD_ROW_CLASS + "--bottom");
+    });
+  }
+  function applyPersonGroupRowClasses(group, rows) {
+    clearPersonGroupClasses(group);
+    rows.forEach(function (row, index) {
+      row.classList.add(PERSON_CARD_ROW_CLASS, PERSON_CARD_ROW_CLASS + "--" + group.id);
+      if (index >= rows.length - group.bottomCount) row.classList.add(PERSON_CARD_ROW_CLASS + "--bottom");
+    });
+  }
+  function updatePersonGroups() {
+    if (!formRoot) return;
+    injectPersonGroupStyles();
+    var active = featureEnabled("personGroups") && isGuardianContactType();
+    var variant = personGroupsVariant();
+    var cardOn = active && variant === "card";
+    var shortLabels = active && variant !== "labels-kept";
+    // The .hs-dependent-field container hosts the student tiles; its flex
+    // gaps are zeroed while the card is on so the tile backgrounds join up.
+    qAll(".contour-person-group-host").forEach(function (node) {
+      node.classList.remove("contour-person-group-host");
+    });
+    PERSON_GROUPS.forEach(function (group) {
+      var rows = active ? personGroupRows(group) : [];
+      ensurePersonGroupHeader(group, rows.length > 0 ? rows[0] : null, variant);
+      if (cardOn && rows.length > 0) {
+        applyPersonGroupRowClasses(group, rows);
+        if (group.id === "student" && rows[0].parentElement && rows[0].parentElement.classList.contains("hs-dependent-field")) {
+          rows[0].parentElement.classList.add("contour-person-group-host");
+        }
+      } else {
+        clearPersonGroupClasses(group);
+      }
+      group.fields.forEach(function (config) {
+        // Un-shortened guardian labels belong to the Your/Guardian relabel
+        // table above — writing "Guardian First Name" here would fight it on
+        // the Student flow, where those fields read "Your First Name".
+        if (!shortLabels && group.id === "guardian") return;
+        setPersonFieldLabel(config, shortLabels);
+      });
+    });
+  }
+  function injectPersonGroupStyles() {
+    if (document.getElementById("contour-person-group-styles")) return;
+    var line = "rgba(12, 49, 102, 0.16)";
+    var cardBg = "rgba(255, 255, 255, 0.55)";
+    var headBg = "rgba(12, 49, 102, 0.05)";
+    var style = document.createElement("style");
+    style.id = "contour-person-group-styles";
+    style.textContent = "" +
+    ".contour-sr-only { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }" +
+    // --- group headers ------------------------------------------------------
+    ".hs-form .contour-person-header { display: flex; align-items: center; gap: 12px; box-sizing: border-box; width: 100%; flex: 0 0 100%; grid-column: 1 / -1; }" +
+    ".hs-form .contour-person-header__title { font-size: 12px; font-weight: 700; letter-spacing: 0.10em; text-transform: uppercase; color: #0C3166; }" +
+    // Card variant: the header is the card's tinted top edge.
+    ".hs-form .contour-person-header--card { margin: 22px 0 0; padding: 13px 18px; background: " + headBg + "; border: 1px solid " + line + "; border-bottom: none; border-radius: 14px 14px 0 0; }" +
+    // Separator variant: a plain left-aligned subheading in the form's own
+    // typographic voice — bold navy sentence case, like the "Program
+    // Interest" heading — with a short accent bar underneath. Two decorative
+    // drafts (right-aligned rule line, then centred between fading lines)
+    // both read as foreign against a form where every label is bold, navy
+    // and left-aligned (Amrit, 21 Aug 2026).
+    ".hs-form .contour-person-header--separator .contour-person-header__title { font-size: 15px; font-weight: 700; letter-spacing: 0; text-transform: none; }" +
+    '.hs-form .contour-person-header--separator .contour-person-header__title::after { content: ""; display: block; width: 34px; height: 3px; margin-top: 6px; border-radius: 2px; background: #0C3166; opacity: 0.85; }' +
+    // The student header sits inside .hs-dependent-field, whose row-gap
+    // already spaces it; the guardian one is a top-level sibling and brings
+    // its own margins.
+    ".hs-form .contour-person-header--separator.contour-person-header--guardian { margin: 30px 0 14px; }" +
+    // --- student tiles: flex children of .hs-dependent-field ----------------
+    // Gaps are zeroed and the tiles widened to an exact 50% so their painted
+    // backgrounds meet; the spacing the gaps provided moves into padding.
+    ".hs-form .hs-dependent-field.contour-person-group-host { column-gap: 0 !important; row-gap: 0 !important; }" +
+    ".hs-form .contour-person-group-host > .hs_student_first_name.contour-person-card__row, .hs-form .contour-person-group-host > .hs_student_last_name.contour-person-card__row, .hs-form .contour-person-group-host > .hs_student_email.contour-person-card__row, .hs-form .contour-person-group-host > .hs_student_phone_number.contour-person-card__row { flex: 0 0 50% !important; box-sizing: border-box; background: " + cardBg + "; margin: 0 !important; padding: 8px 18px 18px; }" +
+    ".hs-form .contour-person-group-host > .hs_student_first_name.contour-person-card__row, .hs-form .contour-person-group-host > .hs_student_email.contour-person-card__row { border-left: 1px solid " + line + "; padding-right: 9px; }" +
+    ".hs-form .contour-person-group-host > .hs_student_last_name.contour-person-card__row, .hs-form .contour-person-group-host > .hs_student_phone_number.contour-person-card__row { border-right: 1px solid " + line + "; padding-left: 9px; }" +
+    ".hs-form .contour-person-card__row--student.contour-person-card__row--bottom { border-bottom: 1px solid " + line + "; }" +
+    ".hs-form .contour-person-group-host > .hs_student_email.contour-person-card__row--bottom { border-radius: 0 0 0 14px; }" +
+    ".hs-form .contour-person-group-host > .hs_student_phone_number.contour-person-card__row--bottom { border-radius: 0 0 14px 0; }" +
+    // --- guardian rows: whole top-level fieldsets ---------------------------
+    ".hs-form fieldset.contour-person-card__row--guardian { box-sizing: border-box; background: " + cardBg + "; border-left: 1px solid " + line + "; border-right: 1px solid " + line + "; margin: 0 !important; max-width: none; padding: 8px 18px 0; }" +
+    ".hs-form fieldset.contour-person-card__row--guardian.contour-person-card__row--bottom { border-bottom: 1px solid " + line + "; border-radius: 0 0 14px 14px; margin-bottom: 26px !important; padding-bottom: 6px; }" +
+    // --- mobile: tiles stack, so side borders and the bottom edge move ------
+    "@media screen and (max-width: 767px) {" +
+    " .hs-form .contour-person-group-host > .hs_student_first_name.contour-person-card__row, .hs-form .contour-person-group-host > .hs_student_last_name.contour-person-card__row, .hs-form .contour-person-group-host > .hs_student_email.contour-person-card__row, .hs-form .contour-person-group-host > .hs_student_phone_number.contour-person-card__row { flex: 0 0 100% !important; border-left: 1px solid " + line + "; border-right: 1px solid " + line + "; padding: 8px 18px 14px; }" +
+    " .hs-form .contour-person-group-host > .hs_student_email.contour-person-card__row--bottom { border-bottom: none; border-radius: 0; }" +
+    " .hs-form .contour-person-group-host > .hs_student_phone_number.contour-person-card__row--bottom { border-radius: 0 0 14px 14px; }" +
+    "}";
+    document.head.appendChild(style);
   }
   function enhanceContactTypeIllustrations() {
     var radios = qAll(FIELD_SELECTORS.contactType);
@@ -1229,6 +1473,21 @@ var ContourForm1Logic = function () {
     var options = qAll(FIELD_SELECTORS.interestedSubjects);
     var anyVisible = false;
     var anyVisibleByCategory = {};
+    // Subjects the student already trials or is enrolled in (URL prefetch)
+    // don't render at all — nor does the other level of the same subject,
+    // per the one-level rule. The summary card shows them instead, and a
+    // category whose options all fall away takes its header with it
+    // (Mani, 21 Aug 2026).
+    var prefetchCodes = prefetchedTrialSubjectCodes.concat(prefetchedEnrolledSubjectCodes);
+    var prefetchedKeys = {};
+    if (prefetchCodes.length > 0) {
+      options.forEach(function (opt) {
+        var classification = getClassification(opt);
+        if (!classification.code || prefetchCodes.indexOf(classification.code) === -1) return;
+        var key = subjectExclusionKey(classification);
+        if (key) prefetchedKeys[key] = true;
+      });
+    }
     options.forEach(function (opt) {
       var classification = getClassification(opt);
       applySignupName(opt, classification);
@@ -1251,7 +1510,11 @@ var ContourForm1Logic = function () {
       var deliveryOk = subjectMatchesDelivery(classification);
       var intakeOk = subjectMatchesIntake(classification, selectedIntakeYear);
       var audienceOk = subjectMatchesAudience(classification);
-      var shouldShow = !!location && selectedPrograms.length > 0 && locationOk && programOk && yearOk && deliveryOk && intakeOk && audienceOk && !ucatBlockedForIntake(classification, selectedIntakeYear);
+      var prefetchBlocked = prefetchCodes.length > 0 && !!(classification.code && prefetchCodes.indexOf(classification.code) !== -1 || subjectExclusionKey(classification) && prefetchedKeys[subjectExclusionKey(classification)]);
+      var shouldShow = !prefetchBlocked && !!location && selectedPrograms.length > 0 && locationOk && programOk && yearOk && deliveryOk && intakeOk && audienceOk && !ucatBlockedForIntake(classification, selectedIntakeYear);
+      // A tick that predates the prefetch response would still submit from a
+      // hidden input — clear it while the input is still clickable.
+      if (prefetchBlocked && opt.checked) setCheckboxChecked(opt, false);
       shouldShow ? showOption(opt) : hideOption(opt);
       updateInterviewProgramNote(opt, classification, yearLevel, shouldShow);
       if (shouldShow) {
@@ -1440,6 +1703,9 @@ var ContourForm1Logic = function () {
     wrap.appendChild(note);
     return note;
   }
+  // Manual ticks only: subjects already trialled/enrolled (URL prefetch) are
+  // filtered out of the option list itself in evaluateInterestedSubjectsOptions,
+  // together with their one-level siblings, so they never reach here.
   function evaluateSubjectExclusions() {
     var options = qAll(FIELD_SELECTORS.interestedSubjects);
     var checkedByKey = {};
@@ -1969,6 +2235,9 @@ var ContourForm1Logic = function () {
         if (prefetchedTrialSubjectCodes.length > 0 || prefetchedEnrolledSubjectCodes.length > 0) {
           setFieldLabelText("interestedSubjects", "Additional Subjects");
         }
+        // Prefetched trialling/enrolled subjects filter the option list, so
+        // re-evaluate now that the codes are known.
+        evaluateInterestedSubjectsOptions();
         renderSubjectSummary();
         renderUcatIntakeNote();
       } else {
@@ -3597,7 +3866,11 @@ var ContourForm1Logic = function () {
     // Widths are stated because the Guardian flow puts this header inside
     // HubSpot's dependent-field container, which lays its children out in
     // columns — without them the heading sits beside the first field.
-    ".hs-form .contour-section-header { display: flex; align-items: center; gap: 14px; box-sizing: border-box; width: 100%; flex: 0 0 100%; grid-column: 1 / -1; margin: 34px 0 20px; padding-top: 26px; border-top: 1px solid rgba(12, 49, 102, 0.10); }" + ".hs-form .contour-section-header:first-child { margin-top: 0; padding-top: 0; border-top: none; }" + ".hs-form .contour-section-header__title { flex: 0 0 auto; font-size: 12px; font-weight: 700; letter-spacing: 0.10em; text-transform: uppercase; color: #0C3166; }" + '.hs-form .contour-section-header::after { content: ""; flex: 1 1 auto; height: 1px; background: linear-gradient(90deg, rgba(12, 49, 102, 0.16), rgba(12, 49, 102, 0)); }' +
+    // The title sits on the right as a pill, with the rule line filling the
+    // space to its left — the line IS the section divider, so the header
+    // carries no border of its own and the hr dividers below stand down
+    // whenever headers are on (Amrit, 21 Aug 2026).
+    ".hs-form .contour-section-header { display: flex; align-items: center; justify-content: flex-end; gap: 14px; box-sizing: border-box; width: 100%; flex: 0 0 100%; grid-column: 1 / -1; margin: 34px 0 20px; }" + ".hs-form .contour-section-header:first-child { margin-top: 0; }" + '.hs-form .contour-section-header::before { content: ""; flex: 1 1 auto; height: 1px; background: linear-gradient(90deg, rgba(12, 49, 102, 0), rgba(12, 49, 102, 0.18)); }' + ".hs-form .contour-section-header__title { flex: 0 0 auto; font-size: 12px; font-weight: 700; letter-spacing: 0.10em; text-transform: uppercase; color: #0C3166; padding: 6px 14px; border: 1px solid rgba(12, 49, 102, 0.16); border-radius: 999px; background: #FFFFFF; }" +
     // The three rules predate the headers and would double up with them.
     ".hs-form.contour-section-headers-on hr.contour-section-divider { display: none !important; }" +
     // --- helper note under a field that is waiting on an earlier answer -----
@@ -3787,8 +4060,13 @@ var ContourForm1Logic = function () {
   }
   function sectionTitle(def) {
     // One submission can record two people, and which of them "your details"
-    // refers to depends on who is filling the form in.
-    if (def.id === "contact") return isGuardianContactType() ? "Guardian Details" : "Your Details";
+    // refers to depends on who is filling the form in. With the person group
+    // cards on, the Student/Guardian card headings carry the split, so a
+    // "Guardian Details" banner above the Student card would contradict them.
+    if (def.id === "contact") {
+      if (!isGuardianContactType()) return "Your Details";
+      return featureEnabled("personGroups") ? "Contact Details" : "Guardian Details";
+    }
     return def.title;
   }
   function ensureSectionHeader(def, firstNode) {
@@ -4416,6 +4694,11 @@ var ContourForm1Logic = function () {
       enforcePrefilledEmailLock();
       // enforceDuplicateEmailValidation(); // parked — see DUPLICATE EMAIL GUARD
       refreshAllContactFormatErrors();
+      // The student fields join the DOM only after the Guardian radio is set,
+      // so their card header, row classes and shortened labels can only be
+      // painted from here. Idempotent — repeat passes make no DOM writes, so
+      // this observer never feeds itself.
+      updatePersonGroups();
     });
     observer.observe(formRoot, {
       childList: true,
