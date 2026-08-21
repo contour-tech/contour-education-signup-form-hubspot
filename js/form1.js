@@ -833,6 +833,11 @@ var ContourForm1Logic = function () {
   function updatePersonGroups() {
     if (!formRoot) return;
     injectPersonGroupStyles();
+    // Piggybacks on this function's coverage (init, prefill, radio change,
+    // and the contact-field MutationObserver): the native phone widget's
+    // country list gets its non-ASCII parentheticals stripped so both phone
+    // selects name countries the same way.
+    normalizeNativePhoneCountryNames();
     var guardian = isGuardianContactType();
     var enabled = featureEnabled("personGroups");
     var variant = personGroupsVariant();
@@ -1158,9 +1163,13 @@ var ContourForm1Logic = function () {
     ".hs-form button.contour-person-tab.is-errored:not(.is-active) { border-color: rgba(200, 16, 46, 0.30); background: rgba(200, 16, 46, 0.05); color: #8A0C22; }" +
     ".hs-form button.contour-person-tab.is-errored:not(.is-active):hover { background: rgba(200, 16, 46, 0.10); }" +
     ".hs-form .contour-person-tabs__title { margin-left: auto; font-size: 11.5px; font-weight: 700; letter-spacing: 0.10em; text-transform: uppercase; color: rgba(12, 49, 102, 0.55); }" +
-    // Static segment headings (stacked rendering): same voice as the corner
-    // label, sitting left where the pill used to be.
-    ".hs-form .contour-person-tabs__heading { font-size: 11.5px; font-weight: 700; letter-spacing: 0.10em; text-transform: uppercase; color: rgba(12, 49, 102, 0.55); }" +
+    // Static segment headings (stacked rendering): right-aligned in the
+    // form's theme navy rather than the corner label's muted tint (Amrit's
+    // review, 21 Aug 2026 — a per-segment left rail was also considered and
+    // dropped: with no wrapper nodes it needs a positioned overlay that
+    // drifts whenever validation errors change a segment's height).
+    ".hs-form .contour-person-tabs--static { justify-content: flex-end; }" +
+    ".hs-form .contour-person-tabs__heading { font-size: 11.5px; font-weight: 700; letter-spacing: 0.10em; text-transform: uppercase; color: #0C3166; }" +
     // With the Guardian tab forward, the boundary between HubSpot's
     // dependent-field fieldset (holding the strip) and the guardian
     // fieldsets below it must close up so the box reads as one.
@@ -5369,6 +5378,20 @@ var ContourForm1Logic = function () {
     var value = nativeInput ? (nativeInput.value || "").trim() : "";
     var parts = value.charAt(0) === "+" ? splitE164(value) : null;
     return parts ? parts.iso : STUDENT_PHONE_DEFAULT_ISO;
+  }
+  // The native widget labels countries as "India (भारत)" — English name plus
+  // the native-script one — while the student widget shows just "India". The
+  // parenthetical goes only when it holds non-ASCII text: "Congo (DRC)" is a
+  // disambiguation, not a translation, and must stay. Idempotent — once
+  // stripped there is no parenthetical left to match, so the MutationObserver
+  // that re-runs this can never feed itself.
+  function normalizeNativePhoneCountryNames() {
+    if (!formRoot) return;
+    qAll(".hs-fieldtype-intl-phone select option").forEach(function (option) {
+      var match = option.textContent.match(/^(.*\S)\s*\(([^)]*)\)\s*$/);
+      if (!match || !/[^ -]/.test(match[2])) return;
+      option.textContent = match[1];
+    });
   }
   var studentPhoneCountries = null;
   function getStudentPhoneCountries() {
