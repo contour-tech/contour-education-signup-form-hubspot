@@ -3128,16 +3128,25 @@ var ContourForm1Logic = function () {
       chipClass: "contour-subject-chip--blue"
     }];
     grid.innerHTML = "";
-    var anyColumn = false;
-    columns.forEach(function (col) {
-      if (col.items.length === 0) return;
-      anyColumn = true;
+    var visibleColumns = columns.filter(function (col) {
+      return col.items.length > 0;
+    });
+    // One column: its title is the box heading and the per-column subheader
+    // would just repeat it, so only the chips render. From two columns up
+    // the box reverts to "Subjects Summary" with a subheader per section.
+    // Re-evaluated every render, so a prefilled box (trialing/enrolled only)
+    // grows headers the moment picking a subject adds a second column.
+    var heading = container.querySelector(".contour-subject-summary__heading");
+    heading.textContent = visibleColumns.length === 1 ? visibleColumns[0].title : "Subjects Summary";
+    visibleColumns.forEach(function (col) {
       var colEl = document.createElement("div");
       colEl.className = "contour-subject-summary__col";
-      var title = document.createElement("div");
-      title.className = "contour-subject-summary__col-title";
-      title.textContent = col.title;
-      colEl.appendChild(title);
+      if (visibleColumns.length > 1) {
+        var title = document.createElement("div");
+        title.className = "contour-subject-summary__col-title";
+        title.textContent = col.title;
+        colEl.appendChild(title);
+      }
       var chips = document.createElement("div");
       chips.className = "contour-subject-summary__chips";
       col.items.forEach(function (label) {
@@ -3149,7 +3158,7 @@ var ContourForm1Logic = function () {
       colEl.appendChild(chips);
       grid.appendChild(colEl);
     });
-    container.style.display = anyColumn ? "" : "none";
+    container.style.display = visibleColumns.length ? "" : "none";
   }
   function attachListeners() {
     var locationEl = q(FIELD_SELECTORS.location);
