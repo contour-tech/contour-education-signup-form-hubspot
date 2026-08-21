@@ -1199,15 +1199,22 @@ var ContourForm1Logic = function () {
       // dropped: with no wrapper nodes it needs a positioned overlay that
       // drifts whenever validation errors change a segment's height).
       ".hs-form .contour-person-tabs--static { justify-content: flex-end; }" +
-      ".hs-form .contour-person-tabs__heading { font-size: 11.5px; font-weight: 700; letter-spacing: 0.10em; text-transform: uppercase; color: #0C3166; }" +
+      // inline-flex so the "You" badge sits optically centred against the
+      // heading's cap height rather than on its baseline.
+      // min-height is the badge's own height, so a band carrying the badge and
+      // a band carrying only text come out the same depth — otherwise the two
+      // segment bands on the Guardian flow differ by 5px.
+      ".hs-form .contour-person-tabs__heading { display: inline-flex; align-items: center; gap: 8px; min-height: 18px; font-size: 11.5px; font-weight: 700; letter-spacing: 0.10em; text-transform: uppercase; color: #0C3166; }" +
       // The bands are edges, not rows: the static headers hold one short line,
       // so they take tighter padding than the tab strip's touch targets.
       ".hs-form .contour-person-tabs--static { padding: 10px 24px; }" +
-      // "You" leads the segment belonging to whoever is filling the form in.
-      // Muted and middot-separated so it reads as an annotation on the
-      // heading rather than part of its name.
-      '.hs-form .contour-person-tabs__you { color: rgba(12, 49, 102, 0.55); }' +
-      '.hs-form .contour-person-tabs__you::after { content: "\\00b7"; margin: 0 6px; }' +
+      // "You" leads the segment belonging to whoever is filling the form in,
+      // as a navy badge with the highlighter lime knocked out of it — the one
+      // legible way to put the lime on this white band (10.9:1, where lime as
+      // text on white is 1.2:1). Right padding runs a touch short of the left
+      // to absorb the trailing space uppercase letter-spacing leaves after
+      // the final letter.
+      '.hs-form .contour-person-tabs__you { background: #0C3166; color: #D7FC3D; font-size: 10px; letter-spacing: 0.08em; line-height: 1; padding: 4px 7px 4px 8px; border-radius: 999px; }' +
       // With the Guardian tab forward, the boundary between HubSpot's
       // dependent-field fieldset (holding the strip) and the guardian
       // fieldsets below it must close up so the box reads as one.
