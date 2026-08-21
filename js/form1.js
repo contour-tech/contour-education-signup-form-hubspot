@@ -48,13 +48,10 @@ var ContourForm1Logic = function () {
     // actually wanted is the Student / Guardian split, and that ships as
     // personGroups below (Amrit, 20 Aug 2026).
     sectionHeaders: false,
-    // On the Guardian flow, heads the four student fields and the four
-    // guardian fields with a "Student Details" / "Guardian Details" group
-    // heading so the labels stop repeating whose field is whose (Luke,
-    // 19 Aug 2026). How the groups render is a separate knob —
-    // personGroupsVariant, next to the PERSON_GROUPS table below — because
-    // the full card treatment was judged too heavy and parked (Amrit,
-    // 21 Aug 2026).
+    // Groups the contact fields into one "Contact Information" container
+    // with a Student / Guardian tab strip on its top edge, so the labels
+    // stop repeating whose field is whose (Luke, 19 Aug 2026; tab design
+    // finalised by Amrit, 21 Aug 2026 — see PERSON GROUPS below).
     personGroups: true,
     // Mirrors the answers into localStorage as they are given and offers them
     // back on the next visit from the same browser. On by default — see the
@@ -701,25 +698,19 @@ var ContourForm1Logic = function () {
        reads "Student First Name" via a visually-hidden prefix span, so
        two bare "First Name" chips can never appear in the error rollup.
 
-     Three variants, because the full card read as too much chrome
-     (Luke's screenshot review, 21 Aug 2026). Selected via
-     personGroupsVariant in window.ContourForm1Config:
-     - "short-labels" (default): a right-aligned separator heading —
-       "Student Details" / "Guardian Details" — plus the shortened field
-       labels. No card paint.
-     - "labels-kept": the same separator heading only; every field label
-       stays exactly as it was ("Student First Name", "Guardian Email").
-     - "card": the parked full treatment — tinted card, painted rows,
-       shortened labels, headed just "Student" / "Guardian".
+     Rendered as one "Contact Information" container on BOTH flows, with
+     a Student / Guardian tab strip on its top edge. The Guardian tab
+     exists only while the Guardian contact type is selected; the Student
+     flow shows the single Student tab over the person's own fields. Tabs
+     hide required fields, so the error summary work below auto-switches
+     to the tab holding an error and marks it — a guardian must never be
+     told a field is missing that they cannot see.
+
+     Four other renderings (per-person cards, separator headings in three
+     alignments) were built and rejected in Luke's and Amrit's screenshot
+     reviews before tabs were finalised (21 Aug 2026) — see the session
+     changelog for that trail.
      ========================================================= */
-  var PERSON_GROUPS_VARIANT_DEFAULT = "short-labels";
-  function personGroupsVariant() {
-    var overrides = window.ContourForm1Config;
-    var variant = overrides && overrides.personGroupsVariant;
-    if (variant === "card" || variant === "labels-kept" || variant === "short-labels") return variant;
-    return PERSON_GROUPS_VARIANT_DEFAULT;
-  }
-  var PERSON_GROUP_HEADER_CLASS = "contour-person-header";
   var PERSON_CARD_ROW_CLASS = "contour-person-card__row";
   var PERSON_GROUPS = [{
     id: "student",
@@ -758,23 +749,27 @@ var ContourForm1Logic = function () {
   }
   // Idempotent on purpose: this runs from a childList MutationObserver, so a
   // write that re-creates identical nodes would retrigger the observer forever.
-  function setPersonFieldLabel(config, shortened) {
+  // prefixOverride swaps the hidden screen-reader prefix — the guardian
+  // fields belong to the visitor themselves on the Student flow, where their
+  // full name is "Your First Name", not "Guardian First Name".
+  function setPersonFieldLabel(config, shortened, prefixOverride) {
     var span = findLabelSpan(config.selector);
     if (!span) return;
-    var mode = shortened ? "short" : "full";
+    var prefix = prefixOverride || config.prefix;
+    var mode = (shortened ? "short:" : "full:") + prefix;
     // The marker only ever arrives together with the matching content, and a
     // HubSpot re-render replaces the whole span, marker included — so the
     // marker alone says whether this span is already in the requested state.
     if (span.getAttribute("data-contour-label-mode") === mode) return;
     span.setAttribute("data-contour-label-mode", mode);
     if (!shortened) {
-      span.textContent = config.prefix + " " + config.visible;
+      span.textContent = prefix + " " + config.visible;
       return;
     }
     span.textContent = "";
     var sr = document.createElement("span");
     sr.className = "contour-sr-only";
-    sr.textContent = config.prefix + " ";
+    sr.textContent = prefix + " ";
     span.appendChild(sr);
     span.appendChild(document.createTextNode(config.visible));
   }
@@ -799,28 +794,6 @@ var ContourForm1Logic = function () {
     });
     return rows;
   }
-  function ensurePersonGroupHeader(group, firstRow, variant) {
-    var existing = formRoot.querySelector('[data-contour-person-header="' + group.id + '"]');
-    if (!firstRow || !firstRow.parentNode) {
-      if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
-      return;
-    }
-    if (!existing) {
-      existing = document.createElement("div");
-      existing.setAttribute("data-contour-person-header", group.id);
-      var label = document.createElement("span");
-      label.className = PERSON_GROUP_HEADER_CLASS + "__title";
-      existing.appendChild(label);
-    }
-    // Card variant is headed just "Student" — the card says the rest. The
-    // separator variants carry "Student Details", since the heading is all
-    // there is.
-    var title = variant === "card" ? group.title : group.title + " Details";
-    var className = PERSON_GROUP_HEADER_CLASS + " " + PERSON_GROUP_HEADER_CLASS + "--" + group.id + " " + PERSON_GROUP_HEADER_CLASS + (variant === "card" ? "--card" : "--separator");
-    if (existing.className !== className) existing.className = className;
-    if (existing.firstChild.textContent !== title) existing.firstChild.textContent = title;
-    if (existing.nextSibling !== firstRow) firstRow.parentNode.insertBefore(existing, firstRow);
-  }
   function clearPersonGroupClasses(group) {
     qAll("." + PERSON_CARD_ROW_CLASS + "--" + group.id).forEach(function (node) {
       node.classList.remove(PERSON_CARD_ROW_CLASS, PERSON_CARD_ROW_CLASS + "--" + group.id, PERSON_CARD_ROW_CLASS + "--bottom");
@@ -833,82 +806,302 @@ var ContourForm1Logic = function () {
       if (index >= rows.length - group.bottomCount) row.classList.add(PERSON_CARD_ROW_CLASS + "--bottom");
     });
   }
-  function updatePersonGroups() {
-    if (!formRoot) return;
-    injectPersonGroupStyles();
-    var active = featureEnabled("personGroups") && isGuardianContactType();
-    var variant = personGroupsVariant();
-    var cardOn = active && variant === "card";
-    var shortLabels = active && variant !== "labels-kept";
-    // The .hs-dependent-field container hosts the student tiles; its flex
-    // gaps are zeroed while the card is on so the tile backgrounds join up.
+  function clearPersonGroupHost() {
     qAll(".contour-person-group-host").forEach(function (node) {
       node.classList.remove("contour-person-group-host");
     });
-    PERSON_GROUPS.forEach(function (group) {
-      var rows = active ? personGroupRows(group) : [];
-      ensurePersonGroupHeader(group, rows.length > 0 ? rows[0] : null, variant);
-      if (cardOn && rows.length > 0) {
-        applyPersonGroupRowClasses(group, rows);
-        if (group.id === "student" && rows[0].parentElement && rows[0].parentElement.classList.contains("hs-dependent-field")) {
-          rows[0].parentElement.classList.add("contour-person-group-host");
-        }
-      } else {
-        clearPersonGroupClasses(group);
-      }
-      group.fields.forEach(function (config) {
-        // Un-shortened guardian labels belong to the Your/Guardian relabel
-        // table above — writing "Guardian First Name" here would fight it on
-        // the Student flow, where those fields read "Your First Name".
-        if (!shortLabels && group.id === "guardian") return;
-        setPersonFieldLabel(config, shortLabels);
+  }
+  function updatePersonGroups() {
+    if (!formRoot) return;
+    injectPersonGroupStyles();
+    var guardian = isGuardianContactType();
+    if (!featureEnabled("personGroups")) {
+      teardownPersonTabs(guardian);
+      // The flag also owns the label state: with tabs gone the student
+      // fields go back to their native full labels. Guardian fields belong
+      // to the Your/Guardian relabel table, restored by teardown.
+      PERSON_GROUPS[0].fields.forEach(function (config) {
+        setPersonFieldLabel(config, false);
       });
+      return;
+    }
+    updatePersonTabs(guardian);
+  }
+  /* =========================================================
+     PERSON GROUP TABS — the "tabs" variant
+     -----------------------------------------------------------
+     One "Contact Information" container whose top edge is a tab strip.
+     Guardian flow: Student and Guardian tabs, one person's four fields
+     visible at a time. Student flow: a single Student tab over the
+     visitor's own fields. The strip is an injected element and the
+     "container" is paint on the existing rows, so nodes still never
+     move; switching tabs toggles display on the other person's rows
+     (marked, so only displays this code set are ever unwound).
+
+     Tabs hide required fields, so three safeguards keep errors visible:
+     the error summary auto-switches to the tab that holds errors, its
+     field chips switch tabs before scrolling, and a tab with errors in
+     it carries a red badge.
+     ========================================================= */
+  var activePersonTab = "student";
+  var lastPersonTabFlow = null;
+  function personTabStrip() {
+    return formRoot ? formRoot.querySelector("[data-contour-person-tabs]") : null;
+  }
+  function personGroupIdForWrap(wrap) {
+    if (!wrap) return null;
+    for (var g = 0; g < PERSON_GROUPS.length; g++) {
+      for (var f = 0; f < PERSON_GROUPS[g].fields.length; f++) {
+        var el = q(PERSON_GROUPS[g].fields[f].selector);
+        if (el && wrap.contains(el)) return PERSON_GROUPS[g].id;
+      }
+    }
+    return null;
+  }
+  // Chips in the error summary call this before scrolling: a field on the
+  // hidden tab has no box to scroll to until its tab is brought forward.
+  function revealPersonTabForWrap(wrap) {
+    if (!personTabStrip() || !isGuardianContactType()) return;
+    var id = personGroupIdForWrap(wrap);
+    if (id && id !== activePersonTab) {
+      activePersonTab = id;
+      updatePersonGroups();
+    }
+  }
+  // Called when the error summary renders: badge each tab that holds a
+  // blocked field, and if every blocked contact field sits on the hidden
+  // tab, bring that tab forward rather than pointing at an invisible error.
+  function updatePersonTabErrorState(wraps) {
+    var strip = personTabStrip();
+    if (!strip) return;
+    var counts = { student: 0, guardian: 0 };
+    (wraps || []).forEach(function (wrap) {
+      var id = personGroupIdForWrap(wrap);
+      if (id) counts[id]++;
+    });
+    Array.prototype.slice.call(strip.querySelectorAll("[data-person-tab]")).forEach(function (btn) {
+      btn.classList.toggle("is-errored", counts[btn.getAttribute("data-person-tab")] > 0);
+    });
+    if (isGuardianContactType() && counts[activePersonTab] === 0) {
+      var other = activePersonTab === "student" ? "guardian" : "student";
+      if (counts[other] > 0) {
+        activePersonTab = other;
+        updatePersonGroups();
+      }
+    }
+  }
+  function clearPersonTabErrorState() {
+    var strip = personTabStrip();
+    if (!strip) return;
+    Array.prototype.slice.call(strip.querySelectorAll("[data-person-tab]")).forEach(function (btn) {
+      btn.classList.remove("is-errored");
+    });
+  }
+  function ensurePersonTabStrip(anchorRow, guardian) {
+    var strip = personTabStrip();
+    if (!strip) {
+      strip = document.createElement("div");
+      strip.className = "contour-person-tabs";
+      strip.setAttribute("data-contour-person-tabs", "1");
+      strip.addEventListener("click", function (event) {
+        var btn = event.target && event.target.closest ? event.target.closest("[data-person-tab]") : null;
+        if (!btn) return;
+        var id = btn.getAttribute("data-person-tab");
+        if (id && id !== activePersonTab) {
+          activePersonTab = id;
+          updatePersonGroups();
+        }
+      });
+    }
+    var mode = guardian ? "dual" : "single";
+    if (strip.getAttribute("data-contour-tabs-mode") !== mode) {
+      strip.setAttribute("data-contour-tabs-mode", mode);
+      strip.innerHTML = "";
+      var tabs = guardian ? ["student", "guardian"] : ["student"];
+      tabs.forEach(function (id) {
+        var btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "contour-person-tab";
+        btn.setAttribute("data-person-tab", id);
+        btn.appendChild(document.createTextNode(id === "student" ? "Student" : "Guardian"));
+        // Both people are compulsory — the asterisk says so in the same
+        // voice as the field labels.
+        var req = document.createElement("span");
+        req.className = "contour-person-tab__req";
+        req.setAttribute("aria-hidden", "true");
+        req.textContent = "*";
+        btn.appendChild(req);
+        strip.appendChild(btn);
+      });
+      var title = document.createElement("span");
+      title.className = "contour-person-tabs__title";
+      strip.appendChild(title);
+    }
+    Array.prototype.slice.call(strip.querySelectorAll("[data-person-tab]")).forEach(function (btn) {
+      var selected = btn.getAttribute("data-person-tab") === activePersonTab;
+      btn.classList.toggle("is-active", selected);
+      btn.setAttribute("aria-pressed", selected ? "true" : "false");
+    });
+    // The corner label names the tab being looked at, so it reads as the
+    // container's heading: "Student Contact Information".
+    var titleEl = strip.querySelector(".contour-person-tabs__title");
+    var titleText = (activePersonTab === "guardian" ? "Guardian" : "Student") + " Contact Information";
+    if (titleEl && titleEl.textContent !== titleText) titleEl.textContent = titleText;
+    if (strip.nextSibling !== anchorRow) anchorRow.parentNode.insertBefore(strip, anchorRow);
+  }
+  function setPersonTabBridge(on) {
+    // With the Guardian tab forward, the strip (inside HubSpot's dependent
+    // container) and the guardian fieldsets (top-level siblings after it)
+    // must sit flush so the container reads as one box — the margins between
+    // them are stood down.
+    qAll(".contour-person-tabbridge").forEach(function (node) {
+      node.classList.remove("contour-person-tabbridge");
+    });
+    if (!on) return;
+    var field = q(FIELD_SELECTORS.studentFirstName);
+    var wrap = field ? fieldWrapper(field) : null;
+    var host = wrap ? wrap.parentElement : null;
+    if (!host || !host.classList.contains("hs-dependent-field")) return;
+    host.classList.add("contour-person-tabbridge");
+    var row = host;
+    while (row.parentElement && row.parentElement !== formRoot) row = row.parentElement;
+    if (row !== host) row.classList.add("contour-person-tabbridge");
+  }
+  function teardownPersonTabs(guardian) {
+    var strip = personTabStrip();
+    qAll("[data-contour-tab-hidden]").forEach(function (node) {
+      node.removeAttribute("data-contour-tab-hidden");
+      node.style.removeProperty("display");
+    });
+    setPersonTabBridge(false);
+    if (!strip) return;
+    if (strip.parentNode) strip.parentNode.removeChild(strip);
+    // The other variants re-apply their own label state right after this,
+    // but the guardian fields on the Student flow are theirs to restore
+    // here — no other path rewrites "Your ..." until the radio changes.
+    PERSON_GROUPS[1].fields.forEach(function (config) {
+      setPersonFieldLabel(config, false, guardian ? null : "Your");
+    });
+    lastPersonTabFlow = null;
+  }
+  function updatePersonTabs(guardian) {
+    if (lastPersonTabFlow !== guardian) {
+      // Flow changed — always greet a fresh flow on its first tab.
+      activePersonTab = "student";
+      lastPersonTabFlow = guardian;
+    }
+    var studentRows = guardian ? personGroupRows(PERSON_GROUPS[0]) : [];
+    var guardianRows = personGroupRows(PERSON_GROUPS[1]);
+    // Mid-render (the dependent group joins the DOM a beat after the radio
+    // changes): leave everything as is, the MutationObserver re-runs this.
+    if (guardianRows.length === 0 || guardian && studentRows.length === 0) return;
+    if (activePersonTab !== "student" && activePersonTab !== "guardian") activePersonTab = "student";
+    var showStudent = guardian && activePersonTab === "student";
+    var visibleGroup = showStudent ? PERSON_GROUPS[0] : PERSON_GROUPS[1];
+    var visibleRows = showStudent ? studentRows : guardianRows;
+    var hiddenRows = !guardian ? [] : showStudent ? guardianRows : studentRows;
+    ensurePersonTabStrip(guardian ? studentRows[0] : guardianRows[0], guardian);
+    qAll("[data-contour-tab-hidden]").forEach(function (node) {
+      if (hiddenRows.indexOf(node) === -1) {
+        node.removeAttribute("data-contour-tab-hidden");
+        node.style.removeProperty("display");
+      }
+    });
+    hiddenRows.forEach(function (row) {
+      if (row.getAttribute("data-contour-tab-hidden") !== "1") {
+        row.setAttribute("data-contour-tab-hidden", "1");
+        row.style.display = "none";
+      }
+    });
+    PERSON_GROUPS.forEach(function (group) {
+      if (group !== visibleGroup) clearPersonGroupClasses(group);
+    });
+    applyPersonGroupRowClasses(visibleGroup, visibleRows);
+    clearPersonGroupHost();
+    if (showStudent && visibleRows[0].parentElement && visibleRows[0].parentElement.classList.contains("hs-dependent-field")) {
+      visibleRows[0].parentElement.classList.add("contour-person-group-host");
+    }
+    setPersonTabBridge(guardian && !showStudent);
+    if (guardian) {
+      PERSON_GROUPS[0].fields.forEach(function (config) {
+        setPersonFieldLabel(config, true);
+      });
+    }
+    PERSON_GROUPS[1].fields.forEach(function (config) {
+      setPersonFieldLabel(config, true, guardian ? null : "Your");
     });
   }
   function injectPersonGroupStyles() {
     if (document.getElementById("contour-person-group-styles")) return;
-    var line = "rgba(12, 49, 102, 0.16)";
-    var cardBg = "rgba(255, 255, 255, 0.55)";
-    var headBg = "rgba(12, 49, 102, 0.05)";
+    var line = "rgba(12, 49, 102, 0.12)";
+    var cardBg = "#FFFFFF";
     var style = document.createElement("style");
     style.id = "contour-person-group-styles";
     style.textContent = "" +
     ".contour-sr-only { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }" +
-    // --- group headers ------------------------------------------------------
-    ".hs-form .contour-person-header { display: flex; align-items: center; gap: 12px; box-sizing: border-box; width: 100%; flex: 0 0 100%; grid-column: 1 / -1; }" +
-    ".hs-form .contour-person-header__title { font-size: 12px; font-weight: 700; letter-spacing: 0.10em; text-transform: uppercase; color: #0C3166; }" +
-    // Card variant: the header is the card's tinted top edge.
-    ".hs-form .contour-person-header--card { margin: 22px 0 0; padding: 13px 18px; background: " + headBg + "; border: 1px solid " + line + "; border-bottom: none; border-radius: 14px 14px 0 0; }" +
-    // Separator variant: a plain left-aligned subheading in the form's own
-    // typographic voice — bold navy sentence case, like the "Program
-    // Interest" heading — with a short accent bar underneath. Two decorative
-    // drafts (right-aligned rule line, then centred between fading lines)
-    // both read as foreign against a form where every label is bold, navy
-    // and left-aligned (Amrit, 21 Aug 2026).
-    ".hs-form .contour-person-header--separator .contour-person-header__title { font-size: 15px; font-weight: 700; letter-spacing: 0; text-transform: none; }" +
-    '.hs-form .contour-person-header--separator .contour-person-header__title::after { content: ""; display: block; width: 34px; height: 3px; margin-top: 6px; border-radius: 2px; background: #0C3166; opacity: 0.85; }' +
-    // The student header sits inside .hs-dependent-field, whose row-gap
-    // already spaces it; the guardian one is a top-level sibling and brings
-    // its own margins.
-    ".hs-form .contour-person-header--separator.contour-person-header--guardian { margin: 30px 0 14px; }" +
+    // --- tab strip: the container's top edge --------------------------------
+    ".hs-form .contour-person-tabs { display: flex; align-items: center; gap: 8px; box-sizing: border-box; width: 100%; flex: 0 0 100%; grid-column: 1 / -1; margin: 12px 0 0; padding: 14px 20px; background: " + cardBg + "; border: 1px solid " + line + "; border-bottom-color: rgba(12, 49, 102, 0.08); border-radius: 16px 16px 0 0; }" +
+    // With the Student tab forward the host container's row-gap is zeroed
+    // for the tile paint, which would also eat the gap above the strip — the
+    // margin makes the strip sit 32px under the radio cards in every state
+    // (12px + the 1.25rem gap it loses).
+    ".hs-form .contour-person-group-host > .contour-person-tabs { margin: 32px 0 0; }" +
+    ".hs-form button.contour-person-tab { appearance: none; -webkit-appearance: none; border: 1px solid transparent; background: transparent; color: #0C3166; font: inherit; font-size: 14px; font-weight: 700; line-height: 1.3; padding: 7px 18px; border-radius: 999px; cursor: pointer; transition: background-color .15s ease, color .15s ease; }" +
+    ".hs-form button.contour-person-tab:not(.is-active):hover { background: rgba(12, 49, 102, 0.06); }" +
+    ".hs-form button.contour-person-tab.is-active { background: #0C3166; color: #FFFFFF; cursor: default; }" +
+    ".hs-form button.contour-person-tab:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(12, 49, 102, 0.25); }" +
+    ".hs-form .contour-person-tab__req { margin-left: 3px; font-weight: 700; }" +
+    // A resting tab holding blocked fields takes the error chips' colours —
+    // the active tab shows its errors inline, so it stays as it is.
+    ".hs-form button.contour-person-tab.is-errored:not(.is-active) { border-color: rgba(200, 16, 46, 0.30); background: rgba(200, 16, 46, 0.05); color: #8A0C22; }" +
+    ".hs-form button.contour-person-tab.is-errored:not(.is-active):hover { background: rgba(200, 16, 46, 0.10); }" +
+    ".hs-form .contour-person-tabs__title { margin-left: auto; font-size: 11.5px; font-weight: 700; letter-spacing: 0.10em; text-transform: uppercase; color: rgba(12, 49, 102, 0.55); }" +
+    // With the Guardian tab forward, the boundary between HubSpot's
+    // dependent-field fieldset (holding the strip) and the guardian
+    // fieldsets below it must close up so the box reads as one.
+    ".hs-form .contour-person-tabbridge { margin-bottom: 0 !important; }" +
     // --- student tiles: flex children of .hs-dependent-field ----------------
     // Gaps are zeroed and the tiles widened to an exact 50% so their painted
     // backgrounds meet; the spacing the gaps provided moves into padding.
-    ".hs-form .hs-dependent-field.contour-person-group-host { column-gap: 0 !important; row-gap: 0 !important; }" +
-    ".hs-form .contour-person-group-host > .hs_student_first_name.contour-person-card__row, .hs-form .contour-person-group-host > .hs_student_last_name.contour-person-card__row, .hs-form .contour-person-group-host > .hs_student_email.contour-person-card__row, .hs-form .contour-person-group-host > .hs_student_phone_number.contour-person-card__row { flex: 0 0 50% !important; box-sizing: border-box; background: " + cardBg + "; margin: 0 !important; padding: 8px 18px 18px; }" +
-    ".hs-form .contour-person-group-host > .hs_student_first_name.contour-person-card__row, .hs-form .contour-person-group-host > .hs_student_email.contour-person-card__row { border-left: 1px solid " + line + "; padding-right: 9px; }" +
-    ".hs-form .contour-person-group-host > .hs_student_last_name.contour-person-card__row, .hs-form .contour-person-group-host > .hs_student_phone_number.contour-person-card__row { border-right: 1px solid " + line + "; padding-left: 9px; }" +
+    // margin-bottom matches the guardian bottom fieldset's 30px — with the
+    // Student tab forward this container ends the box, and its native
+    // 1.25rem margin left less room under the box than the Guardian tab.
+    ".hs-form .hs-dependent-field.contour-person-group-host { column-gap: 0 !important; row-gap: 0 !important; margin-bottom: 30px !important; }" +
+    ".hs-form .contour-person-group-host > .hs_student_first_name.contour-person-card__row, .hs-form .contour-person-group-host > .hs_student_last_name.contour-person-card__row, .hs-form .contour-person-group-host > .hs_student_email.contour-person-card__row, .hs-form .contour-person-group-host > .hs_student_phone_number.contour-person-card__row { flex: 0 0 50% !important; box-sizing: border-box; background: " + cardBg + "; margin: 0 !important; padding: 12px 24px 20px; }" +
+    ".hs-form .contour-person-group-host > .hs_student_first_name.contour-person-card__row, .hs-form .contour-person-group-host > .hs_student_email.contour-person-card__row { border-left: 1px solid " + line + "; padding-right: 12px; }" +
+    ".hs-form .contour-person-group-host > .hs_student_last_name.contour-person-card__row, .hs-form .contour-person-group-host > .hs_student_phone_number.contour-person-card__row { border-right: 1px solid " + line + "; padding-left: 12px; }" +
     ".hs-form .contour-person-card__row--student.contour-person-card__row--bottom { border-bottom: 1px solid " + line + "; }" +
-    ".hs-form .contour-person-group-host > .hs_student_email.contour-person-card__row--bottom { border-radius: 0 0 0 14px; }" +
-    ".hs-form .contour-person-group-host > .hs_student_phone_number.contour-person-card__row--bottom { border-radius: 0 0 14px 0; }" +
+    // padding-bottom rides on these two, not the shared rule above — the
+    // 50%-tile rule outweighs the shared one and its 20px would win.
+    ".hs-form .contour-person-group-host > .hs_student_email.contour-person-card__row--bottom { border-radius: 0 0 0 16px; padding-bottom: 24px; }" +
+    ".hs-form .contour-person-group-host > .hs_student_phone_number.contour-person-card__row--bottom { border-radius: 0 0 16px 0; padding-bottom: 24px; }" +
     // --- guardian rows: whole top-level fieldsets ---------------------------
-    ".hs-form fieldset.contour-person-card__row--guardian { box-sizing: border-box; background: " + cardBg + "; border-left: 1px solid " + line + "; border-right: 1px solid " + line + "; margin: 0 !important; max-width: none; padding: 8px 18px 0; }" +
-    ".hs-form fieldset.contour-person-card__row--guardian.contour-person-card__row--bottom { border-bottom: 1px solid " + line + "; border-radius: 0 0 14px 14px; margin-bottom: 26px !important; padding-bottom: 6px; }" +
+    // The fieldsets take the same flex geometry as the student tiles —
+    // HubSpot's own form-columns-2 layout (floats, 95% inputs, field
+    // margins) gave the Guardian tab different gutters and bottom padding
+    // than the Student tab.
+    ".hs-form fieldset.contour-person-card__row--guardian { display: flex; flex-wrap: wrap; box-sizing: border-box; background: " + cardBg + "; border-left: 1px solid " + line + "; border-right: 1px solid " + line + "; margin: 0 !important; max-width: none; padding: 0; }" +
+    ".hs-form fieldset.contour-person-card__row--guardian > .hs-form-field { float: none !important; flex: 0 0 50%; width: 50% !important; box-sizing: border-box; margin: 0 !important; padding: 12px 12px 20px 24px; }" +
+    ".hs-form fieldset.contour-person-card__row--guardian > .hs-form-field + .hs-form-field { padding: 12px 24px 20px 12px; }" +
+    ".hs-form fieldset.contour-person-card__row--guardian .hs-input:not([type=\"checkbox\"]):not([type=\"radio\"]):not(.contour-intl-phone__country):not(.contour-intl-phone__number) { width: 100% !important; }" +
+    // HubSpot's intl-phone widget carries a clearfix ::after; in its column
+    // flex layout that pseudo-element is a flex item and adds one phantom
+    // 8px gap under the number box, pushing the guardian tab's bottom
+    // padding out of step with the student tab's.
+    '.hs-form fieldset.contour-person-card__row--guardian .hs-fieldtype-intl-phone::after { content: none; }' +
+    ".hs-form fieldset.contour-person-card__row--guardian.contour-person-card__row--bottom { border-bottom: 1px solid " + line + "; border-radius: 0 0 16px 16px; margin-bottom: 30px !important; }" +
+    ".hs-form fieldset.contour-person-card__row--guardian.contour-person-card__row--bottom > .hs-form-field { padding-bottom: 24px; }" +
     // --- mobile: tiles stack, so side borders and the bottom edge move ------
     "@media screen and (max-width: 767px) {" +
-    " .hs-form .contour-person-group-host > .hs_student_first_name.contour-person-card__row, .hs-form .contour-person-group-host > .hs_student_last_name.contour-person-card__row, .hs-form .contour-person-group-host > .hs_student_email.contour-person-card__row, .hs-form .contour-person-group-host > .hs_student_phone_number.contour-person-card__row { flex: 0 0 100% !important; border-left: 1px solid " + line + "; border-right: 1px solid " + line + "; padding: 8px 18px 14px; }" +
-    " .hs-form .contour-person-group-host > .hs_student_email.contour-person-card__row--bottom { border-bottom: none; border-radius: 0; }" +
-    " .hs-form .contour-person-group-host > .hs_student_phone_number.contour-person-card__row--bottom { border-radius: 0 0 14px 14px; }" +
+    " .hs-form .contour-person-tabs { padding: 12px 14px; gap: 6px; }" +
+    " .hs-form button.contour-person-tab { padding: 6px 14px; font-size: 13.5px; }" +
+    " .hs-form .contour-person-tabs__title { display: none; }" +
+    " .hs-form .contour-person-group-host > .hs_student_first_name.contour-person-card__row, .hs-form .contour-person-group-host > .hs_student_last_name.contour-person-card__row, .hs-form .contour-person-group-host > .hs_student_email.contour-person-card__row, .hs-form .contour-person-group-host > .hs_student_phone_number.contour-person-card__row { flex: 0 0 100% !important; border-left: 1px solid " + line + "; border-right: 1px solid " + line + "; padding: 10px 20px 16px; }" +
+    " .hs-form fieldset.contour-person-card__row--guardian > .hs-form-field, .hs-form fieldset.contour-person-card__row--guardian > .hs-form-field + .hs-form-field { flex: 0 0 100%; width: 100% !important; padding: 10px 20px 16px; }" +
+    " .hs-form fieldset.contour-person-card__row--guardian.contour-person-card__row--bottom > .hs-form-field { padding-bottom: 16px; }" +
+    " .hs-form .contour-person-group-host > .hs_student_email.contour-person-card__row--bottom { border-bottom: none; border-radius: 0; padding-bottom: 16px; }" +
+    " .hs-form .contour-person-group-host > .hs_student_phone_number.contour-person-card__row--bottom { border-radius: 0 0 16px 16px; padding-bottom: 16px; }" +
+    " .hs-form fieldset.contour-person-card__row--guardian.contour-person-card__row--bottom > .hs-form-field { padding-bottom: 16px; }" +
     "}";
     document.head.appendChild(style);
   }
@@ -3485,6 +3678,11 @@ var ContourForm1Logic = function () {
   // every check has to read that as absent rather than as unanswered.
   function isElementVisible(el) {
     if (!el) return false;
+    // A field resting behind the inactive person tab is hidden presentation,
+    // not an absent field — it still has to be answered, and the error
+    // summary brings its tab forward. Without this the gate would wave an
+    // empty Student tab through.
+    if (el.closest && el.closest("[data-contour-tab-hidden]")) return true;
     if (el.getClientRects && el.getClientRects().length > 0) return true;
     if (el.offsetParent) return true;
     // Nothing has layout in a headless harness, so fall back to walking the
@@ -3756,6 +3954,9 @@ var ContourForm1Logic = function () {
       link.className = "contour-error-summary__link";
       link.textContent = fieldSummaryLabel(wrap);
       link.addEventListener("click", function () {
+        // A field on the hidden person tab must be brought forward before
+        // there is anything to scroll to.
+        revealPersonTabForWrap(wrap);
         reportFieldError(wrap, focusTargetIn(wrap));
       });
       item.appendChild(link);
@@ -3764,11 +3965,13 @@ var ContourForm1Logic = function () {
     body.appendChild(list);
     box.appendChild(body);
     box.style.removeProperty("display");
+    updatePersonTabErrorState(ordered);
     playReveal(box);
   }
   function hideFormErrorSummary() {
     var box = document.getElementById(ERROR_SUMMARY_ID);
     if (box) box.style.display = "none";
+    clearPersonTabErrorState();
   }
   /* =========================================================
      SUBMIT BUTTON BUSY STATE
