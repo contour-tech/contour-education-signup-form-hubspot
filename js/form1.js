@@ -2382,6 +2382,11 @@ var ContourForm1Logic = function () {
   // are locked — an empty student email stays editable. HubSpot re-renders
   // replace the node, so the watchContactFields observer re-asserts the lock.
   var prefilledEmailLocks = [];
+  // True while the form on screen is a live mirror of the HubSpot record the
+  // URL named. The student's first own edit ends that: the form now shows
+  // *their* state, the draft carries it, and student_id comes off the URL so
+  // a refresh restores the edits instead of re-fetching the record over them.
+  var prefillSessionLive = false;
   function recordPrefilledEmailLock(selector, value) {
     if (!value) return;
     if (prefilledEmailLocks.indexOf(selector) === -1) prefilledEmailLocks.push(selector);
@@ -2526,9 +2531,14 @@ var ContourForm1Logic = function () {
   // The local draft's own banner. Worded to say where the answers came from
   // and that nothing has been sent: a form that fills itself in with no
   // explanation reads either as a bug or as us knowing more than we should.
-  function renderDraftBanner() {
+  function firstNameFromDraft(values) {
+    var name = values && values.firstname;
+    if (Array.isArray(name)) name = name[0];
+    return String(name || "").trim();
+  }
+  function renderDraftBanner(firstName) {
     renderRestoreBanner({
-      title: "Picked up where you left off",
+      title: firstName ? "Picked up where you left off, " + firstName : "Picked up where you left off",
       text: "We saved what you'd started on this device and filled it back in. Nothing has been sent to us yet, so take a look and finish whenever you're ready.",
       linkText: "Starting fresh? Clear the form"
     });
@@ -2571,6 +2581,7 @@ var ContourForm1Logic = function () {
     urlPrefetchPromise.then(function (data) {
       var prefilled = !!(data && data.found && data.contact);
       if (prefilled) {
+        prefillSessionLive = true;
         prefetchedTrialSubjectCodes = data.trialSubjectCodes || [];
         prefetchedEnrolledSubjectCodes = data.enrolledSubjectCodes || [];
         applyPrefill(data.contact, data.guardian, data.associatedStudent, true);
@@ -2707,17 +2718,36 @@ var ContourForm1Logic = function () {
       clearDraft();
       return null;
     }
-    return parsed.values;
+    return parsed;
+  }
+  // The parts of a prefilled session the values alone cannot carry: which
+  // email boxes are locked, and which subjects the student already has. A
+  // draft started on a prefill link stores them so a refresh keeps the email
+  // uneditable and the trialled subjects hidden — without them the restored
+  // form would reopen both doors the prefill deliberately closed. Absent for
+  // ordinary drafts, and old drafts without the key read the same way.
+  function draftPrefillMeta() {
+    if (prefilledEmailLocks.length === 0 && prefetchedTrialSubjectCodes.length === 0 && prefetchedEnrolledSubjectCodes.length === 0) {
+      return null;
+    }
+    return {
+      locks: prefilledEmailLocks.slice(),
+      trial: prefetchedTrialSubjectCodes.slice(),
+      enrolled: prefetchedEnrolledSubjectCodes.slice()
+    };
   }
   function writeDraft(values) {
     var store = draftStorage();
     if (!store) return;
+    var payload = {
+      v: DRAFT_VERSION,
+      savedAt: Date.now(),
+      values: values
+    };
+    var prefill = draftPrefillMeta();
+    if (prefill) payload.prefill = prefill;
     try {
-      store.setItem(DRAFT_STORAGE_KEY, JSON.stringify({
-        v: DRAFT_VERSION,
-        savedAt: Date.now(),
-        values: values
-      }));
+      store.setItem(DRAFT_STORAGE_KEY, JSON.stringify(payload));
     } catch (err) {
       // Quota, or storage revoked mid-session. Losing the draft is not worth
       // interrupting the form over.
@@ -2884,10 +2914,25 @@ var ContourForm1Logic = function () {
   }
   function initDraftRestore() {
     if (!draftCacheEnabled()) return false;
-    var values = readDraft();
+    var entry = readDraft();
+    var values = entry && entry.values;
     if (!values || !draftHasAnswers(values)) return false;
+    // The prefill context comes back before the values do, so the evaluators
+    // the restore fires already see the trialled subjects as taken and the
+    // observer re-locks the email boxes as HubSpot re-renders them.
+    if (entry.prefill) {
+      prefetchedTrialSubjectCodes = entry.prefill.trial || [];
+      prefetchedEnrolledSubjectCodes = entry.prefill.enrolled || [];
+      (entry.prefill.locks || []).forEach(function (selector) {
+        recordPrefilledEmailLock(selector, true);
+      });
+      if (prefetchedTrialSubjectCodes.length > 0 || prefetchedEnrolledSubjectCodes.length > 0) {
+        setFieldLabelText("interestedSubjects", "Additional Subjects");
+      }
+    }
     restoreDraft(values);
-    renderDraftBanner();
+    enforcePrefilledEmailLock();
+    renderDraftBanner(firstNameFromDraft(values));
     scheduleDerivedStateRefresh();
     return true;
   }
@@ -2904,6 +2949,14 @@ var ContourForm1Logic = function () {
       // calling click().
       if (!e.isTrusted || isProgrammaticEdit()) return;
       draftUserTouched = true;
+      if (prefillSessionLive) {
+        // The form has just diverged from the record, so the URL must stop
+        // claiming to be it. The draft that starts saving now carries the
+        // prefill context (email locks, trialling codes) — see
+        // draftPrefillMeta — so the refresh this enables loses nothing.
+        prefillSessionLive = false;
+        stripStudentIdFromUrl();
+      }
       scheduleDraftSave();
     }
     formRoot.addEventListener("input", onUserEdit);
