@@ -2961,6 +2961,12 @@ var ContourForm1Logic = function () {
         // applyPrefill, which the draft restore also calls: a restored draft
         // brings its own remembered open/folded state and must keep it.
         prefillWantsSectionsOpen = true;
+        // Whose ANSWERS win is settled — the record's. Which cards are open
+        // is a separate question, and the answer to that one is still the
+        // visitor's: a card they folded on the last visit through this same
+        // link stays folded, because pinOpen stands down for anything in the
+        // hand-collapsed map (Amrit, 23 Aug).
+        restoreSectionBoxStateFromDraft();
         openSectionsForPrefill();
         var fullName = ((data.contact.firstname || "") + " " + (data.contact.lastname || "")).trim();
         renderPrefillBanner(fullName);
@@ -3134,6 +3140,13 @@ var ContourForm1Logic = function () {
     var collapsed = Object.keys(sectionBoxManualCollapsed);
     if (open.length === 0 && collapsed.length === 0) return null;
     return { open: open, collapsed: collapsed };
+  }
+  // Reads only the card states out of a stored draft, for the prefill path,
+  // where the record supplies the values and the draft is otherwise ignored.
+  function restoreSectionBoxStateFromDraft() {
+    if (!draftCacheEnabled()) return;
+    var entry = readDraft();
+    if (entry) restoreSectionBoxState(entry.boxes);
   }
   function restoreSectionBoxState(boxes) {
     if (!boxes) return;
@@ -5098,7 +5111,7 @@ var ContourForm1Logic = function () {
     // with the form open but its button missing.
     guardianSegmentRevealed = true;
     submitRevealed = true;
-    expandAllSectionBoxes();
+    expandAllSectionBoxes(pinOpen);
     evaluateSections({
       initial: true
     });
@@ -5563,8 +5576,13 @@ var ContourForm1Logic = function () {
     delete sectionBoxManualOpen[id];
     setSectionBoxCollapsed(id, true);
   }
-  function expandAllSectionBoxes() {
+  // respectManualCollapse is for the pre-fill path, which opens the cards as a
+  // courtesy rather than a necessity: a card the visitor folded themselves
+  // stays folded. A submit attempt passes nothing and opens everything —
+  // there is no arguing with "you cannot fix an error you cannot see".
+  function expandAllSectionBoxes(respectManualCollapse) {
     Object.keys(sectionBoxes).forEach(function (id) {
+      if (respectManualCollapse && sectionBoxManualCollapsed[id]) return;
       sectionBoxManualOpen[id] = true;
       delete sectionBoxManualCollapsed[id];
       setSectionBoxCollapsed(id, false);
