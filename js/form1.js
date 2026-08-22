@@ -3045,6 +3045,26 @@ var ContourForm1Logic = function () {
       enrolled: prefetchedEnrolledSubjectCodes.slice()
     };
   }
+  // Which cards the visitor had open is part of what they left behind, and it
+  // is not derivable from the answers: a completed section collapses by
+  // default, so a refresh used to shut a card that had been deliberately
+  // reopened. Only the hand-set states are stored — everything else stays
+  // derived, so a draft never freezes the automatic behaviour (Amrit, 23 Aug).
+  function draftSectionBoxState() {
+    var open = Object.keys(sectionBoxManualOpen);
+    var collapsed = Object.keys(sectionBoxManualCollapsed);
+    if (open.length === 0 && collapsed.length === 0) return null;
+    return { open: open, collapsed: collapsed };
+  }
+  function restoreSectionBoxState(boxes) {
+    if (!boxes) return;
+    (boxes.open || []).forEach(function (id) {
+      if (SECTION_BOX_IDS[id]) sectionBoxManualOpen[id] = true;
+    });
+    (boxes.collapsed || []).forEach(function (id) {
+      if (SECTION_BOX_IDS[id] && !sectionBoxManualOpen[id]) sectionBoxManualCollapsed[id] = true;
+    });
+  }
   function writeDraft(values) {
     var store = draftStorage();
     if (!store) return;
@@ -3055,6 +3075,8 @@ var ContourForm1Logic = function () {
     };
     var prefill = draftPrefillMeta();
     if (prefill) payload.prefill = prefill;
+    var boxes = draftSectionBoxState();
+    if (boxes) payload.boxes = boxes;
     try {
       store.setItem(DRAFT_STORAGE_KEY, JSON.stringify(payload));
     } catch (err) {
@@ -3252,6 +3274,10 @@ var ContourForm1Logic = function () {
         setFieldLabelText("interestedSubjects", "Additional Subjects");
       }
     }
+    // Ahead of restoreDraft: the values it puts back trigger the first
+    // section pass, and that pass has to see the hand-set states or it
+    // collapses the cards on its own before they can be applied.
+    restoreSectionBoxState(entry.boxes);
     restoreDraft(values);
     enforcePrefilledFieldLock();
     renderDraftBanner(firstNameFromDraft(values));
@@ -5291,6 +5317,13 @@ var ContourForm1Logic = function () {
   function toggleSectionBox(id) {
     var box = sectionBoxes[id];
     if (!box) return;
+    // Opening or folding a card by hand is worth remembering across a
+    // refresh, and it is the visitor's own doing, so it starts a draft the
+    // same way typing does.
+    if (draftCacheEnabled()) {
+      draftUserTouched = true;
+      scheduleDraftSave();
+    }
     if (box.el.classList.contains("contour-section-box--collapsed")) {
       sectionBoxManualOpen[id] = true;
       delete sectionBoxManualCollapsed[id];
