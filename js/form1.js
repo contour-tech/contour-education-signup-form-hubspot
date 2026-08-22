@@ -4203,6 +4203,7 @@ var ContourForm1Logic = function () {
         }
       }
       var target = scrollTargetFor(best.anchor);
+      noteIntentionalScroll();
       if (target && target.scrollIntoView) target.scrollIntoView({
         behavior: prefersReducedMotion() ? "auto" : "smooth",
         block: "center"
@@ -4997,12 +4998,14 @@ var ContourForm1Logic = function () {
   // answer is worse than not being shown the next question straight away.
   function scrollSectionIntoView(entry) {
     if (prefersReducedMotion()) return;
+    if (lastInteractionWasMultiSelect) return;
     var active = document.activeElement;
     if (active && (active.tagName === "TEXTAREA" || active.tagName === "INPUT" && active.type !== "checkbox" && active.type !== "radio" && active.type !== "submit")) return;
     var target = entry.header || entry.nodes[0];
     if (!target || !target.getBoundingClientRect) return;
     var viewport = window.innerHeight || 0;
     if (!viewport || target.getBoundingClientRect().top < viewport - 48) return;
+    noteIntentionalScroll();
     target.scrollIntoView({
       behavior: "smooth",
       block: "nearest"
@@ -5131,6 +5134,119 @@ var ContourForm1Logic = function () {
     if (target.closest(".contour-section-box__header")) return;
     var el = target.closest("[data-contour-section]");
     if (el) lastInteractedSectionId = el.getAttribute("data-contour-section");
+    // Kept for scroll anchoring: the thing they just touched is the thing
+    // that must not move under them when a card folds.
+    if (target.getBoundingClientRect) lastInteractedEl = target;
+    // Ticking one subject is not "finished with subjects": the list is a
+    // multi-select and most people take two or three. Moving the page to the
+    // next section on the first tick reads as the form snatching the list
+    // away mid-choice, so a reveal triggered by one of these stays put and
+    // the visitor scrolls when they are done (Amrit, 23 Aug).
+    var name = target.getAttribute ? target.getAttribute("name") : null;
+    lastInteractionWasMultiSelect = name === "web_form__interested_subject" || name === "web_form__preferred_campuses" || name === "program_interest";
+  }
+  var lastInteractionWasMultiSelect = false;
+  var lastInteractedEl = null;
+  /* Folding a card above the viewport takes its height out of the page, and
+     everything below jumps up — the tile under the cursor is suddenly a
+     different tile, and a click lands on the wrong subject. So every pass
+     that can change a card's height runs inside this: pick whatever the
+     visitor is working on, note where it sits on screen, and put it back
+     there afterwards by scrolling the same distance the layout moved
+     (Amrit, 23 Aug). */
+  // Climbs to something that actually occupies space. The tile checkboxes and
+  // radios are visually hidden in favour of their labels, so the element that
+  // was clicked measures zero and would anchor the page to a point with no
+  // position of its own.
+  function laidOutAncestor(el) {
+    var viewport = window.innerHeight || 0;
+    var hops = 0;
+    while (el && hops < 5) {
+      if (el.getBoundingClientRect) {
+        var rect = el.getBoundingClientRect();
+        if (rect.height > 0 && rect.bottom > 0 && rect.top < viewport) return el;
+      }
+      el = el.parentElement;
+      hops += 1;
+    }
+    return null;
+  }
+  function scrollAnchorElement() {
+    // The thing they just touched comes first, ahead of whatever holds the
+    // caret: focus is often left in an earlier section (a text field they
+    // tabbed out of), and that section is usually the one about to fold, so
+    // anchoring to it measures a card that is collapsing rather than the
+    // content that is moving.
+    var candidates = [lastInteractedEl, document.activeElement];
+    for (var i = 0; i < candidates.length; i++) {
+      var el = candidates[i];
+      if (!el || el === document.body || !el.isConnected) continue;
+      if (!formRoot || !formRoot.contains(el)) continue;
+      // An anchor inside a folded card has no position of its own, and one
+      // inside a card that is mid-fold reports the height it is leaving.
+      if (el.closest && el.closest(".contour-section-box--collapsed")) continue;
+      var found = laidOutAncestor(el);
+      if (found) return found;
+    }
+    // Nothing to go on (a pass triggered by the form itself): hold whichever
+    // card the viewport is looking at, so the page still does not lurch.
+    var viewport = window.innerHeight || 0;
+    var boxes = qAll(".contour-section-box");
+    for (var j = 0; j < boxes.length; j++) {
+      var r = boxes[j].getBoundingClientRect();
+      if (r.height > 0 && r.bottom > 0 && r.top < viewport) return boxes[j];
+    }
+    return null;
+  }
+  /* The fold is animated, so the height does not leave the page in the same
+     tick the class is set — measuring straight after the pass shows nothing
+     moved, and the jump arrives over the next few frames. So the anchor is
+     held for the length of the transition: every frame, whatever distance the
+     anchor has drifted is scrolled back. It gives way to a deliberate scroll
+     (a newly revealed section, an error) and to the visitor's own, since
+     fighting either would be worse than the jump. */
+  var COLLAPSE_ANIM_MS = 420;
+  var anchorPinActive = false;
+  var intentionalScrollAt = 0;
+  function noteIntentionalScroll() {
+    intentionalScrollAt = Date.now();
+  }
+  function withScrollAnchor(fn) {
+    var anchor = scrollAnchorElement();
+    var before = anchor ? anchor.getBoundingClientRect().top : null;
+    var changed = fn();
+    if (!changed || !anchor || before === null || !anchor.isConnected) return;
+    pinScrollAnchor(anchor, before);
+  }
+  function pinScrollAnchor(anchor, before) {
+    if (anchorPinActive) return;
+    if (!window.requestAnimationFrame) return;
+    anchorPinActive = true;
+    var deadline = Date.now() + COLLAPSE_ANIM_MS;
+    var startedAt = Date.now();
+    var cancelled = false;
+    function cancel() {
+      cancelled = true;
+    }
+    // A hand on the wheel outranks anything this function wants.
+    window.addEventListener("wheel", cancel, { passive: true });
+    window.addEventListener("touchmove", cancel, { passive: true });
+    function stop() {
+      anchorPinActive = false;
+      window.removeEventListener("wheel", cancel);
+      window.removeEventListener("touchmove", cancel);
+    }
+    function frame() {
+      if (cancelled || Date.now() > deadline || !anchor.isConnected) return stop();
+      // A reveal or an error report asked for the page to move on purpose.
+      if (intentionalScrollAt > startedAt) return stop();
+      var rect = anchor.getBoundingClientRect();
+      if (rect.height === 0 || (anchor.closest && anchor.closest(".contour-section-box--collapsed"))) return stop();
+      var delta = rect.top - before;
+      if (Math.abs(delta) >= 1) window.scrollBy(0, delta);
+      window.requestAnimationFrame(frame);
+    }
+    window.requestAnimationFrame(frame);
   }
   function sectionBoxesEnabled() {
     return featureEnabled("sectionBoxes");
@@ -5330,13 +5446,21 @@ var ContourForm1Logic = function () {
   }
   function setSectionBoxCollapsed(id, collapsed) {
     var box = sectionBoxes[id];
-    if (!box) return;
+    if (!box) return false;
+    var was = box.el.classList.contains("contour-section-box--collapsed");
     box.el.classList.toggle("contour-section-box--collapsed", collapsed);
     // Write-if-changed: setAttribute records a mutation even when the value
     // is identical, and the section MutationObserver watches this subtree —
     // an unconditional write here kept evaluateSections looping forever.
     var expanded = collapsed ? "false" : "true";
     if (box.header.getAttribute("aria-expanded") !== expanded) box.header.setAttribute("aria-expanded", expanded);
+    // Tab runs field to field. A collapsed card's header is the only way back
+    // into it, so it belongs in the tab order; an open card's header only
+    // folds what is already on screen, and having it interrupt every jump
+    // between sections is a tax on keyboard filling (Amrit, 23 Aug).
+    var tab = collapsed ? 0 : -1;
+    if (box.header.tabIndex !== tab) box.header.tabIndex = tab;
+    return was !== collapsed;
   }
   function toggleSectionBox(id) {
     var box = sectionBoxes[id];
@@ -5556,6 +5680,13 @@ var ContourForm1Logic = function () {
     var startedFlags = SECTION_DEFS.map(function (def, index) {
       return revealedSections[def.id] && groupStarted(groups[index]);
     });
+    withScrollAnchor(function () {
+      return applySectionBoxStates(groups, startedFlags);
+    });
+    updateSubmitReveal(groups);
+  }
+  function applySectionBoxStates(groups, startedFlags) {
+    var heightChanged = false;
     SECTION_DEFS.forEach(function (def, index) {
       var box = sectionBoxes[def.id];
       if (!box) return;
@@ -5577,7 +5708,7 @@ var ContourForm1Logic = function () {
       box.header.classList.toggle("contour-section-box__header--togglable", complete);
       if (!complete) {
         delete sectionBoxManualCollapsed[def.id];
-        setSectionBoxCollapsed(def.id, false);
+        if (setSectionBoxCollapsed(def.id, false)) heightChanged = true;
         return;
       }
       var summaryText = sectionBoxSummary(def);
@@ -5599,9 +5730,9 @@ var ContourForm1Logic = function () {
       // and focus alone misses clicks that land on body. Together they hold
       // a card open only while someone is genuinely still in it.
       else collapsed = laterStarted && !(lastInteractedSectionId === def.id && box.el.contains(document.activeElement));
-      setSectionBoxCollapsed(def.id, collapsed);
+      if (setSectionBoxCollapsed(def.id, collapsed)) heightChanged = true;
     });
-    updateSubmitReveal(groups);
+    return heightChanged;
   }
   // The submit button is the last step of the cascade: it stays off the page
   // until every boxed section reads complete — the consent tick is what
