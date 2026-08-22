@@ -57,6 +57,11 @@ var ContourForm1Logic = function () {
     // back on the next visit from the same browser. On by default — see the
     // LOCAL DRAFT CACHE block for what is deliberately never stored.
     localDraft: true,
+    // A pre-fill link already knows who the person is, so the "Are you a
+    // Student / Guardian" question is answered before the page renders.
+    // Hides it (keeping the answer) rather than showing a decision that has
+    // already been made for them (Amrit, 22 Aug 2026).
+    hideContactTypeOnPrefill: true,
     // Checks the addresses this submission would create a contact for against
     // HubSpot before letting the form go. Parked with the DUPLICATE EMAIL
     // GUARD block — deduplication is moving to the backend, and this comes
@@ -698,6 +703,38 @@ var ContourForm1Logic = function () {
     updatePersonGroups();
   }
   /* =========================================================
+     PRE-FILL LINK PRESENTATION
+     -----------------------------------------------------------
+     A `?student_id=` link resolves to a HubSpot record, so "Are you a
+     Student or a Guardian?" is answered before the page renders — and
+     showing a question whose answer is already fixed invites an edit that
+     would put the form out of step with the record it is mirroring. The
+     radio keeps its value and its wrapper is hidden, the same shape as the
+     locked email box: the answer stands, the control goes.
+
+     Sticky for the page's life, and carried in the draft: the student's
+     first edit ends the *live mirror* of the record (prefillSessionLive)
+     and takes student_id off the URL, but it does not turn them back into
+     someone who has not said who they are, and a question reappearing
+     mid-form would read as a bug.
+     ========================================================= */
+  var prefillLinkSession = false;
+  function beginPrefillLinkSession() {
+    prefillLinkSession = true;
+    enforcePrefillLinkPresentation();
+  }
+  // Re-asserted from updatePersonGroups, which the contact-field
+  // MutationObserver already runs — a HubSpot re-render swaps in a fresh,
+  // visible radio group otherwise.
+  function enforcePrefillLinkPresentation() {
+    if (!prefillLinkSession) return;
+    if (!featureEnabled("hideContactTypeOnPrefill")) return;
+    var radio = q(FIELD_SELECTORS.contactType);
+    // Hidden on the field wrapper, not on the dependent container HubSpot
+    // renders around it — the Student Information group lives in there too.
+    if (radio) hideFieldWrapper(radio);
+  }
+  /* =========================================================
      STUDENT / GUARDIAN PERSON GROUP CARDS
      -----------------------------------------------------------
      On the Guardian flow the form collects two people, and prefixing all
@@ -853,6 +890,10 @@ var ContourForm1Logic = function () {
     // country list gets its non-ASCII parentheticals stripped so both phone
     // selects name countries the same way.
     normalizeNativePhoneCountryNames();
+    // A re-render repair as much as a first-paint decision, and this function
+    // already runs everywhere one is needed: init, prefill, the radio change,
+    // and the contact-field MutationObserver.
+    enforcePrefillLinkPresentation();
     var guardian = isGuardianContactType();
     var enabled = featureEnabled("personGroups");
     var variant = personGroupsVariant();
@@ -2628,6 +2669,7 @@ var ContourForm1Logic = function () {
       var prefilled = !!(data && data.found && data.contact);
       if (prefilled) {
         prefillSessionLive = true;
+        beginPrefillLinkSession();
         prefetchedTrialSubjectCodes = data.trialSubjectCodes || [];
         prefetchedEnrolledSubjectCodes = data.enrolledSubjectCodes || [];
         applyPrefill(data.contact, data.guardian, data.associatedStudent, true);
@@ -2773,10 +2815,15 @@ var ContourForm1Logic = function () {
   // form would reopen both doors the prefill deliberately closed. Absent for
   // ordinary drafts, and old drafts without the key read the same way.
   function draftPrefillMeta() {
-    if (prefilledEmailLocks.length === 0 && prefetchedTrialSubjectCodes.length === 0 && prefetchedEnrolledSubjectCodes.length === 0) {
+    if (!prefillLinkSession && prefilledEmailLocks.length === 0 && prefetchedTrialSubjectCodes.length === 0 && prefetchedEnrolledSubjectCodes.length === 0) {
       return null;
     }
     return {
+      // The presentation a pre-fill link put the form into — the contact-type
+      // question hidden — outlives the locks and the subject codes: a record
+      // with neither still arrived through a link, and a refresh must not
+      // hand back the question it answered.
+      link: prefillLinkSession,
       locks: prefilledEmailLocks.map(function (lock) {
         return { s: lock.selector, v: lock.value };
       }),
@@ -2970,6 +3017,9 @@ var ContourForm1Logic = function () {
     // the restore fires already see the trialled subjects as taken and the
     // observer re-locks the email boxes as HubSpot re-renders them.
     if (entry.prefill) {
+      // Any prefill meta at all means this draft was started on a pre-fill
+      // link, so the question stays answered and hidden through the restore.
+      beginPrefillLinkSession();
       prefetchedTrialSubjectCodes = entry.prefill.trial || [];
       prefetchedEnrolledSubjectCodes = entry.prefill.enrolled || [];
       (entry.prefill.locks || []).forEach(function (lock) {
