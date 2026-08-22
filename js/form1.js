@@ -53,6 +53,22 @@ var ContourForm1Logic = function () {
     // stop repeating whose field is whose (Luke, 19 Aug 2026; tab design
     // finalised by Amrit, 21 Aug 2026 — see PERSON GROUPS below).
     personGroups: true,
+    // Renders the Interested Subjects checkboxes as selectable tiles in the
+    // program-card language — navy fill and a lime tick when picked. Off
+    // restores the plain native checkboxes (Angad's "dopeify" round, 22 Aug
+    // 2026; the earlier wall-of-boxes concern is gone now that the matrix
+    // filters the list down per student).
+    subjectTiles: true,
+    // Wraps the Study / Programs / Campus / Finish sections in card
+    // containers, and auto-collapses a completed section to a one-line
+    // summary with an Edit affordance once a later section has opened.
+    // Contact fields keep their existing personGroups box; the Student /
+    // Guardian question stays bare as the form's opening line.
+    sectionBoxes: true,
+    // Section card headers in navy with the text knocked out white, instead
+    // of the grey band with navy text. On by default (Amrit, 22 Aug); turn
+    // off per page via window.ContourForm1Config if it doesn't land.
+    sectionHeaderTheme2: true,
     // Mirrors the answers into localStorage as they are given and offers them
     // back on the next visit from the same browser. On by default — see the
     // LOCAL DRAFT CACHE block for what is deliberately never stored.
@@ -503,8 +519,7 @@ var ContourForm1Logic = function () {
       // Badge: always green, centred SVG tick, pinned half-out on the
       // top-right corner of the outline with a white ring so it never
       // overlaps the card content.
-      ".hs-form .contour-program-card .contour-program-card__badge { top: -9px; right: -9px; width: 22px; height: 22px; background-color: #2f9e44; color: #FFFFFF; box-shadow: 0 0 0 2px #FFFFFF; z-index: 1; }" +
-      ".hs-form .contour-program-card .contour-program-card__badge svg { display: block; }" +
+
       // Logo: Contour-blue copy stacked on the charcoal original, wiped in
       // from the left via clip-path. Filter chain recolours the charcoal SVG
       // to #3478F7 (brightness(0) first, then rotate to the blue).
@@ -514,6 +529,44 @@ var ContourForm1Logic = function () {
       // Selected: the whole logo (suffix included) flips to white over the
       // navy, covering the charcoal original entirely.
       ".hs-form .contour-program-card--selected .contour-program-card__logo-tint, .hs-form .contour-program-card--selected:hover .contour-program-card__logo-tint { filter: brightness(0) invert(1); clip-path: inset(0 0 0 0); }";
+    document.head.appendChild(style);
+  }
+  function injectSubjectTileStyles() {
+    if (!featureEnabled("subjectTiles")) return;
+    if (document.getElementById("contour-subject-tile-styles")) return;
+    // The page stylesheet flattens these to plain checkboxes with !important
+    // (the old card look drowned at 70+ options). This tag is appended after
+    // it, so equally-important rules here win on order — and the matrix now
+    // filters the list per student, so tiles no longer mean a wall of boxes.
+    var style = document.createElement("style");
+    style.id = "contour-subject-tile-styles";
+    var opt = ".hs-form .hs_web_form__interested_subject li.hs-form-checkbox";
+    style.textContent = "" +
+      // The pill keeps its own content height whatever its row neighbour
+      // does; the one-level note hangs below it, outside the pill.
+      opt + " { display: flex; flex-direction: column; gap: 6px; }" +
+      // Unselected tiles take the page body colour like the input wells, so
+      // white is left to mean "card chrome" and navy to mean "chosen"; a
+      // disabled level greys out flat (Amrit, 22 Aug).
+      opt + " label { position: relative; flex: 0 0 auto; display: flex !important; align-items: center !important; gap: 10px !important; width: 100% !important; box-sizing: border-box !important; min-height: 0 !important; padding: 11px 14px !important; border: 1px solid rgba(12, 49, 102, 0.16) !important; border-radius: 12px !important; background: #FFF9F1 !important; font-weight: 600 !important; color: #212121 !important; cursor: pointer !important; transition: border-color 0.16s ease, background-color 0.16s ease, box-shadow 0.16s ease; }" +
+      opt + " label:hover { border-color: #3478F7 !important; background: #FFFFFF !important; }" +
+      opt + " label:has(input:disabled) { background: #F1F0EC !important; border-color: rgba(12, 49, 102, 0.10) !important; color: #9ca3af !important; cursor: not-allowed !important; }" +
+      opt + " label:has(input:disabled):hover { border-color: rgba(12, 49, 102, 0.10) !important; background: #F1F0EC !important; }" +
+      opt + " label:has(input:disabled)::before { background-color: #F1F0EC; border-color: rgba(12, 49, 102, 0.18); }" +
+      opt + " label > span { flex: 1 1 auto; }" +
+      // The native checkbox stays in the tab order but hands its face to the
+      // ::before marker drawn in its place.
+      opt + ' input[type="checkbox"] { position: absolute !important; opacity: 0 !important; width: 20px !important; height: 20px !important; margin: 0 !important; left: 14px; }' +
+      // Marker and tick are one element: the tick is a background SVG, so it
+      // is always dead-centre in the disc at any zoom.
+      opt + ' label::before { content: ""; flex: 0 0 auto; width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid rgba(12, 49, 102, 0.3); background: #FFFFFF center / 0 0 no-repeat; box-sizing: border-box; transition: background-color 0.16s ease, border-color 0.16s ease; }' +
+      opt + " label:has(input:checked) { background: #0C3166 !important; border-color: #0C3166 !important; }" +
+      opt + ' label:has(input:checked)::before { background-color: #D7FC3D; background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\'%3E%3Cpath d=\'M20 6L9 17l-5-5\' fill=\'none\' stroke=\'%230C3166\' stroke-width=\'4\' stroke-linecap=\'round\' stroke-linejoin=\'round\'/%3E%3C/svg%3E"); background-size: 11px 11px; border-color: #D7FC3D; }' +
+      opt + " label:has(input:checked) span { color: #FFFFFF !important; }" +
+      opt + " label:has(input:focus-visible) { box-shadow: 0 0 0 3px rgba(52, 120, 247, 0.35); }" +
+      // The one-level note hangs under the pill, indented past the marker.
+      ".hs-form .hs_web_form__interested_subject .contour-subject-exclusion-note { margin: 0 4px 0 34px !important; font-size: 12px; }" +
+      ".hs-form .hs_web_form__interested_subject .hs-error-msgs { margin-top: 8px !important; }";
     document.head.appendChild(style);
   }
   function enhanceProgramInterestCards() {
@@ -537,13 +590,9 @@ var ContourForm1Logic = function () {
           card.style.setProperty("--contour-logo-tint-right", config.logoTintRight);
         }
       }
-      var badge = document.createElement("span");
-      badge.className = "contour-program-card__badge";
-      badge.setAttribute("aria-hidden", "true");
-      // Proper geometric tick (SVG polyline) instead of the ✓ text glyph —
-      // renders identically everywhere and centres exactly in the circle.
-      badge.innerHTML = '<svg viewBox="0 0 24 24" width="12" height="12" focusable="false"><path d="M20 6L9 17l-5-5" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-      card.appendChild(badge);
+      // No corner tick: the navy fill with the white knockout logo already
+      // says "selected", and the collapsed-section status mark is the form's
+      // one remaining tick (Amrit, 22 Aug).
       var body = document.createElement("span");
       body.className = "contour-program-card__body";
       var logoPlaceholder = document.createElement("span");
@@ -6329,6 +6378,7 @@ var ContourForm1Logic = function () {
     formRoot = formElement;
     enhanceProgramInterestCards();
     enhanceInterestedSubjectsCategories();
+    injectSubjectTileStyles();
     injectDisabledFieldStyles();
     injectErrorRollupStyles();
     injectMotionStyles();
