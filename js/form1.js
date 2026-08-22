@@ -204,7 +204,7 @@ var ContourForm1Logic = function () {
   // scheduler. Flip WC_BOOKINGS_OPEN back to true to restore the scheduler —
   // nothing else needs changing.
   var WC_BOOKINGS_OPEN = false;
-  var WC_OPEN_SOON_NOTE = "Welcome Consultation bookings open soon. You can still submit this form now. We'll be in touch to book your Welcome Consultation once bookings open.";
+  var WC_OPEN_SOON_NOTE = "Welcome Consultation bookings open soon. You can still submit this form now. We'll be in touch once bookings open.";
   var CATEGORY_DISPLAY_ORDER = ["Mathematics", "Science", "English", "TestPrep", "MedPrep", "Other"];
   var CATEGORY_DISPLAY_NAMES = {
     TestPrep: "Selective Entry & Scholarship",
@@ -3289,10 +3289,6 @@ var ContourForm1Logic = function () {
     copy.className = "contour-welcome-consultation__copy";
     copy.textContent = "New UCAT students are required to book a Welcome Consultation before a trial can be booked. Please register your consultation below before completing the rest of this form.";
     wrapper.appendChild(copy);
-    var openSoonNote = document.createElement("p");
-    openSoonNote.className = "contour-welcome-consultation__waitlist-note contour-welcome-consultation__open-soon-note";
-    openSoonNote.style.display = "none";
-    wrapper.appendChild(openSoonNote);
     var widgetContainer = document.createElement("div");
     widgetContainer.className = "contour-welcome-consultation__widget";
     wrapper.appendChild(widgetContainer);
@@ -3308,6 +3304,20 @@ var ContourForm1Logic = function () {
     }
     return wrapper;
   }
+  // The open-soon note renders at the UCAT intake note's anchor — directly
+  // above the subjects summary — not in the scheduler's slot after Campus,
+  // so the two yellow notes always sit in the same place (Amrit, 22 Aug).
+  function ensureWcOpenSoonNote() {
+    var existing = formRoot.querySelector("#contour-wc-open-soon-note");
+    if (existing) return existing;
+    var summary = ensureSubjectSummary();
+    var note = document.createElement("p");
+    note.id = "contour-wc-open-soon-note";
+    note.className = "contour-welcome-consultation__waitlist-note contour-ucat-intake-note contour-welcome-consultation__open-soon-note";
+    note.style.display = "none";
+    summary.parentNode.insertBefore(note, summary);
+    return note;
+  }
   function renderWelcomeConsultation() {
     var wrapper = ensureWelcomeConsultationContainer();
     var ucat = isUcatSelected();
@@ -3320,31 +3330,29 @@ var ContourForm1Logic = function () {
     if (testprep) audiences.push("Selective Entry & Scholarship");
     var showScheduler = audiences.length > 0 && WC_BOOKINGS_OPEN;
     var showOpenSoonNote = audiences.length > 0 && !WC_BOOKINGS_OPEN;
-    if (!showScheduler && !showOpenSoonNote) {
+    var noteEl = ensureWcOpenSoonNote();
+    if (noteEl) {
+      noteEl.textContent = WC_OPEN_SOON_NOTE;
+      noteEl.style.display = showOpenSoonNote ? "" : "none";
+    }
+    if (!showScheduler) {
       wrapper.style.display = "none";
+      var idleWidget = wrapper.querySelector(".contour-welcome-consultation__widget");
+      if (idleWidget) {
+        idleWidget.innerHTML = "";
+        idleWidget.style.display = "none";
+      }
       return;
     }
     wrapper.style.display = "";
     var headingEl = wrapper.querySelector(".contour-welcome-consultation__heading");
     var copyEl = wrapper.querySelector(".contour-welcome-consultation__copy");
-    var noteEl = wrapper.querySelector(".contour-welcome-consultation__open-soon-note");
-    if (noteEl) {
-      noteEl.textContent = WC_OPEN_SOON_NOTE;
-      noteEl.style.display = showOpenSoonNote ? "" : "none";
-    }
-    if (headingEl) headingEl.style.display = showScheduler ? "" : "none";
+    if (headingEl) headingEl.style.display = "";
     if (copyEl) {
-      copyEl.style.display = showScheduler ? "" : "none";
-      if (showScheduler) {
-        copyEl.textContent = "New " + audiences.join(" and ") + " students are required to book a Welcome Consultation before a trial can be booked. Please register your consultation below before completing the rest of this form.";
-      }
+      copyEl.style.display = "";
+      copyEl.textContent = "New " + audiences.join(" and ") + " students are required to book a Welcome Consultation before a trial can be booked. Please register your consultation below before completing the rest of this form.";
     }
     var schedulerContainer = wrapper.querySelector(".contour-welcome-consultation__widget");
-    if (!showScheduler) {
-      schedulerContainer.innerHTML = "";
-      schedulerContainer.style.display = "none";
-      return;
-    }
     schedulerContainer.style.display = "";
     var location = getValue(FIELD_SELECTORS.location);
     var isUk = location === UK_TOKEN;
