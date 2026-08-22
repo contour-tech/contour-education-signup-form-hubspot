@@ -4889,6 +4889,7 @@ var ContourForm1Logic = function () {
       if (!empty && !groupComplete(nodes)) open = false;
     });
     updateSectionBoxStates(groups);
+    updateGuardianSegmentCascade();
     if (initial || revealedNow.length === 0) return;
     revealedNow.forEach(function (entry, i) {
       // Several sections open at once only on a prefilled return, where a
@@ -5339,6 +5340,70 @@ var ContourForm1Logic = function () {
      — the same cascade the sections play, one level down. Reveal-once, like
      sections: emptying a student field later never yanks filled guardian
      rows off the screen. */
+  var guardianSegmentRevealed = false;
+  var GUARDIAN_SEG_HIDDEN_CLASS = "contour-guardian-seg-hidden";
+  function guardianSegmentNodes() {
+    var nodes = qAll('[data-contour-person-static="guardian"]');
+    return nodes.concat(qAll("fieldset.contour-person-card__row--guardian"));
+  }
+  // Data on screen outranks the cascade: switching Student -> Guardian
+  // mid-fill carries whatever was typed into the visitor's own rows over to
+  // the Guardian segment, and hiding rows that already hold an answer looks
+  // like the form ate them (Amrit, 22 Aug). An untouched switch still plays
+  // the cascade, student rows first.
+  function guardianSegmentHasAnswer() {
+    var fields = PERSON_GROUPS[1].fields;
+    for (var i = 0; i < fields.length; i++) {
+      var el = q(fields[i].selector);
+      var wrap = el ? fieldWrapper(el) : null;
+      if (wrap && fieldWrapperAnswered(wrap)) return true;
+    }
+    return false;
+  }
+  function studentSegmentComplete() {
+    var fields = PERSON_GROUPS[0].fields;
+    for (var i = 0; i < fields.length; i++) {
+      // The phone never gates the reveal: a guardian who can't produce the
+      // student's number would face a card that refuses to grow, with their
+      // own fields stuck behind it. It stays required for submission.
+      if (fields[i].selector === FIELD_SELECTORS.studentPhone) continue;
+      var el = q(fields[i].selector);
+      var wrap = el ? fieldWrapper(el) : null;
+      if (!wrap) continue;
+      if (!fieldIsRequired(wrap)) continue;
+      if (!fieldWrapperAnswered(wrap)) return false;
+    }
+    return true;
+  }
+  function updateGuardianSegmentCascade() {
+    var nodes = guardianSegmentNodes();
+    if (nodes.length === 0) return;
+    // Off the Guardian flow these same nodes ARE the visitor's own fields, so
+    // the cascade has to hand them back on the way out: switching Guardian ->
+    // Student used to return early and leave the hidden class on, blanking
+    // the contact card (Amrit, 22 Aug). Reveal-once still holds per flow, so
+    // Student -> Guardian doesn't replay the slide-in for rows already seen.
+    if (!isGuardianContactType()) {
+      nodes.forEach(function (node) {
+        node.classList.remove(GUARDIAN_SEG_HIDDEN_CLASS);
+      });
+      return;
+    }
+    // Everything shows at once when disclosure is off, for staff, and after
+    // anything that reveals the whole form (submit attempt, prefill).
+    var show = guardianSegmentRevealed || !featureEnabled("progressiveSections") || isInternalMode() || guardianSegmentHasAnswer() || studentSegmentComplete();
+    nodes.forEach(function (node) {
+      if (!show) {
+        node.classList.add(GUARDIAN_SEG_HIDDEN_CLASS);
+        return;
+      }
+      if (!node.classList.contains(GUARDIAN_SEG_HIDDEN_CLASS)) return;
+      node.classList.remove(GUARDIAN_SEG_HIDDEN_CLASS);
+      if (guardianSegmentRevealed) return;
+      playReveal(node);
+    });
+    if (show) guardianSegmentRevealed = true;
+  }
   // "Started" = any visible field in the group holds an answer. Auto-collapse
   // waits for a later section to be started, not merely revealed — revealing
   // is the form's doing, an answer is the student's, and only the second one
