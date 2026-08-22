@@ -2390,6 +2390,12 @@ var ContourForm1Logic = function () {
   // so it still reads as untouchable. Only fields the prefetch actually filled
   // are locked — an empty student email stays editable. HubSpot re-renders
   // replace the node, so the watchContactFields observer re-asserts the lock.
+  // Each lock remembers the address that belongs in the box, not just which
+  // box to lock. HubSpot's React embed can re-render an input after the
+  // single-shot fill, swapping in a fresh blank node — and the observer that
+  // re-asserts the lock would otherwise seal that blank in as an uneditable
+  // empty required field. With the value stored, enforcement heals the box
+  // first; and a box that still holds nothing is never locked at all.
   var prefilledEmailLocks = [];
   // True while the form on screen is a live mirror of the HubSpot record the
   // URL named. The student's first own edit ends that: the form now shows
@@ -2397,13 +2403,37 @@ var ContourForm1Logic = function () {
   // a refresh restores the edits instead of re-fetching the record over them.
   var prefillSessionLive = false;
   function recordPrefilledEmailLock(selector, value) {
+    value = String(value || "").trim();
     if (!value) return;
-    if (prefilledEmailLocks.indexOf(selector) === -1) prefilledEmailLocks.push(selector);
+    for (var i = 0; i < prefilledEmailLocks.length; i++) {
+      if (prefilledEmailLocks[i].selector === selector) {
+        prefilledEmailLocks[i].value = value;
+        return;
+      }
+    }
+    prefilledEmailLocks.push({ selector: selector, value: value });
   }
   function enforcePrefilledEmailLock() {
-    prefilledEmailLocks.forEach(function (selector) {
-      var input = q(selector);
-      if (!input || input.readOnly) return;
+    prefilledEmailLocks.forEach(function (lock) {
+      var input = q(lock.selector);
+      if (!input) return;
+      if ((input.value || "").trim() === "") {
+        // A re-render emptied the box (or the fill never landed on this
+        // node). Put the address back before deciding anything about
+        // locking — events included, so HubSpot's own state follows.
+        setSelectOrTextValue(lock.selector, lock.value);
+      }
+      // Never lock a blank box: an uneditable empty required field is a
+      // dead end nobody can type their way out of.
+      if ((input.value || "").trim() === "") {
+        if (input.readOnly) {
+          input.readOnly = false;
+          input.removeAttribute("aria-readonly");
+          input.classList.remove("contour-prefill-locked");
+        }
+        return;
+      }
+      if (input.readOnly) return;
       input.readOnly = true;
       input.setAttribute("aria-readonly", "true");
       input.classList.add("contour-prefill-locked");
@@ -2747,7 +2777,9 @@ var ContourForm1Logic = function () {
       return null;
     }
     return {
-      locks: prefilledEmailLocks.slice(),
+      locks: prefilledEmailLocks.map(function (lock) {
+        return { s: lock.selector, v: lock.value };
+      }),
       trial: prefetchedTrialSubjectCodes.slice(),
       enrolled: prefetchedEnrolledSubjectCodes.slice()
     };
@@ -2858,7 +2890,8 @@ var ContourForm1Logic = function () {
       contact_type: first("web_form_contact_type"),
       firstname: values.firstname,
       lastname: values.lastname,
-      email_2: values.email_2,
+      // applyPrefill reads the canonical email key; the box is named email_2.
+      email: values.email_2,
       phone: values.phone,
       student_first_name: values.student_first_name,
       student_last_name: values.student_last_name,
@@ -2939,8 +2972,17 @@ var ContourForm1Logic = function () {
     if (entry.prefill) {
       prefetchedTrialSubjectCodes = entry.prefill.trial || [];
       prefetchedEnrolledSubjectCodes = entry.prefill.enrolled || [];
-      (entry.prefill.locks || []).forEach(function (selector) {
-        recordPrefilledEmailLock(selector, true);
+      (entry.prefill.locks || []).forEach(function (lock) {
+        // Drafts written before the locks carried values stored bare
+        // selectors; the address then comes from the draft values by name.
+        var selector = typeof lock === "string" ? lock : lock.s;
+        var value = typeof lock === "string" ? "" : lock.v;
+        if (!value) {
+          var nameMatch = /\[name="([^"]+)"\]/.exec(selector || "");
+          if (nameMatch) value = values[nameMatch[1]];
+          if (Array.isArray(value)) value = value[0];
+        }
+        recordPrefilledEmailLock(selector, value);
       });
       if (prefetchedTrialSubjectCodes.length > 0 || prefetchedEnrolledSubjectCodes.length > 0) {
         setFieldLabelText("interestedSubjects", "Additional Subjects");
