@@ -62,6 +62,10 @@ var ContourForm1Logic = function () {
     // Hides it (keeping the answer) rather than showing a decision that has
     // already been made for them (Amrit, 22 Aug 2026).
     hideContactTypeOnPrefill: true,
+    // Locks Location and Year Level on a pre-fill link the way the email box
+    // is locked — only where the record actually supplied one, and only until
+    // the form itself clears it. See PREFILLED FIELD LOCK (Amrit, 22 Aug 2026).
+    lockPrefilledStudyFields: true,
     // Checks the addresses this submission would create a contact for against
     // HubSpot before letting the form go. Parked with the DUPLICATE EMAIL
     // GUARD block — deduplication is moving to the backend, and this comes
@@ -1684,7 +1688,7 @@ var ContourForm1Logic = function () {
     if (document.getElementById("contour-disabled-field-styles")) return;
     var style = document.createElement("style");
     style.id = "contour-disabled-field-styles";
-    style.textContent = ".hs-form select:disabled, .hs-form input:disabled, .hs-form input.contour-prefill-locked[readonly] { opacity: 0.55; background-color: #f1f0ec; cursor: not-allowed; }" + ".contour-prefill-banner { display: flex; align-items: flex-start; gap: 14px; margin: 0 0 24px; padding: 18px 22px; border: 1px solid rgba(12, 49, 102, 0.12); border-radius: 16px; background: #FFFFFF; box-shadow: 0 1px 3px rgba(12, 49, 102, 0.06); }" + ".contour-prefill-banner__badge { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; background: #D7FC3D; color: #0C3166; font-size: 15px; font-weight: 700; }" + ".contour-prefill-banner__content { flex: 1; min-width: 0; }" + ".contour-prefill-banner__title { margin: 0 0 2px; font-size: 15px; font-weight: 700; color: #0C3166; }" + ".contour-prefill-banner__text { margin: 0 0 8px; font-size: 13.5px; line-height: 1.45; color: #6b7280; }" + ".contour-prefill-banner__reset { display: inline-block; font-size: 13px; font-weight: 600; color: #0C3166; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }" + ".contour-prefill-banner__reset:hover { color: #0540F2; }" + ".contour-subject-summary { margin: 24px 0; padding: 20px 22px; border: 1px solid rgba(12, 49, 102, 0.12); border-radius: 16px; background: #FFFFFF; box-shadow: 0 1px 3px rgba(12, 49, 102, 0.06); }" + ".contour-subject-summary__heading { font-size: 15px; font-weight: 700; color: #0C3166; margin-bottom: 14px; }" + ".contour-subject-summary__grid { display: flex; flex-wrap: wrap; gap: 24px; }" + ".contour-subject-summary__col { flex: 1 1 180px; min-width: 160px; }" + ".contour-subject-summary__col-title { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #6b7280; margin-bottom: 8px; }" + ".contour-subject-summary__chips { display: flex; flex-wrap: wrap; gap: 6px; }" + ".contour-subject-chip { display: inline-block; padding: 5px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 600; line-height: 1.3; }" + ".contour-subject-chip--navy { background: #092749; color: #FFFFFF; }" + ".contour-subject-chip--lime { background: #D7FC3D; color: #0C3166; }" + ".contour-subject-chip--blue { background: #007AFF; color: #FFFFFF; }" + ".contour-ucat-intake-note { margin: 24px 0; }" + ".contour-welcome-consultation__waitlist-note { margin: 0; padding: 14px 18px; border: 1px solid #f0d9a6; border-radius: 12px; background: #FFF3D6; color: #8a5a00; font-size: 14px; line-height: 1.5; font-weight: 600; }" + ".contour-form-loader { display: flex; flex-direction: column; align-items: center; padding: 60px 0; }" + ".contour-form-loader__spinner { width: 36px; height: 36px; border: 4px solid #e3e0d8; border-top-color: #1a1a2e; border-radius: 50%; animation: contour-spin 0.8s linear infinite; }" + "@keyframes contour-spin { to { transform: rotate(360deg); } }" + ".contour-form-loader__text { margin-top: 12px; font-size: 14px; }";
+    style.textContent = ".hs-form select:disabled, .hs-form input:disabled, .hs-form input.contour-prefill-locked[readonly] { opacity: 0.55; background-color: #f1f0ec; cursor: not-allowed; }" + ".hs-form select.contour-prefill-locked { opacity: 0.55; background-color: #f1f0ec; cursor: not-allowed; pointer-events: none; }" + ".contour-prefill-banner { display: flex; align-items: flex-start; gap: 14px; margin: 0 0 24px; padding: 18px 22px; border: 1px solid rgba(12, 49, 102, 0.12); border-radius: 16px; background: #FFFFFF; box-shadow: 0 1px 3px rgba(12, 49, 102, 0.06); }" + ".contour-prefill-banner__badge { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; background: #D7FC3D; color: #0C3166; font-size: 15px; font-weight: 700; }" + ".contour-prefill-banner__content { flex: 1; min-width: 0; }" + ".contour-prefill-banner__title { margin: 0 0 2px; font-size: 15px; font-weight: 700; color: #0C3166; }" + ".contour-prefill-banner__text { margin: 0 0 8px; font-size: 13.5px; line-height: 1.45; color: #6b7280; }" + ".contour-prefill-banner__reset { display: inline-block; font-size: 13px; font-weight: 600; color: #0C3166; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }" + ".contour-prefill-banner__reset:hover { color: #0540F2; }" + ".contour-subject-summary { margin: 24px 0; padding: 20px 22px; border: 1px solid rgba(12, 49, 102, 0.12); border-radius: 16px; background: #FFFFFF; box-shadow: 0 1px 3px rgba(12, 49, 102, 0.06); }" + ".contour-subject-summary__heading { font-size: 15px; font-weight: 700; color: #0C3166; margin-bottom: 14px; }" + ".contour-subject-summary__grid { display: flex; flex-wrap: wrap; gap: 24px; }" + ".contour-subject-summary__col { flex: 1 1 180px; min-width: 160px; }" + ".contour-subject-summary__col-title { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #6b7280; margin-bottom: 8px; }" + ".contour-subject-summary__chips { display: flex; flex-wrap: wrap; gap: 6px; }" + ".contour-subject-chip { display: inline-block; padding: 5px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 600; line-height: 1.3; }" + ".contour-subject-chip--navy { background: #092749; color: #FFFFFF; }" + ".contour-subject-chip--lime { background: #D7FC3D; color: #0C3166; }" + ".contour-subject-chip--blue { background: #007AFF; color: #FFFFFF; }" + ".contour-ucat-intake-note { margin: 24px 0; }" + ".contour-welcome-consultation__waitlist-note { margin: 0; padding: 14px 18px; border: 1px solid #f0d9a6; border-radius: 12px; background: #FFF3D6; color: #8a5a00; font-size: 14px; line-height: 1.5; font-weight: 600; }" + ".contour-form-loader { display: flex; flex-direction: column; align-items: center; padding: 60px 0; }" + ".contour-form-loader__spinner { width: 36px; height: 36px; border: 4px solid #e3e0d8; border-top-color: #1a1a2e; border-radius: 50%; animation: contour-spin 0.8s linear infinite; }" + "@keyframes contour-spin { to { transform: rotate(360deg); } }" + ".contour-form-loader__text { margin-top: 12px; font-size: 14px; }";
     document.head.appendChild(style);
   }
   function getClassification(inputEl) {
@@ -2421,7 +2425,7 @@ var ContourForm1Logic = function () {
       setPhoneValueWhenPresent(selector, value, tries - 1);
     }, 150);
   }
-  // PREFILLED EMAIL LOCK — a student_id link resolves to a HubSpot record by
+  // PREFILLED FIELD LOCK — a student_id link resolves to a HubSpot record by
   // its email address; letting that address be edited would point the whole
   // submission (and every check built on the email) at a different record than
   // the one the link named. Locked with readOnly rather than disabled because
@@ -2437,50 +2441,121 @@ var ContourForm1Logic = function () {
   // re-asserts the lock would otherwise seal that blank in as an uneditable
   // empty required field. With the value stored, enforcement heals the box
   // first; and a box that still holds nothing is never locked at all.
-  var prefilledEmailLocks = [];
+  //
+  // Location and Year Level are locked the same way (Amrit, 22 Aug 2026), but
+  // a <select> needs different handling in two places, so each lock reads its
+  // kind off the live node rather than carrying one:
+  //
+  //   - readOnly does nothing to a <select> and disabled would drop the value
+  //     from the submission, so a locked select is taken out of reach instead
+  //     — pointer-events off, out of the tab order, aria-disabled — with a
+  //     change guard that puts a *trusted* change back. Untrusted changes are
+  //     the form's own (see below), and those are allowed through;
+  //   - it is never healed. The email heal exists because HubSpot re-renders
+  //     blank the box, but a blank select is usually deliberate:
+  //     evaluateIntakeYearDependents clears the year level when the intake
+  //     year switches, and evaluateYearLevelOptions clears an answer that has
+  //     stopped being eligible. Healing would put an invalid answer straight
+  //     back. So a blank merely unlocks, and the lock retires for good only
+  //     once the box holds something the link did not put there — otherwise
+  //     re-locking would seal in whatever the student picked instead.
+  var prefilledFieldLocks = [];
   // True while the form on screen is a live mirror of the HubSpot record the
   // URL named. The student's first own edit ends that: the form now shows
   // *their* state, the draft carries it, and student_id comes off the URL so
   // a refresh restores the edits instead of re-fetching the record over them.
   var prefillSessionLive = false;
-  function recordPrefilledEmailLock(selector, value) {
+  var SELECT_LOCK_BOUND_ATTR = "data-contour-select-lock";
+  function recordPrefilledFieldLock(selector, value) {
     value = String(value || "").trim();
     if (!value) return;
-    for (var i = 0; i < prefilledEmailLocks.length; i++) {
-      if (prefilledEmailLocks[i].selector === selector) {
-        prefilledEmailLocks[i].value = value;
+    for (var i = 0; i < prefilledFieldLocks.length; i++) {
+      if (prefilledFieldLocks[i].selector === selector) {
+        prefilledFieldLocks[i].value = value;
         return;
       }
     }
-    prefilledEmailLocks.push({ selector: selector, value: value });
+    prefilledFieldLocks.push({ selector: selector, value: value });
   }
-  function enforcePrefilledEmailLock() {
-    prefilledEmailLocks.forEach(function (lock) {
+  function unlockPrefilledInput(input, lock) {
+    lock.active = false;
+    if (input.readOnly) {
+      input.readOnly = false;
+      input.removeAttribute("aria-readonly");
+    }
+    input.removeAttribute("aria-disabled");
+    input.removeAttribute("tabindex");
+    input.classList.remove("contour-prefill-locked");
+  }
+  // A locked select still has to submit its value, so it cannot be disabled —
+  // it is put out of reach instead. The change guard is belt and braces behind
+  // that, and stands down whenever the lock is not currently holding: a select
+  // the form cleared is the student's to answer, and snapping their answer
+  // back to the record's would be the worst version of this feature.
+  function lockPrefilledSelect(select, lock) {
+    if (select.getAttribute(SELECT_LOCK_BOUND_ATTR) !== "1") {
+      select.setAttribute(SELECT_LOCK_BOUND_ATTR, "1");
+      select.addEventListener("change", function (e) {
+        // The form's own writes arrive untrusted (this file dispatches them by
+        // hand) and are allowed to land — that is how the intake-year switch
+        // clears a year level that has stopped being answerable.
+        if (!e.isTrusted || !lock.active) return;
+        if ((select.value || "") === lock.value) return;
+        setSelectOrTextValue(lock.selector, lock.value);
+      });
+    }
+    lock.active = true;
+    if (select.classList.contains("contour-prefill-locked")) return;
+    select.setAttribute("aria-disabled", "true");
+    select.setAttribute("tabindex", "-1");
+    select.classList.add("contour-prefill-locked");
+  }
+  function enforcePrefilledFieldLock() {
+    prefilledFieldLocks.forEach(function (lock) {
+      if (lock.released) return;
       var input = q(lock.selector);
       if (!input) return;
-      if ((input.value || "").trim() === "") {
+      var current = (input.value || "").trim();
+      if (input.tagName === "SELECT") {
+        // Blank only unlocks, and never releases: a React re-render can empty
+        // a select for a beat, and releasing on that would drop the lock for
+        // the rest of the visit. It comes back the moment the value does.
+        if (current === "") {
+          unlockPrefilledInput(input, lock);
+          return;
+        }
+        // Holding something other than what the link supplied means the
+        // answer is now the student's — after an intake switch cleared it, or
+        // from a restored draft. Retire the lock rather than seal theirs in.
+        if (current !== lock.value) {
+          lock.released = true;
+          unlockPrefilledInput(input, lock);
+          return;
+        }
+        lockPrefilledSelect(input, lock);
+        return;
+      }
+      if (current === "") {
         // A re-render emptied the box (or the fill never landed on this
         // node). Put the address back before deciding anything about
         // locking — events included, so HubSpot's own state follows.
         setSelectOrTextValue(lock.selector, lock.value);
+        current = ((q(lock.selector) || input).value || "").trim();
       }
       // Never lock a blank box: an uneditable empty required field is a
       // dead end nobody can type their way out of.
-      if ((input.value || "").trim() === "") {
-        if (input.readOnly) {
-          input.readOnly = false;
-          input.removeAttribute("aria-readonly");
-          input.classList.remove("contour-prefill-locked");
-        }
+      if (current === "") {
+        unlockPrefilledInput(input, lock);
         return;
       }
       if (input.readOnly) return;
+      lock.active = true;
       input.readOnly = true;
       input.setAttribute("aria-readonly", "true");
       input.classList.add("contour-prefill-locked");
     });
   }
-  function applyPrefill(contact, guardian, associatedStudent, lockEmails) {
+  function applyPrefill(contact, guardian, associatedStudent, lockPrefilled) {
     var contactType = contact.contact_type;
     // "Parent" records use the same flow as "Guardian" — the form radio only
     // knows Student/Guardian.
@@ -2498,7 +2573,7 @@ var ContourForm1Logic = function () {
     // student record's email_2 — so it can't be trusted as anyone's own
     // address, and locking it would bind the submission to the wrong record
     // (Faraz's + Amrit's reports, 22 Aug 2026). An empty email leaves the
-    // field blank and editable: recordPrefilledEmailLock skips empty values.
+    // field blank and editable: recordPrefilledFieldLock skips empty values.
     if (isGuardianFlow) {
       setSelectOrTextValue('[name="firstname"]', contact.firstname);
       setSelectOrTextValue('[name="lastname"]', contact.lastname);
@@ -2514,17 +2589,17 @@ var ContourForm1Logic = function () {
       setTextWhenPresent('[name="student_last_name"]', s.lastname, 10);
       setTextWhenPresent('[name="student_email"]', s.email, 10);
       setPhoneValueWhenPresent(FIELD_SELECTORS.studentPhone, s.phone, 10);
-      if (lockEmails) {
-        recordPrefilledEmailLock(FIELD_SELECTORS.emailTemp, contact.email);
-        recordPrefilledEmailLock(FIELD_SELECTORS.studentEmail, s.email);
+      if (lockPrefilled) {
+        recordPrefilledFieldLock(FIELD_SELECTORS.emailTemp, contact.email);
+        recordPrefilledFieldLock(FIELD_SELECTORS.studentEmail, s.email);
       }
     } else {
       setSelectOrTextValue('[name="firstname"]', contact.firstname);
       setSelectOrTextValue('[name="lastname"]', contact.lastname);
       setSelectOrTextValue(FIELD_SELECTORS.emailTemp, contact.email);
       setPhoneValue('[name="phone"]', contact.phone);
-      if (lockEmails) {
-        recordPrefilledEmailLock(FIELD_SELECTORS.emailTemp, contact.email);
+      if (lockPrefilled) {
+        recordPrefilledFieldLock(FIELD_SELECTORS.emailTemp, contact.email);
       }
     }
     setSelectOrTextValue(FIELD_SELECTORS.location, contact.state_territory_country);
@@ -2534,6 +2609,15 @@ var ContourForm1Logic = function () {
     setCountryWhenPresent(contact.country_dropdown, 10);
     setSelectOrTextValue(FIELD_SELECTORS.intakeYear, contact.which_year_are_you_interested_in_tutoring_for_);
     setSelectOrTextValue(FIELD_SELECTORS.yearLevel, contact.year_level);
+    // Location and Year Level come from the record the link named, and the
+    // whole page below them — eligible programs, the subject list, the campus
+    // list, whether a school is asked for at all — is derived from that pair.
+    // Intake Year is deliberately left open: it is the one thing a returning
+    // student is most likely to be here to change.
+    if (lockPrefilled && featureEnabled("lockPrefilledStudyFields")) {
+      recordPrefilledFieldLock(FIELD_SELECTORS.location, contact.state_territory_country);
+      recordPrefilledFieldLock(FIELD_SELECTORS.yearLevel, contact.year_level);
+    }
     if (contact.school_text) {
       setSelectOrTextValue(FIELD_SELECTORS.schoolText, contact.school_text);
       setSelectOrTextValue(FIELD_SELECTORS.schoolCode, contact.school_code || "");
@@ -2550,7 +2634,7 @@ var ContourForm1Logic = function () {
     };
     applyPendingPrefill();
     setSelectOrTextValue(FIELD_SELECTORS.referral, contact.referral);
-    enforcePrefilledEmailLock();
+    enforcePrefilledFieldLock();
   }
   function stripStudentIdFromUrl() {
     if (!window.history || typeof window.history.replaceState !== "function") return;
@@ -2815,7 +2899,7 @@ var ContourForm1Logic = function () {
   // form would reopen both doors the prefill deliberately closed. Absent for
   // ordinary drafts, and old drafts without the key read the same way.
   function draftPrefillMeta() {
-    if (!prefillLinkSession && prefilledEmailLocks.length === 0 && prefetchedTrialSubjectCodes.length === 0 && prefetchedEnrolledSubjectCodes.length === 0) {
+    if (!prefillLinkSession && prefilledFieldLocks.length === 0 && prefetchedTrialSubjectCodes.length === 0 && prefetchedEnrolledSubjectCodes.length === 0) {
       return null;
     }
     return {
@@ -2824,7 +2908,11 @@ var ContourForm1Logic = function () {
       // with neither still arrived through a link, and a refresh must not
       // hand back the question it answered.
       link: prefillLinkSession,
-      locks: prefilledEmailLocks.map(function (lock) {
+      // A retired lock is not carried into the draft: the answer in the box is
+      // the student's now, and replaying the lock would put the record's back.
+      locks: prefilledFieldLocks.filter(function (lock) {
+        return !lock.released;
+      }).map(function (lock) {
         return { s: lock.selector, v: lock.value };
       }),
       trial: prefetchedTrialSubjectCodes.slice(),
@@ -3032,14 +3120,14 @@ var ContourForm1Logic = function () {
           if (nameMatch) value = values[nameMatch[1]];
           if (Array.isArray(value)) value = value[0];
         }
-        recordPrefilledEmailLock(selector, value);
+        recordPrefilledFieldLock(selector, value);
       });
       if (prefetchedTrialSubjectCodes.length > 0 || prefetchedEnrolledSubjectCodes.length > 0) {
         setFieldLabelText("interestedSubjects", "Additional Subjects");
       }
     }
     restoreDraft(values);
-    enforcePrefilledEmailLock();
+    enforcePrefilledFieldLock();
     renderDraftBanner(firstNameFromDraft(values));
     scheduleDerivedStateRefresh();
     return true;
@@ -5255,7 +5343,7 @@ var ContourForm1Logic = function () {
       // Prefilled email locks land here too: student_email joins the DOM only
       // after the Guardian radio is set, and HubSpot re-renders swap in fresh
       // unlocked nodes. The binder no-ops on anything already locked.
-      enforcePrefilledEmailLock();
+      enforcePrefilledFieldLock();
       // enforceDuplicateEmailValidation(); // parked — see DUPLICATE EMAIL GUARD
       refreshAllContactFormatErrors();
       // The student fields join the DOM only after the Guardian radio is set,
