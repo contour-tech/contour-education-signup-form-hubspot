@@ -14,6 +14,7 @@ var ContourForm1Logic = function () {
     schoolText: '[name="school_text"]',
     schoolCode: '[name="school_code"]',
     acaraId: '[name="acara_id"]',
+    canAddMoreSubjects: '[name="can_add_more_subjects"]',
     firstName: '[name="firstname"]',
     lastName: '[name="lastname"]',
     studentFirstName: '[name="student_first_name"]',
@@ -2127,6 +2128,7 @@ var ContourForm1Logic = function () {
     toggleFieldWrapper(q(FIELD_SELECTORS.interestedSubjects), anyVisible);
     updateSubjectsRequiredMark(anyVisible);
     evaluateSubjectExclusions();
+    updateCanAddMoreSubjects();
   }
   // The "(Year 12)" tag on QCE/HSC subject labels is dropped when the
   // student has selected Year 12 — they only see Year 12 subjects, so the
@@ -2304,6 +2306,96 @@ var ContourForm1Logic = function () {
   // Manual ticks only: subjects already trialled/enrolled (URL prefetch) are
   // filtered out of the option list itself in evaluateInterestedSubjectsOptions,
   // together with their one-level siblings, so they never reach here.
+  /* =========================================================
+     CAN ADD MORE SUBJECTS — a hidden yes/no for the sales team
+     -----------------------------------------------------------
+     Answers "is there anything left for this student to add?", so a signup
+     with one subject can be read as either "they picked one of many" or
+     "one was all we had for them" (Amrit, 23 Aug 2026).
+
+     It counts what the student COULD still take, not what is on screen: a
+     subject under a program they have not ticked still counts, because
+     ticking it is one click away. What does not count is anything the
+     matrix rules out for their location, year level and intake, anything
+     they already trial or are enrolled in, whatever they have already
+     ticked, and the other level of a subject they have ticked — that one is
+     the case this field exists for, where Education is the only eligible
+     program, it offers two levels of one subject, and taking either rules
+     out the other.
+
+     Undetermined reads as yes: before the location, year level and intake
+     are answered there is nothing to judge, and a false "we had nothing for
+     them" is the more expensive mistake of the two.
+     ========================================================= */
+  function canAddMoreSubjects() {
+    var location = getValue(FIELD_SELECTORS.location);
+    var yearLevel = getValue(FIELD_SELECTORS.yearLevel);
+    var intakeYear = getValue(FIELD_SELECTORS.intakeYear);
+    if (!location || !yearLevel || !intakeYear) return true;
+    var options = qAll(FIELD_SELECTORS.interestedSubjects);
+    if (options.length === 0) return true;
+    var prefetchCodes = prefetchedTrialSubjectCodes.concat(prefetchedEnrolledSubjectCodes);
+    // One level per subject: a ticked or already-held option closes the door
+    // on every other level of the same subject, which is exactly what
+    // evaluateSubjectExclusions does on screen.
+    var closedKeys = {};
+    options.forEach(function (opt) {
+      var classification = getClassification(opt);
+      var key = subjectExclusionKey(classification);
+      if (!key) return;
+      if (opt.checked) closedKeys[key] = true;
+      if (classification.code && prefetchCodes.indexOf(classification.code) !== -1) closedKeys[key] = true;
+    });
+    for (var i = 0; i < options.length; i++) {
+      var opt = options[i];
+      if (opt.checked) continue;
+      var classification = getClassification(opt);
+      if (classification.code && prefetchCodes.indexOf(classification.code) !== -1) continue;
+      var key = subjectExclusionKey(classification);
+      if (key && closedKeys[key]) continue;
+      if (!subjectMatchesAudience(classification)) continue;
+      // Same eligibility the option list is built from, minus the test for
+      // which programs are ticked.
+      var matrixVerdict = subjectMatchesMatrix(classification, location, yearLevel, intakeYear);
+      if (matrixVerdict === false) continue;
+      if (matrixVerdict === null) {
+        if (!subjectMatchesLocation(classification.state, location)) continue;
+        if (!subjectMatchesYearLevel(classification, yearLevel)) continue;
+      }
+      if (!subjectMatchesDelivery(classification)) continue;
+      if (!subjectMatchesIntake(classification, intakeYear)) continue;
+      if (ucatBlockedForIntake(classification, intakeYear)) continue;
+      return true;
+    }
+    return false;
+  }
+  // Written to whichever shape the field takes: HubSpot renders a hidden
+  // single checkbox as a plain hidden input on some forms and as a checkbox
+  // with display:none on others. Absent field, nothing to do — the flag is
+  // still a draft on the form at the time of writing.
+  function updateCanAddMoreSubjects() {
+    var fields = qAll(FIELD_SELECTORS.canAddMoreSubjects);
+    if (fields.length === 0) return;
+    var value = canAddMoreSubjects();
+    fields.forEach(function (el) {
+      if (el.type === "checkbox" || el.type === "radio") {
+        if (el.checked === value) return;
+        asProgrammaticEdit(function () {
+          el.checked = value;
+          el.dispatchEvent(new Event("input", { bubbles: true }));
+          el.dispatchEvent(new Event("change", { bubbles: true }));
+        });
+        return;
+      }
+      var text = value ? "true" : "false";
+      if ((el.value || "") === text) return;
+      asProgrammaticEdit(function () {
+        el.value = text;
+        el.dispatchEvent(new Event("input", { bubbles: true }));
+        el.dispatchEvent(new Event("change", { bubbles: true }));
+      });
+    });
+  }
   function evaluateSubjectExclusions() {
     var options = qAll(FIELD_SELECTORS.interestedSubjects);
     var checkedByKey = {};
@@ -2330,6 +2422,10 @@ var ContourForm1Logic = function () {
         }
       }
     });
+    // Ticking a subject closes the door on its other level, so the answer to
+    // "is there anything left?" changes here too. The full option pass above
+    // does not re-run on a subject tick, only this one does.
+    updateCanAddMoreSubjects();
   }
   var campusClassificationCache = new WeakMap;
   function getCampusClassification(inputEl) {
@@ -3051,7 +3147,9 @@ var ContourForm1Logic = function () {
   // Ticking the consent box is a legal act and has to be done afresh every
   // time; the two internal questions only exist for staff, whose sessions are
   // not saved anyway.
-  var DRAFT_SKIP_FIELDS = ["tos_privacy_consent", "how_did_they_contact_us", "signed_up_by"];
+  // can_add_more_subjects is derived from the answers, never given, so it is
+  // recomputed on restore rather than carried in the draft.
+  var DRAFT_SKIP_FIELDS = ["tos_privacy_consent", "how_did_they_contact_us", "signed_up_by", "can_add_more_subjects"];
   // Everything applyPrefill already knows how to put back, so the draft can
   // reuse it wholesale instead of keeping a second copy of the same wiring
   // (the phone widgets and the dependent selects especially).
@@ -4578,6 +4676,10 @@ var ContourForm1Logic = function () {
   }
   function runSubmitGate(e) {
     hideFormErrorSummary();
+    // Recomputed here as well as on every pass: this is the value that
+    // actually leaves with the submission, and it must match the answers as
+    // they stand at this moment.
+    updateCanAddMoreSubjects();
     // Enter in a text box reaches the gate before progressive disclosure has
     // opened every section. Nobody should be told to fix a field they cannot
     // see, so any submit attempt opens the whole form first.
