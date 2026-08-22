@@ -901,7 +901,10 @@ var ContourForm1Logic = function () {
     var wrap = fieldEl ? fieldWrapper(fieldEl) : null;
     if (!wrap) return null;
     var row = wrap;
-    while (row.parentElement && row.parentElement !== formRoot && !(row.parentElement.classList && row.parentElement.classList.contains("hs-dependent-field"))) {
+    // The section card's content wrapper is a stop like formRoot: walking
+    // past it would hand back the whole card as the "row" and anchor the
+    // person band outside its own section.
+    while (row.parentElement && row.parentElement !== formRoot && !(row.parentElement.classList && (row.parentElement.classList.contains("hs-dependent-field") || row.parentElement.classList.contains("contour-section-box__content-inner")))) {
       row = row.parentElement;
     }
     return row.parentElement ? row : null;
@@ -1190,7 +1193,9 @@ var ContourForm1Logic = function () {
     if (!host || !host.classList.contains("hs-dependent-field")) return;
     host.classList.add("contour-person-tabbridge");
     var row = host;
-    while (row.parentElement && row.parentElement !== formRoot) row = row.parentElement;
+    // Stop at the section card's content as well as formRoot — walking on
+    // would tag the card itself and zero out the 20px gap under it.
+    while (row.parentElement && row.parentElement !== formRoot && !(row.parentElement.classList && row.parentElement.classList.contains("contour-section-box__content-inner"))) row = row.parentElement;
     if (row !== host) row.classList.add("contour-person-tabbridge");
   }
   function teardownPersonTabs(guardian) {
@@ -4452,9 +4457,10 @@ var ContourForm1Logic = function () {
       link.className = "contour-error-summary__link";
       link.textContent = fieldSummaryLabel(wrap);
       link.addEventListener("click", function () {
-        // A field on the hidden person tab must be brought forward before
-        // there is anything to scroll to.
+        // A field on the hidden person tab or in a collapsed card must be
+        // brought forward before there is anything to scroll to.
         revealPersonTabForWrap(wrap);
+        expandSectionBoxForWrap(wrap);
         reportFieldError(wrap, focusTargetIn(wrap));
       });
       item.appendChild(link);
@@ -4551,7 +4557,7 @@ var ContourForm1Logic = function () {
     style.textContent = "" +
       // --- motion primitives -------------------------------------------------
       "@keyframes contour-reveal-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }" + "@keyframes contour-form-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }" + "@keyframes contour-error-in { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: none; } }" + "@keyframes contour-badge-in { from { opacity: 0; transform: scale(0.4); } 70% { transform: scale(1.12); } to { opacity: 1; transform: scale(1); } }" +
-      "@media (prefers-reduced-motion: no-preference) {" + "  .contour-reveal { animation: contour-reveal-in 420ms " + REVEAL_EASE + " both; }" + "  .contour-form-enter { animation: contour-form-in 380ms " + REVEAL_EASE + " both; }" + "  .hs-form .hs-error-msgs:not(.contour-error-rollup) { animation: contour-error-in 200ms ease-out both; }" + "  .hs-form .contour-program-card--selected .contour-program-card__badge { animation: contour-badge-in 220ms " + REVEAL_EASE + " both; }" + "}" +
+      "@media (prefers-reduced-motion: no-preference) {" + "  .contour-reveal { animation: contour-reveal-in 420ms " + REVEAL_EASE + " both; }" + "  .contour-form-enter { animation: contour-form-in 380ms " + REVEAL_EASE + " both; }" + "  .hs-form .hs-error-msgs:not(.contour-error-rollup) { animation: contour-error-in 200ms ease-out both; }" + "}" +
       // --- controls responding to the pointer and the keyboard ---------------
       // The page header styles fields with a three-:not() selector, which
       // outranks a plain class, so every contested property repeats the trio.
@@ -4603,20 +4609,15 @@ var ContourForm1Logic = function () {
      ========================================================= */
   var SECTION_HEADER_CLASS = "contour-section-header";
   var SECTION_DEFS = [{
-    id: "who",
-    title: null,
-    fields: ["web_form_contact_type"]
-  }, {
-    id: "student",
-    title: "Student Information",
-    fields: ["student_first_name", "student_last_name", "student_email", "student_phone_number"]
-  }, {
+    // One section from "Are you a" down through both people's fields — the
+    // Student rows live inside the contact-type dependent group anyway, so
+    // splitting them made the first card impossible to draw (Amrit, 22 Aug).
     id: "contact",
-    title: "Your Details",
-    fields: ["firstname", "lastname", "email_2", "phone"]
+    title: "Contact Information",
+    fields: ["web_form_contact_type", "student_first_name", "student_last_name", "student_email", "student_phone_number", "firstname", "lastname", "email_2", "phone"]
   }, {
     id: "study",
-    title: "Study Details",
+    title: "Academic Details",
     fields: ["state_territory_country", "state", "country_dropdown", "which_year_are_you_interested_in_tutoring_for_", "year_level", "school_text", "school_code", "acara_id"]
   }, {
     id: "programs",
@@ -4624,11 +4625,11 @@ var ContourForm1Logic = function () {
     fields: ["program_interest", "join_no_program_waitlist", "web_form__interested_subject"]
   }, {
     id: "campus",
-    title: "Preferred Campus",
+    title: "Preferred Campuses",
     fields: ["web_form__preferred_campuses"]
   }, {
     id: "finish",
-    title: "Finish Up",
+    title: "Final Details",
     fields: ["referral", "how_did_they_contact_us", "signed_up_by", "tos_privacy_consent"]
   }];
   var SECTION_INDEX_BY_FIELD = {};
@@ -4760,14 +4761,8 @@ var ContourForm1Logic = function () {
     return true;
   }
   function sectionTitle(def) {
-    // One submission can record two people, and which of them "your details"
-    // refers to depends on who is filling the form in. With the person group
-    // cards on, the Student/Guardian card headings carry the split, so a
-    // "Guardian Details" banner above the Student card would contradict them.
-    if (def.id === "contact") {
-      if (!isGuardianContactType()) return "Your Details";
-      return featureEnabled("personGroups") ? "Contact Details" : "Guardian Details";
-    }
+    // The person-tabs band inside the card carries the Student/Guardian
+    // split; the card header stays constant.
     return def.title;
   }
   function ensureSectionHeader(def, firstNode) {
@@ -4822,6 +4817,8 @@ var ContourForm1Logic = function () {
     if (!sectionsReady || !formRoot) return;
     var initial = !!(options && options.initial);
     var groups = sectionGroups();
+    // Moving nodes into their cards stales the groups just computed.
+    if (adoptSectionBoxNodes(groups)) groups = sectionGroups();
     var open = true;
     var revealedNow = [];
     SECTION_DEFS.forEach(function (def, index) {
@@ -4863,6 +4860,7 @@ var ContourForm1Logic = function () {
       }
       if (!empty && !groupComplete(nodes)) open = false;
     });
+    updateSectionBoxStates(groups);
     if (initial || revealedNow.length === 0) return;
     revealedNow.forEach(function (entry, i) {
       // Several sections open at once only on a prefilled return, where a
@@ -4926,8 +4924,20 @@ var ContourForm1Logic = function () {
     } else {
       formRoot.classList.add("contour-sections-on");
     }
-    formRoot.addEventListener("change", scheduleSectionEval);
-    formRoot.addEventListener("input", scheduleSectionEval);
+    formRoot.addEventListener("change", function (e) {
+      noteSectionInteraction(e.target);
+      scheduleSectionEval();
+    });
+    formRoot.addEventListener("input", function (e) {
+      noteSectionInteraction(e.target);
+      scheduleSectionEval();
+    });
+    // Tabbing or being focused into a collapsed card (error links, drafts)
+    // opens it — nobody should be typing into a folded box.
+    formRoot.addEventListener("focusin", function (e) {
+      noteSectionInteraction(e.target);
+      expandSectionBoxForWrap(e.target);
+    });
     evaluateSections({
       initial: true
     });
@@ -4942,6 +4952,426 @@ var ContourForm1Logic = function () {
     observer.observe(formRoot, {
       childList: true,
       subtree: true
+    });
+  }
+  /* =========================================================
+     SECTION BOXES — card containers with collapse-to-summary
+     -----------------------------------------------------------
+     Study / Programs / Campus / Finish each live in a white card with the
+     section title as its header. A completed section collapses to a
+     one-line answer summary with an Edit link once a later section has
+     opened; expanding is a click (or just focusing anything inside). The
+     submit button stays outside the Finish card as the page-level CTA.
+
+     The section walker never needed nodes to move — groups are recomputed
+     from the live DOM each pass — so adoption happens inside
+     evaluateSections: any top-level node belonging to a boxed section is
+     re-seated into that section's card, and the MutationObserver already
+     re-runs the pass when HubSpot inserts nodes elsewhere. Collapse is a
+     grid-rows squeeze (never display:none), so fieldVisibleInSection and
+     the completeness checks keep reading collapsed fields as present.
+     ========================================================= */
+  var SECTION_BOX_IDS = {
+    contact: true,
+    study: true,
+    programs: true,
+    campus: true,
+    finish: true
+  };
+  var sectionBoxes = {};
+  // Someone who opened or closed a card by hand has answered the question of
+  // where they want it — auto-collapse stands down for that card. Manual
+  // state is authoritative: the auto rule below never overrides either map.
+  var sectionBoxManualOpen = {};
+  var sectionBoxManualCollapsed = {};
+  // The section the person is currently working in (last change/input/focus)
+  // never auto-folds, even once it reads complete — picking a second subject
+  // must not close the card mid-reach.
+  var lastInteractedSectionId = null;
+  function noteSectionInteraction(target) {
+    if (!target || !target.closest) return;
+    if (target.closest(".contour-section-box__header")) return;
+    var el = target.closest("[data-contour-section]");
+    if (el) lastInteractedSectionId = el.getAttribute("data-contour-section");
+  }
+  function sectionBoxesEnabled() {
+    return featureEnabled("sectionBoxes");
+  }
+  function injectSectionBoxStyles() {
+    if (document.getElementById("contour-section-box-styles")) return;
+    var style = document.createElement("style");
+    style.id = "contour-section-box-styles";
+    var box = ".hs-form .contour-section-box";
+    style.textContent = "" +
+      box + " { margin: 0 0 20px; border: 1px solid rgba(12, 49, 102, 0.12); border-radius: 16px; background: #FFFFFF; box-shadow: 0 1px 3px rgba(12, 49, 102, 0.06); }" +
+      box + "--empty { display: none; }" +
+      // The header is a slim band in the person-tabs voice — small caps on a
+      // faint navy wash — so it reads as the section's chrome, one tier above
+      // the field labels inside, rather than a second bold label.
+      box + "__header { display: flex; align-items: center; gap: 12px; width: 100%; margin: 0; padding: 12px 22px; background: rgba(12, 49, 102, 0.045); border: 0; border-bottom: 1px solid rgba(12, 49, 102, 0.07); text-align: left; font: inherit; color: inherit; cursor: default; border-radius: 16px 16px 0 0; }" +
+      box + "--collapsed .contour-section-box__header { border-radius: 16px; border-bottom-color: transparent; }" +
+      box + "__header--togglable { cursor: pointer; }" +
+      box + "--collapsed .contour-section-box__header:hover { background: rgba(12, 49, 102, 0.08); }" +
+      // Lime disc + navy tick — the same mark as the subject tiles, the one
+      // confirmation glyph the design keeps.
+      // No ring at all on the band: lime on navy is already the brand's
+      // highest-contrast pair, so the white halo only fuzzed the edge and a
+      // navy border vanished into the band. The disc carries itself and goes
+      // one step larger so the tick reads (Amrit, 22 Aug). The prefill
+      // banner's badge keeps its navy edge — that one sits on a white card,
+      // where lime does need an outline to hold its shape.
+      box + "__status { flex: 0 0 auto; display: none; align-items: center; justify-content: center; width: 22px; height: 22px; box-sizing: border-box; border-radius: 50%; background: #D7FC3D; color: #0C3166; }" +
+      box + "__status svg { display: block; }" +
+      box + "--collapsed .contour-section-box__status { display: flex; }" +
+      box + "__title { flex: 0 0 auto; font-size: 12.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #0C3166; }" +
+      box + "__summary { flex: 1 1 auto; min-width: 0; display: none; font-size: 13.5px; font-weight: 500; color: #6b7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }" +
+      box + "--collapsed .contour-section-box__summary { display: block; }" +
+      box + "__action { flex: 0 0 auto; display: none; align-items: center; justify-content: center; width: 28px; height: 28px; margin-left: auto; border-radius: 50%; color: #0C3166; transition: background-color 0.15s ease; }" +
+      box + "--collapsed .contour-section-box__action { display: inline-flex; }" +
+      box + "--collapsed .contour-section-box__header:hover .contour-section-box__action { background: rgba(12, 49, 102, 0.10); }" +
+      box + "__action svg { display: block; }" +
+      // 1fr/0fr squeeze instead of display:none: the fields stay "visible" to
+      // every walker, and the height animates without measuring it.
+      box + "__content { display: grid; grid-template-rows: 1fr; }" +
+      // overflow stays visible while open: the school suggestion list drops
+      // out of its box. The collapsed class clips, which the 0fr squeeze
+      // needs anyway.
+      box + "__content-inner { min-height: 0; padding: 16px 22px 20px; }" +
+      box + "--collapsed .contour-section-box__content { grid-template-rows: 0fr; }" +
+      // visibility keeps collapsed fields out of the tab order; expansion
+      // hooks (header, focusin, error links) bring them back first.
+      box + "--collapsed .contour-section-box__content-inner { overflow: hidden; padding-top: 0; padding-bottom: 0; visibility: hidden; opacity: 0; }" +
+      "@media (prefers-reduced-motion: no-preference) { " + box + "__content { transition: grid-template-rows 0.3s ease; } " + box + "__content-inner { transition: padding 0.3s ease, visibility 0.3s, opacity 0.25s ease; } }" +
+      // Text-like inputs and every select (HubSpot's own and injected ones,
+      // e.g. the phone widget's country box) take the page body colour
+      // (#FFF9F1) so the fields read as wells cut into the white card; they
+      // lift to white with focus.
+      box + " select, " + box + ' input.hs-input:not([type="checkbox"]):not([type="radio"]) { background-color: #FFF9F1 !important; }' +
+      box + " select:focus, " + box + ' input.hs-input:not([type="checkbox"]):not([type="radio"]):focus { background-color: #FFFFFF !important; }' +
+      // The unselected "Are you a" card sits in the same well colour as the
+      // inputs; selection still fills navy over it. Selector mirrors the page
+      // stylesheet's radio-card rule — anything lighter loses on specificity.
+      ".hs-form .contour-section-box .hs-fieldtype-radio .input > ul.inputs-list > li.hs-form-radio label.hs-form-radio-display:not(:has(input:checked)):not(:hover) { background-color: #FFF9F1 !important; }" +
+      ".hs-form .contour-guardian-seg-hidden { display: none !important; }" +
+      // Inside a card the person "box" (per-row borders + band headers)
+      // flattens: fields sit directly on the card, and each segment is
+      // announced by a hairline header — "You"-pill + label over a rule —
+      // instead of a box within a box where everything blended white.
+      // Alignment stays with the base rules: label on the right edge, and a
+      // badged heading spreads so the YOU pill holds the left (Amrit, 22 Aug).
+      // The separator runs through the text line rather than under it — the
+      // label masks it with the card's white, the pill rides it with a white
+      // ring, and the rule ties the two ends of the band together.
+      box + " .contour-person-tabs--static { background: none; border: 0; border-radius: 0; position: relative; padding: 6px 0 !important; margin: 24px 0 2px; }" +
+      box + ' .contour-person-tabs--static::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: linear-gradient(to right, rgba(12, 49, 102, 0), rgba(12, 49, 102, 0.14) 48px, rgba(12, 49, 102, 0.14) calc(100% - 48px), rgba(12, 49, 102, 0)); }' +
+      // A step up from the base 11.5/700 so the segment names read as
+      // headers, while staying under the card band's 12.5px.
+      box + " .contour-person-tabs__heading { font-size: 12px; font-weight: 800; }" +
+      box + " .contour-person-tabs--static .contour-person-tabs__heading { position: relative; }" +
+      box + " .contour-person-tabs--static .contour-person-tabs__label { position: relative; background: #FFFFFF; padding-left: 10px; }" +
+      box + " .contour-person-tabs--static .contour-person-tabs__you { position: relative; }" +
+      // A band carrying the pill starts its rule past the pill instead of
+      // running underneath it — the gradient's fade-in becomes the taper.
+      // The offset comes from the measured pill width (set in
+      // ensurePersonStaticHeader); the fallback keeps the rule clear of the
+      // shortest sensible pill if a pass runs before it can be measured.
+      box + " .contour-person-tabs--static:has(.contour-person-tabs__you)::before { left: var(--contour-seg-rule-start, 46px); }" +
+      box + " .contour-person-tabs--mid { margin-top: 26px; border-top: 0; }" +
+      box + " .contour-person-group-host { margin-bottom: 0 !important; }" +
+      box + " .contour-person-group-host > .contour-person-card__row { border: 0 !important; border-radius: 0 !important; }" +
+      box + " .contour-person-group-host > .hs_student_first_name.contour-person-card__row, " + box + " .contour-person-group-host > .hs_student_email.contour-person-card__row { padding: 12px 12px 18px 0 !important; }" +
+      box + " .contour-person-group-host > .hs_student_last_name.contour-person-card__row, " + box + " .contour-person-group-host > .hs_student_phone_number.contour-person-card__row { padding: 12px 0 18px 12px !important; }" +
+      box + " fieldset.contour-person-card__row--guardian, " + box + " fieldset.contour-person-card__row--guardian.contour-person-card__row--bottom { border: 0 !important; border-radius: 0 !important; margin-bottom: 0 !important; }" +
+      box + " fieldset.contour-person-card__row--guardian > .hs-form-field { padding: 12px 12px 18px 0 !important; }" +
+      box + " fieldset.contour-person-card__row--guardian > .hs-form-field + .hs-form-field { padding: 12px 0 18px 12px !important; }" +
+      box + " fieldset.contour-person-card__row--guardian.contour-person-card__row--bottom > .hs-form-field { padding-bottom: 16px !important; }" +
+      "@media screen and (max-width: 767px) {" +
+      " " + box + " .contour-person-tabs--static { padding: 6px 2px 8px !important; }" +
+      " " + box + " .contour-person-group-host > .contour-person-card__row { border: 0 !important; padding: 10px 0 14px !important; }" +
+      " " + box + " fieldset.contour-person-card__row--guardian > .hs-form-field, " + box + " fieldset.contour-person-card__row--guardian > .hs-form-field + .hs-form-field { padding: 10px 0 14px !important; }" +
+      "}" +
+      // "Preferred Campuses" under the "Preferred Campus" band and "Program
+      // Interest" under "Programs and Subjects" said the same thing twice —
+      // the bands carry it. sr-only keeps both announced.
+      box + '[data-contour-section="campus"] .hs_web_form__preferred_campuses > label, ' + box + '[data-contour-section="programs"] .hs_program_interest > label { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }' +
+      (featureEnabled("sectionHeaderTheme2") ?
+        // Theme 2: the header band flips to navy with the text knocked out
+        // white — Edit takes the highlighter, the summary a soft white. The
+        // grey-band rules above still ship so a page can flip back with
+        // window.ContourForm1Config = { sectionHeaderTheme2: false }.
+        box + "__header { background: #0C3166; border-bottom-color: rgba(255, 255, 255, 0.10); }" +
+        box + "--collapsed .contour-section-box__header:hover { background: #123B73; }" +
+        box + "__title { color: #FFFFFF; }" +
+        box + "__summary { color: rgba(255, 255, 255, 0.72); }" +
+        // White pencil: the lime disc stays the band's one accent, and the
+        // icon sits in the same voice as the title text (Amrit, 22 Aug).
+        box + "__action { color: #FFFFFF; }" +
+        box + "--collapsed .contour-section-box__header:hover .contour-section-box__action { background: rgba(255, 255, 255, 0.12); }" +
+        ""
+        : "") +
+      // The one remaining native control joins the palette.
+      box + ' input[type="checkbox"][name="tos_privacy_consent"] { accent-color: #0C3166; }' +
+      // The hr separators earned their keep on the flat form; cards make
+      // their own edges.
+      box + ' .contour-section-divider { display: none !important; }' +
+      // The CTA holds the full card width — the finale of the cascade reads
+      // at the same scale as the sections above it (Amrit, 22 Aug).
+      ".hs-form .hs_submit.contour-submit-pending, .hs-form .hs-submit.contour-submit-pending { display: none; }" +
+      ".hs-form .hs_submit .hs-button, .hs-form .hs-submit .hs-button { display: block; width: 100%; }" +
+      "@media (max-width: 767px) { " + box + "__header { padding: 16px 16px 0; } " + box + "--collapsed .contour-section-box__header { padding-bottom: 16px; } " + box + "__content-inner { padding: 6px 16px 16px; } }";
+    document.head.appendChild(style);
+  }
+  function ensureSectionBox(def, firstNode) {
+    var existing = sectionBoxes[def.id];
+    if (existing) return existing;
+    if (!firstNode || !firstNode.parentNode) return null;
+    injectSectionBoxStyles();
+    var el = document.createElement("div");
+    el.className = "contour-section-box";
+    // The pin makes sectionIndicesIn place the whole card, contents and all,
+    // in this section — even on a pass where its fields are mid-render.
+    el.setAttribute("data-contour-section", def.id);
+    var header = document.createElement("button");
+    header.type = "button";
+    header.className = "contour-section-box__header";
+    header.setAttribute("aria-expanded", "true");
+    var status = document.createElement("span");
+    status.className = "contour-section-box__status";
+    status.setAttribute("aria-hidden", "true");
+    status.innerHTML = '<svg viewBox="0 0 24 24" width="11" height="11" focusable="false"><path d="M20 6L9 17l-5-5" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    var title = document.createElement("span");
+    title.className = "contour-section-box__title";
+    var summary = document.createElement("span");
+    summary.className = "contour-section-box__summary";
+    var action = document.createElement("span");
+    action.className = "contour-section-box__action";
+    // Icon-only affordance; the sr-only text keeps "Edit" announced.
+    action.innerHTML = '<svg viewBox="0 0 24 24" width="15" height="15" focusable="false" aria-hidden="true"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="contour-sr-only">Edit</span>';
+    header.appendChild(status);
+    header.appendChild(title);
+    header.appendChild(summary);
+    header.appendChild(action);
+    var content = document.createElement("div");
+    content.className = "contour-section-box__content";
+    var inner = document.createElement("div");
+    inner.className = "contour-section-box__content-inner";
+    content.appendChild(inner);
+    el.appendChild(header);
+    el.appendChild(content);
+    firstNode.parentNode.insertBefore(el, firstNode);
+    header.addEventListener("click", function () {
+      toggleSectionBox(def.id);
+    });
+    sectionBoxes[def.id] = {
+      el: el,
+      header: header,
+      title: title,
+      summary: summary,
+      content: inner
+    };
+    return sectionBoxes[def.id];
+  }
+  function setSectionBoxCollapsed(id, collapsed) {
+    var box = sectionBoxes[id];
+    if (!box) return;
+    box.el.classList.toggle("contour-section-box--collapsed", collapsed);
+    // Write-if-changed: setAttribute records a mutation even when the value
+    // is identical, and the section MutationObserver watches this subtree —
+    // an unconditional write here kept evaluateSections looping forever.
+    var expanded = collapsed ? "false" : "true";
+    if (box.header.getAttribute("aria-expanded") !== expanded) box.header.setAttribute("aria-expanded", expanded);
+  }
+  function toggleSectionBox(id) {
+    var box = sectionBoxes[id];
+    if (!box) return;
+    if (box.el.classList.contains("contour-section-box--collapsed")) {
+      sectionBoxManualOpen[id] = true;
+      delete sectionBoxManualCollapsed[id];
+      // The click is also an interaction with the section: with the header
+      // focused and this id marked current, the working-here guard holds the
+      // card open even if a pass lands before the manual maps are read.
+      lastInteractedSectionId = id;
+      setSectionBoxCollapsed(id, false);
+      return;
+    }
+    // Collapsing by hand only works on a finished section — a half-answered
+    // one stays open so the missing answer stays on screen. The click still
+    // pins the card open: reaching the header at all means the person wants
+    // it where it is, and without the pin a click that raced a transient
+    // auto-open would fold the card right back (the "flicker" Amrit hit).
+    if (box.el.getAttribute("data-contour-complete") !== "1") {
+      sectionBoxManualOpen[id] = true;
+      delete sectionBoxManualCollapsed[id];
+      return;
+    }
+    sectionBoxManualCollapsed[id] = true;
+    delete sectionBoxManualOpen[id];
+    setSectionBoxCollapsed(id, true);
+  }
+  function expandAllSectionBoxes() {
+    Object.keys(sectionBoxes).forEach(function (id) {
+      sectionBoxManualOpen[id] = true;
+      delete sectionBoxManualCollapsed[id];
+      setSectionBoxCollapsed(id, false);
+    });
+  }
+  function expandSectionBoxForWrap(wrap) {
+    if (!wrap || !wrap.closest) return;
+    // The header runs its own toggle; going through here as well would
+    // expand on its focusin and then collapse again on its click.
+    if (wrap.closest(".contour-section-box__header")) return;
+    var el = wrap.closest(".contour-section-box--collapsed");
+    if (!el) return;
+    var id = el.getAttribute("data-contour-section");
+    if (!id) return;
+    sectionBoxManualOpen[id] = true;
+    delete sectionBoxManualCollapsed[id];
+    setSectionBoxCollapsed(id, false);
+  }
+  // Top-level nodes that belong to a boxed section move into its card. The
+  // submit button is deliberately left out: the CTA belongs to the page, not
+  // to the Finish card. Returns whether anything moved so the caller knows
+  // its groups are stale.
+  function adoptSectionBoxNodes(groups) {
+    if (!sectionBoxesEnabled()) return false;
+    var moved = false;
+    SECTION_DEFS.forEach(function (def, index) {
+      if (!SECTION_BOX_IDS[def.id]) return;
+      var box = sectionBoxes[def.id];
+      var outside = groups[index].filter(function (node) {
+        if (node.classList && node.classList.contains("hs_submit")) return false;
+        // Page-level furniture rides above the cards, whatever section the
+        // context walk files it under.
+        if (node.id === "contour-prefill-banner" || node.id === "contour-form-loader" || node.classList && node.classList.contains("contour-restore-banner")) return false;
+        return !box || node !== box.el && !box.el.contains(node);
+      });
+      if (outside.length === 0) return;
+      box = ensureSectionBox(def, outside[0]);
+      if (!box) return;
+      outside.forEach(function (node) {
+        // The card's visibility carries the section state from here — a
+        // stale per-node mark would read as a hidden field forever.
+        setNodeSectionHidden(node, false);
+        box.content.appendChild(node);
+        moved = true;
+      });
+    });
+    // The person band anchors itself before the first person row; once that
+    // row moves into the contact card the band must follow, and its own
+    // re-seat only runs inside updatePersonGroups.
+    if (moved) updatePersonGroups();
+    return moved;
+  }
+  function sectionBoxSummary(def) {
+    if (def.id === "contact") {
+      var name = [getValue('[name="firstname"]'), getValue('[name="lastname"]')].filter(Boolean).join(" ");
+      var parts = [name, getValue(FIELD_SELECTORS.emailTemp)];
+      if (isGuardianContactType()) {
+        var student = [getValue('[name="student_first_name"]'), getValue('[name="student_last_name"]')].filter(Boolean).join(" ");
+        if (student) parts.push("Student: " + student);
+      }
+      return parts.filter(Boolean).join(" \u00b7 ");
+    }
+    if (def.id === "study") {
+      var intake = getValue(FIELD_SELECTORS.intakeYear);
+      return [getValue(FIELD_SELECTORS.location), getValue(FIELD_SELECTORS.yearLevel), intake ? intake + " intake" : "", getValue(FIELD_SELECTORS.schoolText)].filter(Boolean).join(" \u00b7 ");
+    }
+    if (def.id === "programs") {
+      var parts = [];
+      qAll(FIELD_SELECTORS.programInterest).forEach(function (opt, index) {
+        if (!opt.checked) return;
+        var config = matchCardConfig(opt, index);
+        parts.push(config ? config.title : optionLabelText(opt));
+      });
+      var subjects = qAll(FIELD_SELECTORS.interestedSubjects).filter(function (opt) {
+        return opt.checked;
+      }).length;
+      if (subjects) parts.push(subjects === 1 ? "1 subject" : subjects + " subjects");
+      return parts.join(" \u00b7 ");
+    }
+    if (def.id === "finish") {
+      var referral = getValue(FIELD_SELECTORS.referral);
+      return [referral, "Terms agreed"].filter(Boolean).join(" \u00b7 ");
+    }
+    if (def.id === "campus") {
+      return qAll(FIELD_SELECTORS.campus).filter(function (opt) {
+        return opt.checked;
+      }).map(function (opt) {
+        // Suburb only — enhanceCampusLabels split the label into name and
+        // address spans, so the address never carries brackets to strip on.
+        var label = opt.closest("label");
+        var name = label && label.querySelector(".contour-campus-name");
+        return (name ? name.textContent : optionLabelText(opt).replace(/\s*\(.*$/, "")).trim();
+      }).join(", ");
+    }
+    return "";
+  }
+  /* On the Guardian flow the card opens on the Student segment alone; the
+     Guardian band and fieldsets slide in once the student rows are answered
+     — the same cascade the sections play, one level down. Reveal-once, like
+     sections: emptying a student field later never yanks filled guardian
+     rows off the screen. */
+  // "Started" = any visible field in the group holds an answer. Auto-collapse
+  // waits for a later section to be started, not merely revealed — revealing
+  // is the form's doing, an answer is the student's, and only the second one
+  // means they have moved on.
+  function groupStarted(nodes) {
+    var entries = groupFieldWraps(nodes);
+    for (var i = 0; i < entries.length; i++) {
+      if (!fieldVisibleInSection(entries[i])) continue;
+      if (fieldWrapperAnswered(entries[i].wrap)) return true;
+    }
+    return false;
+  }
+  function updateSectionBoxStates(groups) {
+    if (!sectionBoxesEnabled()) return;
+    var startedFlags = SECTION_DEFS.map(function (def, index) {
+      return revealedSections[def.id] && groupStarted(groups[index]);
+    });
+    SECTION_DEFS.forEach(function (def, index) {
+      var box = sectionBoxes[def.id];
+      if (!box) return;
+      var nodes = groups[index];
+      var empty = !groupHasVisibleField(nodes);
+      // Own class rather than setNodeSectionHidden: that helper's bookkeeping
+      // belongs to the reveal system, and an empty card is a styling matter.
+      box.el.classList.toggle("contour-section-box--empty", empty);
+      if (empty) return;
+      // Text and attribute writes are all guarded by a changed-check: this
+      // runs from a MutationObserver over the same subtree, and identical
+      // rewrites still count as mutations — the eval would chase its own
+      // tail every tick.
+      var title = sectionTitle(def) || "";
+      if (box.title.textContent !== title) box.title.textContent = title;
+      var complete = groupComplete(nodes);
+      var completeAttr = complete ? "1" : "0";
+      if (box.el.getAttribute("data-contour-complete") !== completeAttr) box.el.setAttribute("data-contour-complete", completeAttr);
+      box.header.classList.toggle("contour-section-box__header--togglable", complete);
+      if (!complete) {
+        delete sectionBoxManualCollapsed[def.id];
+        setSectionBoxCollapsed(def.id, false);
+        return;
+      }
+      var summaryText = sectionBoxSummary(def);
+      if (box.summary.textContent !== summaryText) box.summary.textContent = summaryText;
+      var laterStarted = startedFlags.some(function (started, j) {
+        return started && j > index;
+      });
+      var collapsed;
+      if (sectionBoxManualCollapsed[def.id]) collapsed = true;
+      else if (sectionBoxManualOpen[def.id]) collapsed = false;
+      else if (def.id === "finish")
+        // Nothing comes after Finishing Up, so "moved on" can't be the cue —
+        // it folds the moment its last answer lands (Amrit, 22 Aug), leaving
+        // the submit button on its own.
+        collapsed = true;
+      // The working-here guard needs both signals: last interaction alone
+      // would pin a section open after an auto-selected program marks the
+      // next one started (the person has already typed on, focus elsewhere),
+      // and focus alone misses clicks that land on body. Together they hold
+      // a card open only while someone is genuinely still in it.
+      else collapsed = laterStarted && !(lastInteractedSectionId === def.id && box.el.contains(document.activeElement));
+      setSectionBoxCollapsed(def.id, collapsed);
     });
   }
   function playFormEntrance() {
