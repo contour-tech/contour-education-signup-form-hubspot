@@ -4923,6 +4923,13 @@ var ContourForm1Logic = function () {
     SECTION_DEFS.forEach(function (def) {
       revealedSections[def.id] = true;
     });
+    // Anything asking for the whole form (submit attempt, staff mode,
+    // prefill) needs the collapsed cards open too, guardian segment and
+    // submit button included — an Enter-key submit attempt must never end
+    // with the form open but its button missing.
+    guardianSegmentRevealed = true;
+    submitRevealed = true;
+    expandAllSectionBoxes();
     evaluateSections({
       initial: true
     });
@@ -5466,6 +5473,36 @@ var ContourForm1Logic = function () {
       else collapsed = laterStarted && !(lastInteractedSectionId === def.id && box.el.contains(document.activeElement));
       setSectionBoxCollapsed(def.id, collapsed);
     });
+    updateSubmitReveal(groups);
+  }
+  // The submit button is the last step of the cascade: it stays off the page
+  // until every boxed section reads complete — the consent tick is what
+  // finally brings it in. Reveal-once, like sections: un-ticking consent
+  // afterwards never yanks the button back out.
+  var submitRevealed = false;
+  function updateSubmitReveal(groups) {
+    var node = formRoot.querySelector(".hs_submit") || formRoot.querySelector(".hs-submit");
+    if (!node) return;
+    if (!featureEnabled("progressiveSections") || !sectionBoxesEnabled() || isInternalMode()) {
+      node.classList.remove("contour-submit-pending");
+      return;
+    }
+    if (!submitRevealed) {
+      var allComplete = SECTION_DEFS.every(function (def, index) {
+        if (!SECTION_BOX_IDS[def.id]) return true;
+        if (!groupHasVisibleField(groups[index])) return true;
+        return groupComplete(groups[index]);
+      });
+      if (allComplete) submitRevealed = true;
+    }
+    if (!submitRevealed) {
+      // Re-applied every pass: a HubSpot re-render rebuilds this node bare.
+      node.classList.add("contour-submit-pending");
+      return;
+    }
+    if (!node.classList.contains("contour-submit-pending")) return;
+    node.classList.remove("contour-submit-pending");
+    playReveal(node);
   }
   function playFormEntrance() {
     if (!formRoot || prefersReducedMotion()) return;
