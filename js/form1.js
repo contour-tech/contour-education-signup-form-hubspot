@@ -72,6 +72,12 @@ var ContourForm1Logic = function () {
     // Raises the page's 768px cap on the form to 880px, so the widest campus
     // address fits one line in a half-width tile (Amrit, 23 Aug 2026).
     widerForm: true,
+    // Ticks the program when only one is available for the location and year
+    // level. Off: a program the student did not choose still reads as a
+    // choice they made, and the tick landed while they were still filling the
+    // section above — the handover code below stays for whoever turns this
+    // back on (Amrit, 23 Aug 2026).
+    autoSelectSingleProgram: false,
     // Mirrors the answers into localStorage as they are given and offers them
     // back on the next visit from the same browser. On by default — see the
     // LOCAL DRAFT CACHE block for what is deliberately never stored.
@@ -1531,7 +1537,7 @@ var ContourForm1Logic = function () {
     var anyChecked = options.some(function (opt) {
       return opt.checked;
     });
-    if (eligibleOptions.length === 1 && !anyChecked) {
+    if (featureEnabled("autoSelectSingleProgram") && eligibleOptions.length === 1 && !anyChecked) {
       setCheckboxChecked(eligibleOptions[0], true);
       // The form just answered a question on the visitor's behalf, which the
       // section machinery would otherwise read as "they have moved on" — the
@@ -1570,6 +1576,13 @@ var ContourForm1Logic = function () {
   // focus() on one silently does nothing and the caret stays on the
   // checkbox. Hence the visibility test on the option's own row, and the
   // check afterwards that the caret really did land (Amrit, 23 Aug).
+  function isTypingInTextField() {
+    var el = document.activeElement;
+    if (!el || !formRoot || !formRoot.contains(el)) return false;
+    if (el.tagName === "TEXTAREA") return true;
+    if (el.tagName !== "INPUT") return false;
+    return el.type !== "checkbox" && el.type !== "radio" && el.type !== "submit" && el.type !== "button";
+  }
   function firstVisibleSubjectOption() {
     var options = qAll(FIELD_SELECTORS.interestedSubjects);
     for (var i = 0; i < options.length; i++) {
@@ -1585,6 +1598,10 @@ var ContourForm1Logic = function () {
   function handOverToSubjects(tries) {
     if (tries <= 0) return;
     setTimeout(function () {
+      // Mid-word in a box of their own: the caret is theirs. This is how the
+      // hand-over used to fold Academic Details out from under someone still
+      // typing their school name.
+      if (isTypingInTextField()) return;
       var subject = firstVisibleSubjectOption();
       if (!subject) {
         handOverToSubjects(tries - 1);
