@@ -2396,6 +2396,9 @@ var ContourForm1Logic = function () {
     });
   }
   var PREFETCH_ENDPOINT = "https://australia-southeast1-hubspot-signup-form.cloudfunctions.net/contour-form1-prefetch";
+  // Shared by the school search and by the completeness test that decides
+  // whether Academic Details is finished.
+  var SCHOOL_MIN_SEARCH_CHARS = 2;
   var STUDENT_ID_PARAM = "student_id";
   var EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   var prefetchedTrialSubjectCodes = [];
@@ -3803,7 +3806,7 @@ var ContourForm1Logic = function () {
     listbox.hidden = true;
     wrapper.appendChild(listbox);
     input.setAttribute("aria-controls", listbox.id);
-    var MIN_CHARS = 2;
+    var MIN_CHARS = SCHOOL_MIN_SEARCH_CHARS;
     var MAX_RESULTS = 50;
     var activeIndex = -1;
     var currentMatches = [];
@@ -4398,8 +4401,26 @@ var ContourForm1Logic = function () {
   // combobox's search box holds display text with no name, and HubSpot's
   // intl-phone group pairs the number with a country select that always has a
   // value, so both would otherwise read as answered while empty.
+  /* The school box is a search, not a text field: every keystroke leaves a
+     value behind, and the generic "has a value" test read the first letter as
+     an answer — enough to mark Academic Details finished, fold it, and file
+     the summary as "VIC · Year 9 · 2026 intake · d" (Amrit, 23 Aug).
+
+     It counts as answered once the student has landed on something: a school
+     picked from the list (which fills the hidden code), or a name long enough
+     to search on that they have since moved on from. While the caret is still
+     in the box they are mid-word, whatever is in there. Submission is
+     unchanged — any non-empty name is still accepted, since plenty of schools
+     are not on the list. */
+  function schoolAnswerSettled(input) {
+    if (getValue(FIELD_SELECTORS.schoolCode) || getValue(FIELD_SELECTORS.acaraId)) return true;
+    if ((input.value || "").trim().length < SCHOOL_MIN_SEARCH_CHARS) return false;
+    return document.activeElement !== input;
+  }
   function fieldWrapperAnswered(wrap) {
     if (!wrap || !wrap.querySelectorAll) return true;
+    var school = wrap.querySelector('input[name="school_text"]');
+    if (school) return schoolAnswerSettled(school);
     var tel = wrap.querySelector('input[type="tel"]');
     if (tel) {
       // The hidden mirror carries what actually gets submitted, so it settles
