@@ -912,6 +912,11 @@ var ContourForm1Logic = function () {
     } else if (!isVisitor && marker) {
       marker.parentNode.removeChild(marker);
     }
+    // Only a badged heading spreads across the band: the badge takes the
+    // left edge (landing on the same grid line as the field labels below it)
+    // and the title keeps the right. A heading without a badge must stay
+    // wholly right-aligned, so the modifier goes on and off with the badge.
+    heading.classList.toggle("contour-person-tabs__heading--split", !!isVisitor);
     if (existing.nextSibling !== anchorRow) anchorRow.parentNode.insertBefore(existing, anchorRow);
   }
   function teardownPersonStacked() {
@@ -1214,6 +1219,7 @@ var ContourForm1Logic = function () {
       // text on white is 1.2:1). Right padding runs a touch short of the left
       // to absorb the trailing space uppercase letter-spacing leaves after
       // the final letter.
+      ".hs-form .contour-person-tabs__heading--split { flex: 1 1 auto; justify-content: space-between; }" +
       '.hs-form .contour-person-tabs__you { background: #0C3166; color: #D7FC3D; font-size: 10px; letter-spacing: 0.08em; line-height: 1; padding: 4px 7px 4px 8px; border-radius: 999px; }' +
       // With the Guardian tab forward, the boundary between HubSpot's
       // dependent-field fieldset (holding the strip) and the guardian
@@ -1253,6 +1259,9 @@ var ContourForm1Logic = function () {
       // --- mobile: tiles stack, so side borders and the bottom edge move ------
       "@media screen and (max-width: 767px) {" +
       " .hs-form .contour-person-tabs { padding: 12px 14px; gap: 6px; }" +
+      // The static bands keep the field rows' 20px mobile gutter, so the
+      // badge stays on the same grid line as the labels beneath it.
+      " .hs-form .contour-person-tabs--static { padding: 12px 20px; }" +
       " .hs-form button.contour-person-tab { padding: 6px 14px; font-size: 13.5px; }" +
       " .hs-form .contour-person-tabs__title { display: none; }" +
       " .hs-form .contour-person-group-host > .hs_student_first_name.contour-person-card__row, .hs-form .contour-person-group-host > .hs_student_last_name.contour-person-card__row, .hs-form .contour-person-group-host > .hs_student_email.contour-person-card__row, .hs-form .contour-person-group-host > .hs_student_phone_number.contour-person-card__row { flex: 0 0 100% !important; border-left: 1px solid " + line + "; border-right: 1px solid " + line + "; padding: 10px 20px 16px; }" +
