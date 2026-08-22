@@ -2421,10 +2421,17 @@ var ContourForm1Logic = function () {
       });
       updateGuardianFieldLabels();
     }
+    // Emails fill from the canonical `email` property ONLY. `email_2` is just
+    // whatever the form's visible email box carried in the last submission —
+    // a guardian-flow submission writes the GUARDIAN's address into the
+    // student record's email_2 — so it can't be trusted as anyone's own
+    // address, and locking it would bind the submission to the wrong record
+    // (Faraz's + Amrit's reports, 22 Aug 2026). An empty email leaves the
+    // field blank and editable: recordPrefilledEmailLock skips empty values.
     if (isGuardianFlow) {
       setSelectOrTextValue('[name="firstname"]', contact.firstname);
       setSelectOrTextValue('[name="lastname"]', contact.lastname);
-      setSelectOrTextValue(FIELD_SELECTORS.emailTemp, contact.email_2 || contact.email);
+      setSelectOrTextValue(FIELD_SELECTORS.emailTemp, contact.email);
       setPhoneValue('[name="phone"]', contact.phone);
       var s = associatedStudent || {
         firstname: contact.student_first_name,
@@ -2434,19 +2441,19 @@ var ContourForm1Logic = function () {
       };
       setTextWhenPresent('[name="student_first_name"]', s.firstname, 10);
       setTextWhenPresent('[name="student_last_name"]', s.lastname, 10);
-      setTextWhenPresent('[name="student_email"]', s.email_2 || s.email, 10);
+      setTextWhenPresent('[name="student_email"]', s.email, 10);
       setPhoneValueWhenPresent(FIELD_SELECTORS.studentPhone, s.phone, 10);
       if (lockEmails) {
-        recordPrefilledEmailLock(FIELD_SELECTORS.emailTemp, contact.email_2 || contact.email);
-        recordPrefilledEmailLock(FIELD_SELECTORS.studentEmail, s.email_2 || s.email);
+        recordPrefilledEmailLock(FIELD_SELECTORS.emailTemp, contact.email);
+        recordPrefilledEmailLock(FIELD_SELECTORS.studentEmail, s.email);
       }
     } else {
       setSelectOrTextValue('[name="firstname"]', contact.firstname);
       setSelectOrTextValue('[name="lastname"]', contact.lastname);
-      setSelectOrTextValue(FIELD_SELECTORS.emailTemp, contact.email_2 || contact.email);
+      setSelectOrTextValue(FIELD_SELECTORS.emailTemp, contact.email);
       setPhoneValue('[name="phone"]', contact.phone);
       if (lockEmails) {
-        recordPrefilledEmailLock(FIELD_SELECTORS.emailTemp, contact.email_2 || contact.email);
+        recordPrefilledEmailLock(FIELD_SELECTORS.emailTemp, contact.email);
       }
     }
     setSelectOrTextValue(FIELD_SELECTORS.location, contact.state_territory_country);
