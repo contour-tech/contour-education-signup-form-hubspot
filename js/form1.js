@@ -1533,11 +1533,54 @@ var ContourForm1Logic = function () {
     });
     if (eligibleOptions.length === 1 && !anyChecked) {
       setCheckboxChecked(eligibleOptions[0], true);
+      // The form just answered a question on the visitor's behalf, which the
+      // section machinery would otherwise read as "they have moved on" — the
+      // Academic Details card folds, the page reflows, and the caret is left
+      // wherever the fold put it. Instead the handover is made explicit:
+      // Programs is pinned open, and focus lands on its first subject, which
+      // is the thing they actually still have to answer (Amrit, 23 Aug).
+      handleAutoSelectedProgram();
     }
     showFieldWrapper(q(FIELD_SELECTORS.programInterest));
     updateProgramInterestLocationHint(!location || !yearLevel || !intakeYear);
     updateProgramInterestRequiredMark(anyEligible);
     updateNoProgramsAvailableMessage(location, yearLevel, intakeYear, anyEligible);
+  }
+  var autoProgramHandoffDone = false;
+  function handleAutoSelectedProgram() {
+    if (autoProgramHandoffDone) return;
+    autoProgramHandoffDone = true;
+    if (!featureEnabled("progressiveSections") || isInternalMode()) return;
+    lastInteractedSectionId = "programs";
+    sectionBoxManualOpen.programs = true;
+    delete sectionBoxManualCollapsed.programs;
+    scheduleSectionEval();
+    // The subject list is rebuilt from the program that was just ticked, and
+    // the matrix filters it a beat later still, so the handover is retried
+    // until there is something to hand over to.
+    revealSubjectsAfterAutoProgram(10);
+  }
+  // The caret is left where HubSpot puts it. Its embed script focuses the
+  // checkbox our tick re-rendered, and pulls focus back every time we move it
+  // away, so a focus handover here turns into a tug of war the form loses.
+  // That lands the caret inside Programs anyway — on the card that was just
+  // ticked, one Tab from the subjects — so the handover only has to make the
+  // move visible: bring the subject list into view, once, when it exists.
+  function revealSubjectsAfterAutoProgram(tries) {
+    if (tries <= 0) return;
+    setTimeout(function () {
+      var subject = qAll(FIELD_SELECTORS.interestedSubjects).filter(function (opt) {
+        return !opt.disabled && opt.isConnected && isFieldWrapVisible(fieldWrapper(opt));
+      })[0];
+      if (!subject) {
+        revealSubjectsAfterAutoProgram(tries - 1);
+        return;
+      }
+      var target = subject.closest("li") || subject;
+      if (prefersReducedMotion() || !target.scrollIntoView) return;
+      noteIntentionalScroll();
+      target.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 220);
   }
   function ensureProgramInterestLocationHint() {
     var existing = formRoot.querySelector("#contour-program-interest-location-hint");
