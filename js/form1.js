@@ -2762,6 +2762,12 @@ var ContourForm1Logic = function () {
     setSelectOrTextValue(FIELD_SELECTORS.referral, contact.referral);
     enforcePrefilledFieldLock();
   }
+  var prefillWantsSectionsOpen = false;
+  function openSectionsForPrefill() {
+    if (!prefillWantsSectionsOpen) return;
+    if (!sectionsReady) return;
+    revealAllSections({ pinOpen: true });
+  }
   function stripStudentIdFromUrl() {
     if (!window.history || typeof window.history.replaceState !== "function") return;
     // Only the student_id pair goes; anything else on the URL (?type=internal,
@@ -2883,6 +2889,12 @@ var ContourForm1Logic = function () {
         prefetchedTrialSubjectCodes = data.trialSubjectCodes || [];
         prefetchedEnrolledSubjectCodes = data.enrolledSubjectCodes || [];
         applyPrefill(data.contact, data.guardian, data.associatedStudent, true);
+        // The record filled the whole form in one go, so every card opens and
+        // stays open — see revealAllSections. Set here rather than inside
+        // applyPrefill, which the draft restore also calls: a restored draft
+        // brings its own remembered open/folded state and must keep it.
+        prefillWantsSectionsOpen = true;
+        openSectionsForPrefill();
         var fullName = ((data.contact.firstname || "") + " " + (data.contact.lastname || "")).trim();
         renderPrefillBanner(fullName);
         if (prefetchedTrialSubjectCodes.length > 0 || prefetchedEnrolledSubjectCodes.length > 0) {
@@ -4996,10 +5008,19 @@ var ContourForm1Logic = function () {
       block: "nearest"
     });
   }
-  function revealAllSections() {
+  // pinOpen keeps the cards open against the automatic rule, for the one case
+  // where the whole form arrives at once: a pre-fill link. The visitor did not
+  // fill those sections, so collapsing them on arrival hides answers they have
+  // never seen and asks them to trust a summary line. They stay open until the
+  // visitor folds one, and that choice is then remembered (Amrit, 23 Aug).
+  function revealAllSections(options) {
     if (!sectionsReady) return;
+    var pinOpen = !!(options && options.pinOpen);
     SECTION_DEFS.forEach(function (def) {
       revealedSections[def.id] = true;
+      if (!pinOpen || !SECTION_BOX_IDS[def.id]) return;
+      if (sectionBoxManualCollapsed[def.id]) return;
+      sectionBoxManualOpen[def.id] = true;
     });
     // Anything asking for the whole form (submit attempt, staff mode,
     // prefill) needs the collapsed cards open too, guardian segment and
@@ -5055,6 +5076,9 @@ var ContourForm1Logic = function () {
     evaluateSections({
       initial: true
     });
+    // A pre-fill link resolves before the sections exist, so its request to
+    // open everything is replayed here, once there is something to open.
+    openSectionsForPrefill();
     // defaultContactTypeToStudent() ticks the radio through HubSpot, which
     // settles a tick later — without a second pass the form would open on the
     // contact-type question alone and then visibly expand.
