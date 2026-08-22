@@ -459,22 +459,7 @@ var ContourForm1Logic = function () {
     console.warn('Contour Form 1 logic: Program Interest option "' + haystack.trim() + "\" didn't match a known card pattern — falling back to positional order.");
     return PROGRAM_CARD_CONFIG[index] || null;
   }
-  // The suburb line is the campus tile's own accent: on the selected navy
-  // tile the address/format line turns lime, so "Live & Recorded" or the
-  // street reads as chosen rather than as greyed-out small print. Injected
-  // because the live page only takes CSS shipped from this script.
-  function injectCampusLabelStyles() {
-    if (document.getElementById("contour-campus-label-styles")) return;
-    var li = '.hs-form .hs_web_form__preferred_campuses li.hs-form-checkbox';
-    var style = document.createElement("style");
-    style.id = "contour-campus-label-styles";
-    style.textContent =
-      li + ' label:has(input:checked) .contour-campus-address { color: #D7FC3D !important; }' +
-      li + ' label:has(input:checked) .contour-campus-name { color: #FFFFFF !important; }';
-    document.head.appendChild(style);
-  }
   function enhanceCampusLabels() {
-    injectCampusLabelStyles();
     var options = qAll(FIELD_SELECTORS.campus);
     options.forEach(function (opt) {
       var wrap = optionWrapper(opt);
