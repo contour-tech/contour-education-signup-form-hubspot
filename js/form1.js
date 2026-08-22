@@ -1558,22 +1558,46 @@ var ContourForm1Logic = function () {
     // The subject list is rebuilt from the program that was just ticked, and
     // the matrix filters it a beat later still, so the handover is retried
     // until there is something to hand over to.
-    revealSubjectsAfterAutoProgram(10);
+    handOverToSubjects(14);
   }
-  // The caret is left where HubSpot puts it. Its embed script focuses the
-  // checkbox our tick re-rendered, and pulls focus back every time we move it
-  // away, so a focus handover here turns into a tug of war the form loses.
-  // That lands the caret inside Programs anyway — on the card that was just
-  // ticked, one Tab from the subjects — so the handover only has to make the
-  // move visible: bring the subject list into view, once, when it exists.
-  function revealSubjectsAfterAutoProgram(tries) {
+  // The caret cannot stay on the program the form ticked itself: Space is a
+  // scroll reflex, and on a checked checkbox it unticks the only program the
+  // student is eligible for. So focus moves to the first subject — the thing
+  // they actually still have to answer — as soon as there is one to move to.
+  //
+  // "There is one" means an option that is on screen: the matrix hides the
+  // options that do not apply, and a hidden option cannot take focus, so
+  // focus() on one silently does nothing and the caret stays on the
+  // checkbox. Hence the visibility test on the option's own row, and the
+  // check afterwards that the caret really did land (Amrit, 23 Aug).
+  function firstVisibleSubjectOption() {
+    var options = qAll(FIELD_SELECTORS.interestedSubjects);
+    for (var i = 0; i < options.length; i++) {
+      var opt = options[i];
+      if (opt.disabled || !opt.isConnected) continue;
+      var row = opt.closest("li") || opt;
+      if (row.getClientRects && row.getClientRects().length === 0) continue;
+      if (!isFieldWrapVisible(fieldWrapper(opt))) continue;
+      return opt;
+    }
+    return null;
+  }
+  function handOverToSubjects(tries) {
     if (tries <= 0) return;
     setTimeout(function () {
-      var subject = qAll(FIELD_SELECTORS.interestedSubjects).filter(function (opt) {
-        return !opt.disabled && opt.isConnected && isFieldWrapVisible(fieldWrapper(opt));
-      })[0];
+      var subject = firstVisibleSubjectOption();
       if (!subject) {
-        revealSubjectsAfterAutoProgram(tries - 1);
+        handOverToSubjects(tries - 1);
+        return;
+      }
+      // The option itself, not the group around it: HubSpot's embed moves
+      // focus from a field wrapper onto its first control anyway, and the
+      // option carries a visible focus ring. Space on a subject ticks a
+      // subject — the thing being asked for, and visibly undoable — where
+      // Space on the auto-ticked program silently removed it.
+      focusQuietly(subject);
+      if (document.activeElement !== subject) {
+        handOverToSubjects(tries - 1);
         return;
       }
       var target = subject.closest("li") || subject;
