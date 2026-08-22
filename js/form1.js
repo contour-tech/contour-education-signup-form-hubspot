@@ -69,6 +69,9 @@ var ContourForm1Logic = function () {
     // of the grey band with navy text. On by default (Amrit, 22 Aug); turn
     // off per page via window.ContourForm1Config if it doesn't land.
     sectionHeaderTheme2: true,
+    // Raises the page's 768px cap on the form to 880px, so the widest campus
+    // address fits one line in a half-width tile (Amrit, 23 Aug 2026).
+    widerForm: true,
     // Mirrors the answers into localStorage as they are given and offers them
     // back on the next visit from the same browser. On by default — see the
     // LOCAL DRAFT CACHE block for what is deliberately never stored.
@@ -5048,6 +5051,21 @@ var ContourForm1Logic = function () {
   function sectionBoxesEnabled() {
     return featureEnabled("sectionBoxes");
   }
+  // The page caps the form at 768px, which put the longest campus address
+  // ("Level 1/75-77 Railway Parade or Level 1/6-10 Kingsway") onto two lines
+  // in a half-width tile. 880px gives the tiles the ~50px each they were
+  // short of, and stays well inside the page's own 1296px content width. Only
+  // the cap moves, so every narrower screen is untouched (Amrit, 23 Aug).
+  function injectFormWidthStyles() {
+    if (!featureEnabled("widerForm")) return;
+    if (document.getElementById("contour-form-width-styles")) return;
+    var style = document.createElement("style");
+    style.id = "contour-form-width-styles";
+    style.textContent =
+      ".container-form { max-width: 880px; }" +
+      ".hs-form { max-width: 880px; }";
+    document.head.appendChild(style);
+  }
   function injectSectionBoxStyles() {
     if (document.getElementById("contour-section-box-styles")) return;
     var style = document.createElement("style");
@@ -6953,6 +6971,7 @@ var ContourForm1Logic = function () {
     formRoot = formElement;
     enhanceProgramInterestCards();
     enhanceInterestedSubjectsCategories();
+    injectFormWidthStyles();
     injectSubjectTileStyles();
     injectDisabledFieldStyles();
     injectErrorRollupStyles();
