@@ -368,11 +368,49 @@ var ContourForm1Logic = function () {
     // that re-announces itself each time someone types is a nuisance.
     var wasHidden = wrap.style.display === "none";
     wrap.style.removeProperty("display");
+    releaseEmptyFieldset(wrap);
     if (wasHidden) playReveal(wrap);
   }
   function hideFieldWrapper(el) {
     var wrap = fieldWrapper(el);
-    if (wrap) wrap.style.display = "none";
+    if (!wrap) return;
+    wrap.style.display = "none";
+    collapseEmptyFieldset(wrap);
+  }
+  // HubSpot wraps each row in a fieldset of its own. Hiding the only field
+  // inside one leaves the fieldset standing with its own line box — the strip
+  // of dead space above "Student Details" on a pre-fill link, where the "Are
+  // you a" question is hidden (Amrit, 23 Aug). Reversed by showFieldWrapper,
+  // so a question that comes back brings its row with it.
+  function collapseEmptyFieldset(wrap) {
+    // The wrapper is not a direct child of the fieldset — HubSpot puts a
+    // dependent-field div in between — so walk up to the row it belongs to.
+    var fieldset = wrap && wrap.closest ? wrap.closest("fieldset[class*=form-columns-]") : null;
+    if (!fieldset || fieldsetHasVisibleField(fieldset)) return;
+    fieldset.style.display = "none";
+    fieldset.setAttribute("data-contour-empty-fieldset", "1");
+  }
+  function fieldsetHasVisibleField(fieldset) {
+    var fields = fieldset.querySelectorAll(".hs-form-field");
+    for (var i = 0; i < fields.length; i++) {
+      if (fields[i].style.display !== "none") return true;
+    }
+    return false;
+  }
+  // Fields arrive after the fieldset was emptied: the Student Information
+  // group renders into the same row a beat after the contact type is set. A
+  // row that has been given something to show gets its height back.
+  function syncEmptyFieldsets() {
+    if (!formRoot) return;
+    qAll("fieldset[data-contour-empty-fieldset]").forEach(function (fieldset) {
+      if (fieldsetHasVisibleField(fieldset)) releaseEmptyFieldset(fieldset);
+    });
+  }
+  function releaseEmptyFieldset(wrapOrFieldset) {
+    var fieldset = wrapOrFieldset && wrapOrFieldset.closest ? wrapOrFieldset.closest("fieldset[data-contour-empty-fieldset]") : null;
+    if (!fieldset) return;
+    fieldset.style.removeProperty("display");
+    fieldset.removeAttribute("data-contour-empty-fieldset");
   }
   function toggleFieldWrapper(el, shouldShow) {
     if (shouldShow) showFieldWrapper(el); else hideFieldWrapper(el);
@@ -783,6 +821,7 @@ var ContourForm1Logic = function () {
   // MutationObserver already runs — a HubSpot re-render swaps in a fresh,
   // visible radio group otherwise.
   function enforcePrefillLinkPresentation() {
+    syncEmptyFieldsets();
     if (!prefillLinkSession) return;
     if (!featureEnabled("hideContactTypeOnPrefill")) return;
     var radio = q(FIELD_SELECTORS.contactType);
@@ -1038,6 +1077,16 @@ var ContourForm1Logic = function () {
       existing.style.removeProperty("--contour-seg-rule-start");
     }
     if (existing.nextSibling !== anchorRow) anchorRow.parentNode.insertBefore(existing, anchorRow);
+    var precededByVisible = false;
+    var prev = existing.previousElementSibling;
+    while (prev) {
+      if (prev.getBoundingClientRect && prev.getBoundingClientRect().height > 0) {
+        precededByVisible = true;
+        break;
+      }
+      prev = prev.previousElementSibling;
+    }
+    existing.classList.toggle("contour-person-tabs--flush", !precededByVisible);
   }
   function teardownPersonStacked() {
     var headers = qAll("[data-contour-person-static]");
@@ -5117,6 +5166,10 @@ var ContourForm1Logic = function () {
       // label masks it with the card's white, the pill rides it with a white
       // ring, and the rule ties the two ends of the band together.
       box + " .contour-person-tabs--static { background: none; border: 0; border-radius: 0; position: relative; padding: 6px 0 !important; margin: 24px 0 2px; }" +
+      // On a pre-fill link the "Are you a" row above this is gone, so the
+      // band leads the card and the 24px that separated it from the question
+      // becomes dead space at the top (Amrit, 23 Aug).
+      box + " .contour-person-tabs--static.contour-person-tabs--flush { margin-top: 2px; }" +
       box + ' .contour-person-tabs--static::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: linear-gradient(to right, rgba(12, 49, 102, 0), rgba(12, 49, 102, 0.14) 48px, rgba(12, 49, 102, 0.14) calc(100% - 48px), rgba(12, 49, 102, 0)); }' +
       // A step up from the base 11.5/700 so the segment names read as
       // headers, while staying under the card band's 12.5px.
