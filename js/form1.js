@@ -991,7 +991,12 @@ var ContourForm1Logic = function () {
       // label used to (Amrit's review, 21 Aug 2026).
       var title = document.createElement("span");
       title.className = "contour-person-tabs__heading";
-      title.textContent = (id === "student" ? "Student" : "Guardian") + " Contact Information";
+      // The label is its own span (not a bare text node) so the centred
+      // separator rule can paint behind the band and mask out under the text.
+      var label = document.createElement("span");
+      label.className = "contour-person-tabs__label";
+      label.textContent = (id === "student" ? "Student" : "Guardian") + " Details";
+      title.appendChild(label);
       existing.appendChild(title);
     }
     // "You" leads the segment belonging to whoever is filling the form in —
@@ -1004,7 +1009,9 @@ var ContourForm1Logic = function () {
     if (isVisitor && !marker) {
       marker = document.createElement("span");
       marker.className = "contour-person-tabs__you";
-      marker.textContent = "You";
+      // "This is you" over plain "You": Amrit wants the pill to carry some
+      // width so it reads as a band element, not a stray dot (Amrit, 22 Aug).
+      marker.textContent = "This is you";
       heading.insertBefore(marker, heading.firstChild);
     } else if (!isVisitor && marker) {
       marker.parentNode.removeChild(marker);
@@ -1014,6 +1021,19 @@ var ContourForm1Logic = function () {
     // and the title keeps the right. A heading without a badge must stay
     // wholly right-aligned, so the modifier goes on and off with the badge.
     heading.classList.toggle("contour-person-tabs__heading--split", !!isVisitor);
+    // The separator starts past the pill, and the pill's width is copy —
+    // "This is you" is three times "You". So the offset is measured, not
+    // hardcoded: a fixed 46px left the wider pill sitting on top of the
+    // gradient's fade-in, and the rule broke out from behind it at full
+    // strength with a hard edge (Amrit, 22 Aug). Skipped while the pill is
+    // laid out at zero width (hidden guardian segment) — a later pass, once
+    // it is on screen, sets the real number.
+    if (marker) {
+      var pillWidth = marker.offsetWidth;
+      if (pillWidth > 0) existing.style.setProperty("--contour-seg-rule-start", (pillWidth + 12) + "px");
+    } else {
+      existing.style.removeProperty("--contour-seg-rule-start");
+    }
     if (existing.nextSibling !== anchorRow) anchorRow.parentNode.insertBefore(existing, anchorRow);
   }
   function teardownPersonStacked() {
@@ -1174,7 +1194,7 @@ var ContourForm1Logic = function () {
     // The corner label names the tab being looked at, so it reads as the
     // container's heading: "Student Contact Information".
     var titleEl = strip.querySelector(".contour-person-tabs__title");
-    var titleText = (activePersonTab === "guardian" ? "Guardian" : "Student") + " Contact Information";
+    var titleText = (activePersonTab === "guardian" ? "Guardian" : "Student") + " Details";
     if (titleEl && titleEl.textContent !== titleText) titleEl.textContent = titleText;
     if (strip.nextSibling !== anchorRow) anchorRow.parentNode.insertBefore(strip, anchorRow);
   }
