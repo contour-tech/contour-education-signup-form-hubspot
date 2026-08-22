@@ -41,9 +41,9 @@ var ContourForm1Logic = function () {
      ========================================================= */
   var FEATURE_DEFAULTS = {
     // Discloses the form a section at a time, each one arriving as the one
-    // before it is answered. Off by default (Amrit, 20 Aug 2026) — with it
-    // off the whole form is present from the start, as it was before.
-    progressiveSections: false,
+    // before it is answered. Switched on 22 Aug 2026 (Angad/Amitav liked the
+    // brand-section reveal and asked for the section-by-section flow; Amrit).
+    progressiveSections: true,
     // Headings above each section. Parked rather than deleted: the only one
     // actually wanted is the Student / Guardian split, and that ships as
     // personGroups below (Amrit, 20 Aug 2026).
