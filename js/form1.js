@@ -4714,7 +4714,13 @@ var ContourForm1Logic = function () {
     // Enter in a text box reaches the gate before progressive disclosure has
     // opened every section. Nobody should be told to fix a field they cannot
     // see, so any submit attempt opens the whole form first.
-    revealAllSections();
+    //
+    // Step mode keeps its locks instead. Everything the form has not asked yet
+    // is already visible as a pending card, so there is nothing hidden to
+    // reveal — and taking the locks off turned a submit on an empty form into
+    // thirteen red fields, most of them questions nobody had been asked. It
+    // reports what the visitor can act on now, and marks the cards holding it.
+    if (!stepModeEnabled()) revealAllSections();
     var failures = [];
     for (var i = 0; i < submitValidators.length; i++) {
       var valid = true;
@@ -4737,6 +4743,18 @@ var ContourForm1Logic = function () {
     }
     e.preventDefault();
     e.stopImmediatePropagation();
+    // The decision to block used the unfiltered lists — an unreachable field
+    // still stops the form. Only the reporting narrows.
+    if (stepModeEnabled()) {
+      failures = failures.filter(function (validator) {
+        var wrap = null;
+        try {
+          wrap = validator.anchor();
+        } catch (err) { }
+        return stepSectionReportable(wrap);
+      });
+      native = native.filter(stepSectionReportable);
+    }
     var flagged = [];
     failures.forEach(function (validator) {
       try {
@@ -4756,6 +4774,7 @@ var ContourForm1Logic = function () {
       reportFieldError(wrap, focusTargetIn(wrap));
       flagged.push(wrap);
     });
+    if (stepModeEnabled()) flagStepSections(flagged);
     showFormErrorSummary(flagged);
     // HubSpot renders a nudged message on its own schedule. Two passes: the
     // first fills in anything it declined to mark, the second stands our
@@ -4953,7 +4972,10 @@ var ContourForm1Logic = function () {
       // --- helper note under a field that is waiting on an earlier answer -----
       ".hs-form .contour-disabled-hint { margin-top: 6px; font-size: 12.5px; line-height: 1.4; color: #6b7280; }" +
       // --- error summary ------------------------------------------------------
-      ".hs-form .contour-error-rollup--list { align-items: flex-start; }" + ".hs-form .contour-error-rollup--list::before { margin-top: 1px; }" + ".hs-form .contour-error-summary__body { flex: 1 1 auto; min-width: 0; }" + ".hs-form .contour-error-summary__title { margin: 0 0 9px !important; padding: 0 !important; font-size: 0.95rem !important; font-weight: 700 !important; line-height: 1.35 !important; color: #8A0C22 !important; }" + ".hs-form .contour-error-summary__list { display: flex; flex-wrap: wrap; gap: 7px 8px; margin: 0 !important; padding: 0 !important; list-style: none; }" + ".hs-form .contour-error-summary__list li { width: auto !important; flex: 0 0 auto !important; margin: 0 !important; padding: 0 !important; }" + ".hs-form .contour-error-summary__link { display: inline-block; appearance: none; -webkit-appearance: none; border: 1px solid rgba(200, 16, 46, 0.30); border-radius: 999px; background: #FFFFFF; color: #8A0C22; padding: 5px 12px; font: inherit; font-size: 12.5px; font-weight: 600; line-height: 1.3; cursor: pointer; transition: background-color .15s ease, border-color .15s ease, color .15s ease; }" + ".hs-form .contour-error-summary__link:hover { background: #c8102e; border-color: #c8102e; color: #FFFFFF; }" + ".hs-form .contour-error-summary__link:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(200, 16, 46, 0.25); }";
+      // The summary stands between the last card and the submit button as a
+      // block of its own, so it needs the gap under it that the cards give
+      // themselves.
+      "#" + ERROR_SUMMARY_ID + " { margin-bottom: 20px !important; }" + ".hs-form .contour-error-rollup--list { align-items: flex-start; }" + ".hs-form .contour-error-rollup--list::before { margin-top: 1px; }" + ".hs-form .contour-error-summary__body { flex: 1 1 auto; min-width: 0; }" + ".hs-form .contour-error-summary__title { margin: 0 0 9px !important; padding: 0 !important; font-size: 0.95rem !important; font-weight: 700 !important; line-height: 1.35 !important; color: #8A0C22 !important; }" + ".hs-form .contour-error-summary__list { display: flex; flex-wrap: wrap; gap: 7px 8px; margin: 0 !important; padding: 0 !important; list-style: none; }" + ".hs-form .contour-error-summary__list li { width: auto !important; flex: 0 0 auto !important; margin: 0 !important; padding: 0 !important; }" + ".hs-form .contour-error-summary__link { display: inline-block; appearance: none; -webkit-appearance: none; border: 1px solid rgba(200, 16, 46, 0.30); border-radius: 999px; background: #FFFFFF; color: #8A0C22; padding: 5px 12px; font: inherit; font-size: 12.5px; font-weight: 600; line-height: 1.3; cursor: pointer; transition: background-color .15s ease, border-color .15s ease, color .15s ease; }" + ".hs-form .contour-error-summary__link:hover { background: #c8102e; border-color: #c8102e; color: #FFFFFF; }" + ".hs-form .contour-error-summary__link:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(200, 16, 46, 0.25); }";
     document.head.appendChild(style);
   }
   /* =========================================================
@@ -5668,12 +5690,30 @@ var ContourForm1Logic = function () {
       // theme 2, the whole card sits at half strength, and nothing on it
       // offers to be clicked. Three classes deep, so it wins over the theme-2
       // rules above wherever they overlap.
-      box + "--locked { opacity: 0.5; }" +
-      box + "--locked .contour-section-box__header, " + box + "--locked .contour-section-box__header:hover { background: rgba(12, 49, 102, 0.05); border-bottom-color: transparent; cursor: default; }" +
-      box + "--locked .contour-section-box__title { color: #0C3166; }" +
-      // No lime tick on a card with nothing answered in it, and no pencil on
-      // one there is no way into.
-      box + "--locked .contour-section-box__status, " + box + "--locked .contour-section-box__action { display: none; }" +
+      // Not faded out — a card at half strength read as broken rather than as
+      // waiting its turn. It keeps a navy edge, a navy title at reading
+      // weight, a hollow ring where the finished card has its lime tick, and
+      // the word PENDING in the slot the summary will fill (Angad, 23 Aug).
+      box + "--locked { border-color: rgba(12, 49, 102, 0.22); }" +
+      box + "--locked .contour-section-box__header, " + box + "--locked .contour-section-box__header:hover { background: rgba(12, 49, 102, 0.04); border-bottom-color: transparent; cursor: default; }" +
+      box + "--locked .contour-section-box__title { color: rgba(12, 49, 102, 0.66); }" +
+      box + "--locked .contour-section-box__status { display: flex; background: transparent; border: 2px solid rgba(12, 49, 102, 0.28); }" +
+      box + "--locked .contour-section-box__status svg { display: none; }" +
+      box + "--locked .contour-section-box__summary { display: block; text-align: right; font-size: 11px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: rgba(12, 49, 102, 0.4); }" +
+      // No pencil on a card there is no way into.
+      box + "--locked .contour-section-box__action { display: none; }" +
+      // A card a submit attempt found a problem in. The band takes the error
+      // red so the mark is on the section, not only on the fields inside it,
+      // and the tick disc becomes an exclamation.
+      box + "--flagged { border-color: rgba(200, 16, 46, 0.35); }" +
+      box + "--flagged .contour-section-box__header { background: #8A0C22; border-bottom-color: rgba(255, 255, 255, 0.12); }" +
+      box + "--flagged .contour-section-box__header:hover { background: #A11029; }" +
+      box + "--flagged .contour-section-box__title { color: #FFFFFF; }" +
+      box + "--flagged .contour-section-box__summary { color: rgba(255, 255, 255, 0.75); }" +
+      box + "--flagged .contour-section-box__action { color: #FFFFFF; }" +
+      box + "--flagged .contour-section-box__status { display: flex; background: #FFFFFF; border: 0; color: #8A0C22; }" +
+      box + "--flagged .contour-section-box__status svg { display: none; }" +
+      box + '--flagged .contour-section-box__status::after { content: "!"; font-size: 13px; font-weight: 800; line-height: 1; }' +
       // Belt to the collapsed state's braces: the content is already clipped
       // and visibility:hidden, and a stray pointer cannot reach into it.
       box + "--locked .contour-section-box__content-inner { pointer-events: none; }" +
@@ -5883,6 +5923,11 @@ var ContourForm1Logic = function () {
         if (node.classList && node.classList.contains("hs_submit")) return false;
         // Page-level furniture rides above the cards, whatever section the
         // context walk files it under.
+        // The error summary is pinned to the closing section so disclosure
+        // keeps it with the submit button, but it is not part of that card —
+        // adopted, it ended up nested inside Final Details, which read as the
+        // whole form's problem being that one section's.
+        if (node.id === ERROR_SUMMARY_ID) return false;
         if (node.id === "contour-prefill-banner" || node.id === "contour-form-loader" || node.classList && node.classList.contains("contour-restore-banner")) return false;
         return !box || node !== box.el && !box.el.contains(node);
       });
@@ -6056,8 +6101,34 @@ var ContourForm1Logic = function () {
      re-render, so the lock lives on the card (Amrit, 23 Aug 2026).
      ========================================================= */
   var STEP_LOCKED_CLASS = "contour-section-box--locked";
+  var STEP_FLAGGED_CLASS = "contour-section-box--flagged";
+  var STEP_PENDING_LABEL = "Pending";
   var sectionUnlocked = {};
   var activeSectionId = null;
+  // Which cards a submit attempt found something wrong in. Cleared per attempt
+  // and per card as the card is put right, so the mark never outlives the
+  // problem it is pointing at.
+  var sectionFlagged = {};
+  function sectionIdForNode(node) {
+    var box = node && node.closest ? node.closest(".contour-section-box") : null;
+    return box ? box.getAttribute("data-contour-section") : null;
+  }
+  // A field inside a card the form has not opened yet is not the visitor's
+  // mistake — it is a question they have not been asked.
+  function stepSectionReportable(wrap) {
+    if (!wrap) return true;
+    var id = sectionIdForNode(wrap);
+    if (!id || !SECTION_BOX_IDS[id]) return true;
+    return !!sectionUnlocked[id];
+  }
+  function flagStepSections(wraps) {
+    sectionFlagged = {};
+    wraps.forEach(function (wrap) {
+      var id = sectionIdForNode(wrap);
+      if (id && SECTION_BOX_IDS[id]) sectionFlagged[id] = true;
+    });
+    scheduleSectionEval();
+  }
   // An empty section is transparent here for the same reason it is to the
   // reveal walker: Preferred Campuses carries no field until a program that
   // has campuses is picked, and a section with nothing to answer must not be
@@ -6161,7 +6232,8 @@ var ContourForm1Logic = function () {
       var title = sectionTitle(def) || "";
       if (box.title.textContent !== title) box.title.textContent = title;
       if (empty) {
-        if (box.summary.textContent !== "") box.summary.textContent = "";
+        if (box.summary.textContent !== STEP_PENDING_LABEL) box.summary.textContent = STEP_PENDING_LABEL;
+        box.el.classList.toggle(STEP_FLAGGED_CLASS, false);
         box.header.classList.toggle("contour-section-box__header--togglable", false);
         if (setSectionBoxCollapsed(def.id, true)) heightChanged = true;
         if (box.header.tabIndex !== -1) box.header.tabIndex = -1;
@@ -6174,13 +6246,19 @@ var ContourForm1Logic = function () {
       var complete = groupComplete(nodes);
       var completeAttr = complete ? "1" : "0";
       if (box.el.getAttribute("data-contour-complete") !== completeAttr) box.el.setAttribute("data-contour-complete", completeAttr);
+      // The mark comes off the moment the card is put right, without waiting
+      // for another submit attempt to tell it so.
+      if (complete) delete sectionFlagged[def.id];
+      box.el.classList.toggle(STEP_FLAGGED_CLASS, !!sectionFlagged[def.id]);
       var open = !locked && def.id === activeSectionId;
       // A locked card has nothing to show and the open one will not fold
       // while it is unanswered, so the pointer only changes over a card that
       // will actually respond to the click.
       box.header.classList.toggle("contour-section-box__header--togglable", !locked && (!open || complete));
-      // A locked card's summary would be a row of answers it does not have.
-      var summaryText = locked ? "" : sectionBoxSummary(def);
+      // A pending card has no answers to summarise, so the slot carries its
+      // state instead — a bare title on a bare band read as broken rather
+      // than as waiting (Angad, 23 Aug).
+      var summaryText = locked ? STEP_PENDING_LABEL : sectionBoxSummary(def);
       if (box.summary.textContent !== summaryText) box.summary.textContent = summaryText;
       if (setSectionBoxCollapsed(def.id, !open)) heightChanged = true;
       // setSectionBoxCollapsed puts every folded header in the tab order as
