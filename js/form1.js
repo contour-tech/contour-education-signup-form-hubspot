@@ -4528,8 +4528,16 @@ var ContourForm1Logic = function () {
      unchanged — any non-empty name is still accepted, since plenty of schools
      are not on the list. */
   function schoolAnswerSettled(input) {
+    // The visible box has the last word. HubSpot ships this form with
+    // school_code defaulted to "NULL" and acara_id to "1", so the hidden
+    // mirrors read as an answered school from first paint — which marked
+    // Academic Details complete before anyone had typed a character. They
+    // still settle the question early for a picked suggestion, but only over
+    // a name that is actually on screen (Amrit, 23 Aug 2026).
+    var typed = (input.value || "").trim();
+    if (typed === "") return false;
     if (getValue(FIELD_SELECTORS.schoolCode) || getValue(FIELD_SELECTORS.acaraId)) return true;
-    if ((input.value || "").trim().length < SCHOOL_MIN_SEARCH_CHARS) return false;
+    if (typed.length < SCHOOL_MIN_SEARCH_CHARS) return false;
     return document.activeElement !== input;
   }
   function fieldWrapperAnswered(wrap) {
