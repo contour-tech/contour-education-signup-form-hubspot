@@ -43,8 +43,17 @@ var ContourForm1Logic = function () {
   var FEATURE_DEFAULTS = {
     // Discloses the form a section at a time, each one arriving as the one
     // before it is answered. Switched on 22 Aug 2026 (Angad/Amitav liked the
-    // brand-section reveal and asked for the section-by-section flow; Amrit).
-    progressiveSections: true,
+    // brand-section reveal and asked for the section-by-section flow; Amrit),
+    // and off again 23 Aug in favour of stepSections below — a form that
+    // grows as you answer it never shows how much is left. The trigger is
+    // parked, not deleted: flip this back on per page to compare.
+    progressiveSections: false,
+    // The stepper. Every section card is on the page from first paint, so the
+    // length of the form is visible; the ones not yet reached are greyed and
+    // shut, and exactly one card — the first unanswered one — is open. Angad,
+    // 23 Aug 2026. Mutually exclusive with progressiveSections in practice:
+    // if both are on, disclosure hides the very cards this wants to show.
+    stepSections: true,
     // Headings above each section. Parked rather than deleted: the only one
     // actually wanted is the Student / Guardian split, and that ships as
     // personGroups below (Amrit, 20 Aug 2026).
@@ -2949,7 +2958,15 @@ var ContourForm1Logic = function () {
   function openSectionsForPrefill() {
     if (!prefillWantsSectionsOpen) return;
     if (!sectionsReady) return;
-    revealAllSections({ pinOpen: true });
+    revealAllSections({
+      pinOpen: true,
+      // The link goes to students who have already signed up and is there to
+      // add subjects, so that is the card it opens on. The rest of the form is
+      // theirs to correct — every card unlocks, none is forced open, and
+      // anything the record left blank is still caught at submission
+      // (Angad, 23 Aug 2026).
+      stepOpenId: "programs"
+    });
   }
   function stripStudentIdFromUrl() {
     if (!window.history || typeof window.history.replaceState !== "function") return;
@@ -3267,6 +3284,12 @@ var ContourForm1Logic = function () {
     if (entry) restoreSectionBoxState(entry.boxes);
   }
   function restoreSectionBoxState(boxes) {
+    // Step mode works out which card is open from the answers themselves, so
+    // a remembered open/folded map has nothing to add and plenty to fight:
+    // a card stored open is one the rule would fold, and the two would take
+    // turns. The refresh lands on the first unanswered card, which is where
+    // the visitor left off anyway.
+    if (stepModeEnabled()) return;
     if (!boxes) return;
     (boxes.open || []).forEach(function (id) {
       if (SECTION_BOX_IDS[id]) sectionBoxManualOpen[id] = true;
@@ -5224,9 +5247,9 @@ var ContourForm1Logic = function () {
   // Only nudges the page when the new section is genuinely off screen, and
   // never while someone is typing — being scrolled away from a half-finished
   // answer is worse than not being shown the next question straight away.
-  function scrollSectionIntoView(entry) {
+  function scrollSectionIntoView(entry, force) {
     if (prefersReducedMotion()) return;
-    if (lastInteractionWasMultiSelect) return;
+    if (lastInteractionWasMultiSelect && !force) return;
     var active = document.activeElement;
     if (active && (active.tagName === "TEXTAREA" || active.tagName === "INPUT" && active.type !== "checkbox" && active.type !== "radio" && active.type !== "submit")) return;
     var target = entry.header || entry.nodes[0];
@@ -5247,8 +5270,11 @@ var ContourForm1Logic = function () {
   function revealAllSections(options) {
     if (!sectionsReady) return;
     var pinOpen = !!(options && options.pinOpen);
+    var stepOpenId = options && options.stepOpenId;
+    if (stepModeEnabled() && stepOpenId && SECTION_BOX_IDS[stepOpenId]) stepPinnedId = stepOpenId;
     SECTION_DEFS.forEach(function (def) {
       revealedSections[def.id] = true;
+      if (stepModeEnabled()) return;
       if (!pinOpen || !SECTION_BOX_IDS[def.id]) return;
       if (sectionBoxManualCollapsed[def.id]) return;
       sectionBoxManualOpen[def.id] = true;
@@ -5303,6 +5329,13 @@ var ContourForm1Logic = function () {
     formRoot.addEventListener("focusin", function (e) {
       noteSectionInteraction(e.target);
       expandSectionBoxForWrap(e.target);
+    });
+    // Leaving a card is the step mode's hand-over cue — a finished card holds
+    // while the caret is still in it, so something has to run the pass once
+    // the caret is gone. Deliberately not noteSectionInteraction: leaving a
+    // section is not working in it.
+    formRoot.addEventListener("focusout", function () {
+      scheduleSectionEval();
     });
     evaluateSections({
       initial: true
@@ -5479,6 +5512,17 @@ var ContourForm1Logic = function () {
   function sectionBoxesEnabled() {
     return featureEnabled("sectionBoxes");
   }
+  // The stepper needs cards to step through, and staff take signups out of
+  // order — they get the whole form open, as with every other rule here.
+  function stepModeEnabled() {
+    return featureEnabled("stepSections") && sectionBoxesEnabled() && !isInternalMode();
+  }
+  // "Some form of staged disclosure is running." Both modes want the guardian
+  // segment to arrive once the student rows are answered rather than landing
+  // on the visitor all at once.
+  function sectionFlowActive() {
+    return featureEnabled("progressiveSections") || stepModeEnabled();
+  }
   // The page caps the form at 768px, which put the longest campus address
   // ("Level 1/75-77 Railway Parade or Level 1/6-10 Kingsway") onto two lines
   // in a half-width tile. 880px gives the tiles the ~50px each they were
@@ -5619,6 +5663,23 @@ var ContourForm1Logic = function () {
       // at the same scale as the sections above it (Amrit, 22 Aug).
       ".hs-form .hs_submit.contour-submit-pending, .hs-form .hs-submit.contour-submit-pending { display: none; }" +
       ".hs-form .hs_submit .hs-button, .hs-form .hs-submit .hs-button { display: block; width: 100%; }" +
+      // A card whose turn has not come. Present, measurable, obviously not
+      // yet live: the navy band drops back to the grey wash it had before
+      // theme 2, the whole card sits at half strength, and nothing on it
+      // offers to be clicked. Three classes deep, so it wins over the theme-2
+      // rules above wherever they overlap.
+      box + "--locked { opacity: 0.5; }" +
+      box + "--locked .contour-section-box__header, " + box + "--locked .contour-section-box__header:hover { background: rgba(12, 49, 102, 0.05); border-bottom-color: transparent; cursor: default; }" +
+      box + "--locked .contour-section-box__title { color: #0C3166; }" +
+      // No lime tick on a card with nothing answered in it, and no pencil on
+      // one there is no way into.
+      box + "--locked .contour-section-box__status, " + box + "--locked .contour-section-box__action { display: none; }" +
+      // Belt to the collapsed state's braces: the content is already clipped
+      // and visibility:hidden, and a stray pointer cannot reach into it.
+      box + "--locked .contour-section-box__content-inner { pointer-events: none; }" +
+      // The CTA before the form is ready: still there, still clickable so the
+      // gate can say what is missing, plainly not the live button yet.
+      ".hs-form .hs_submit .hs-button.contour-submit--waiting, .hs-form .hs-submit .hs-button.contour-submit--waiting { background-color: rgba(12, 49, 102, 0.10) !important; border-color: transparent !important; color: rgba(12, 49, 102, 0.45) !important; box-shadow: none !important; }" +
       "@media (max-width: 767px) { " + box + "__header { padding: 16px 16px 0; } " + box + "--collapsed .contour-section-box__header { padding-bottom: 16px; } " + box + "__content-inner { padding: 6px 16px 16px; } }";
     document.head.appendChild(style);
   }
@@ -5693,6 +5754,41 @@ var ContourForm1Logic = function () {
   function toggleSectionBox(id) {
     var box = sectionBoxes[id];
     if (!box) return;
+    if (stepModeEnabled()) {
+      // A locked header is furniture: it shows the visitor how much form is
+      // left and nothing more.
+      if (!sectionUnlocked[id]) return;
+      if (draftCacheEnabled()) {
+        draftUserTouched = true;
+        scheduleDraftSave();
+      }
+      // Whichever way this click goes, the visitor has just chosen where they
+      // want to be — the pre-fill pin has had its say.
+      stepPinnedId = null;
+      if (id === activeSectionId) {
+        // The card being worked in does not fold — an unanswered question
+        // must not be hideable. A finished one folds back to its summary and
+        // the form returns to whatever it still needs, which is what the next
+        // pass works out.
+        if (box.el.getAttribute("data-contour-complete") !== "1") return;
+        activeSectionId = null;
+      } else {
+        activeSectionId = id;
+        // The click is an interaction with the section too: it keeps the card
+        // open through the pass that follows, rather than the form deciding
+        // mid-click that a finished card should hand over again.
+        lastInteractedSectionId = id;
+        setSectionBoxCollapsed(id, false);
+        // Focus is what holds a finished card open, and Safari does not focus
+        // a button on click — without this the pencil would open the card and
+        // the very next pass would hand straight back to the form's own step.
+        try {
+          box.header.focus();
+        } catch (err) { }
+      }
+      scheduleSectionEval();
+      return;
+    }
     // Opening or folding a card by hand is worth remembering across a
     // refresh, and it is the visitor's own doing, so it starts a draft the
     // same way typing does.
@@ -5729,6 +5825,15 @@ var ContourForm1Logic = function () {
   // stays folded. A submit attempt passes nothing and opens everything —
   // there is no arguing with "you cannot fix an error you cannot see".
   function expandAllSectionBoxes(respectManualCollapse) {
+    if (stepModeEnabled()) {
+      // Step mode has no "all open" state to reach for — one card is open at
+      // a time by design. What a whole-form handover actually needs is the
+      // locks off, so every card can be opened and every error inside one can
+      // be reached; which card is open is then the ordinary rule's business.
+      unlockAllSectionSteps();
+      scheduleSectionEval();
+      return;
+    }
     Object.keys(sectionBoxes).forEach(function (id) {
       if (respectManualCollapse && sectionBoxManualCollapsed[id]) return;
       sectionBoxManualOpen[id] = true;
@@ -5745,6 +5850,21 @@ var ContourForm1Logic = function () {
     if (!el) return;
     var id = el.getAttribute("data-contour-section");
     if (!id) return;
+    if (stepModeEnabled()) {
+      // Being focused into a folded card means an error link or a draft sent
+      // the visitor there. It becomes the open one, and it unlocks: the only
+      // way focus reaches a locked card is a submit attempt, which has taken
+      // the locks off already.
+      sectionUnlocked[id] = true;
+      activeSectionId = id;
+      lastInteractedSectionId = id;
+      // Opened here and now rather than on the queued pass: the field being
+      // focused is inside this card, and a tick spent focused into something
+      // with visibility:hidden is a tick the caret is nowhere.
+      setSectionBoxCollapsed(id, false);
+      scheduleSectionEval();
+      return;
+    }
     sectionBoxManualOpen[id] = true;
     delete sectionBoxManualCollapsed[id];
     setSectionBoxCollapsed(id, false);
@@ -5883,7 +6003,7 @@ var ContourForm1Logic = function () {
     }
     // Everything shows at once when disclosure is off, for staff, and after
     // anything that reveals the whole form (submit attempt, prefill).
-    var show = guardianSegmentRevealed || !featureEnabled("progressiveSections") || isInternalMode() || guardianSegmentHasAnswer() || studentSegmentComplete();
+    var show = guardianSegmentRevealed || !sectionFlowActive() || isInternalMode() || guardianSegmentHasAnswer() || studentSegmentComplete();
     nodes.forEach(function (node) {
       if (!show) {
         node.classList.add(GUARDIAN_SEG_HIDDEN_CLASS);
@@ -5908,8 +6028,190 @@ var ContourForm1Logic = function () {
     }
     return false;
   }
+  /* =========================================================
+     STEP MODE — every card on the page, one of them open
+     -----------------------------------------------------------
+     The cascade showed the form growing; this shows the whole shape of it up
+     front and walks through it. All five cards render from first paint. The
+     ones whose turn has not come are greyed and shut. Exactly one card is
+     open — the first one still missing an answer — and it cannot be folded
+     while it is still missing one.
+
+     Two rules carry the whole thing:
+
+       - a card unlocks when every card above it reads complete, and never
+         re-locks. Editing an earlier answer must not take away a card the
+         visitor has already been through;
+       - the open card gives way once it is complete AND focus has left it.
+         The focus half is what stops the subject list folding on the first
+         tick of a three-tick answer.
+
+     Locked cards are not openable, and that is deliberate rather than
+     cautious: Year Level is disabled until the intake year is picked, School
+     until location and intake are both in, and the subject list is built by
+     the matrix from location + year + intake. A card opened out of turn shows
+     fields that cannot answer yet or a subject list filtered against nothing.
+     The fields inside keep no disabled attribute of their own — HubSpot drops
+     disabled inputs from the submission and rebuilds these nodes on every
+     re-render, so the lock lives on the card (Amrit, 23 Aug 2026).
+     ========================================================= */
+  var STEP_LOCKED_CLASS = "contour-section-box--locked";
+  var sectionUnlocked = {};
+  var activeSectionId = null;
+  // An empty section is transparent here for the same reason it is to the
+  // reveal walker: Preferred Campuses carries no field until a program that
+  // has campuses is picked, and a section with nothing to answer must not be
+  // the thing holding the rest of the form shut.
+  function boxedSectionComplete(groups, index) {
+    var nodes = groups[index];
+    if (!groupHasVisibleField(nodes)) return true;
+    return groupComplete(nodes);
+  }
+  function refreshSectionUnlocks(groups) {
+    var reached = true;
+    SECTION_DEFS.forEach(function (def, index) {
+      if (!SECTION_BOX_IDS[def.id]) return;
+      if (reached) sectionUnlocked[def.id] = true;
+      if (!boxedSectionComplete(groups, index)) reached = false;
+    });
+  }
+  // Anything that hands over the whole form — a submit attempt, a pre-fill
+  // link, staff mode — has to take the locks off with it. Nobody can fix an
+  // error inside a card the form refuses to open.
+  function unlockAllSectionSteps() {
+    SECTION_DEFS.forEach(function (def) {
+      if (SECTION_BOX_IDS[def.id]) sectionUnlocked[def.id] = true;
+    });
+  }
+  function firstIncompleteSectionId(groups) {
+    for (var i = 0; i < SECTION_DEFS.length; i++) {
+      var def = SECTION_DEFS[i];
+      if (!SECTION_BOX_IDS[def.id] || !sectionBoxes[def.id]) continue;
+      if (!boxedSectionComplete(groups, i)) return def.id;
+    }
+    return null;
+  }
+  function focusInsideBox(id) {
+    var box = sectionBoxes[id];
+    var active = document.activeElement;
+    if (!box || !active || active === document.body) return false;
+    return box.el.contains(active);
+  }
+  /* Which card is open. A hand-picked card (the pencil) sets this directly and
+     then falls under the same two brakes as one the form opened itself, so
+     there is no second rule for manual choices to drift out of step with:
+
+       - an unfinished card holds. This is the "cannot be collapsed" rule seen
+         from the other side — the form will not move on from a question that
+         has no answer yet, whichever card that question is in;
+       - a finished card holds while focus is still inside it, then hands over
+         to the earliest card still missing something. Nothing left to miss
+         means nothing is open, which is the right resting state for a form
+         that is ready to send. */
+  // A pre-fill link is the one case where the form itself knows better than
+  // "first unanswered card": the record is already complete, so nothing would
+  // be open, and the link exists to add subjects. The pin holds that card
+  // open until the visitor moves somewhere else themselves.
+  var stepPinnedId = null;
+  function refreshActiveSection(groups) {
+    if (stepPinnedId) {
+      if (sectionBoxes[stepPinnedId]) {
+        activeSectionId = stepPinnedId;
+        return;
+      }
+      stepPinnedId = null;
+    }
+    var next = firstIncompleteSectionId(groups);
+    if (!activeSectionId || !sectionBoxes[activeSectionId]) {
+      activeSectionId = next;
+      return;
+    }
+    var index = sectionIndexById(activeSectionId);
+    if (index !== -1 && !boxedSectionComplete(groups, index)) return;
+    if (focusInsideBox(activeSectionId)) return;
+    activeSectionId = next;
+  }
+  // Accurate here in a way it would not be on the submit button: a locked
+  // header really does nothing at all when pressed.
+  function setStepHeaderDisabled(box, disabled) {
+    var flag = disabled ? "true" : null;
+    if ((box.header.getAttribute("aria-disabled") || null) === flag) return;
+    if (flag) box.header.setAttribute("aria-disabled", flag); else box.header.removeAttribute("aria-disabled");
+  }
+  function applyStepSectionStates(groups) {
+    var heightChanged = false;
+    refreshSectionUnlocks(groups);
+    refreshActiveSection(groups);
+    SECTION_DEFS.forEach(function (def, index) {
+      var box = sectionBoxes[def.id];
+      if (!box) return;
+      var nodes = groups[index];
+      var locked = !sectionUnlocked[def.id];
+      var empty = !groupHasVisibleField(nodes);
+      // A locked card is a header and nothing else, so it can stand before
+      // HubSpot has anything visible inside it — Preferred Campuses holds no
+      // visible option until a program with campuses is picked, and hiding it
+      // until then would undercount the form by a card, which is the one
+      // thing the stepper exists to get right. If its turn comes and it still
+      // has nothing to ask, it hides itself as it always did.
+      box.el.classList.toggle("contour-section-box--empty", empty && !locked);
+      box.el.classList.toggle(STEP_LOCKED_CLASS, locked);
+      // Ahead of the empty branch: a locked card with no fields yet is still
+      // shown, and a grey bar with no name on it is not a step.
+      var title = sectionTitle(def) || "";
+      if (box.title.textContent !== title) box.title.textContent = title;
+      if (empty) {
+        if (box.summary.textContent !== "") box.summary.textContent = "";
+        box.header.classList.toggle("contour-section-box__header--togglable", false);
+        if (setSectionBoxCollapsed(def.id, true)) heightChanged = true;
+        if (box.header.tabIndex !== -1) box.header.tabIndex = -1;
+        setStepHeaderDisabled(box, true);
+        return;
+      }
+      // Every text and attribute write here is guarded by a changed-check:
+      // this runs from a MutationObserver over the same subtree, and an
+      // identical rewrite still counts as a mutation.
+      var complete = groupComplete(nodes);
+      var completeAttr = complete ? "1" : "0";
+      if (box.el.getAttribute("data-contour-complete") !== completeAttr) box.el.setAttribute("data-contour-complete", completeAttr);
+      var open = !locked && def.id === activeSectionId;
+      // A locked card has nothing to show and the open one will not fold
+      // while it is unanswered, so the pointer only changes over a card that
+      // will actually respond to the click.
+      box.header.classList.toggle("contour-section-box__header--togglable", !locked && (!open || complete));
+      // A locked card's summary would be a row of answers it does not have.
+      var summaryText = locked ? "" : sectionBoxSummary(def);
+      if (box.summary.textContent !== summaryText) box.summary.textContent = summaryText;
+      if (setSectionBoxCollapsed(def.id, !open)) heightChanged = true;
+      // setSectionBoxCollapsed puts every folded header in the tab order as
+      // the way back into its card. A locked one is not a way into anything.
+      if (locked && box.header.tabIndex !== -1) box.header.tabIndex = -1;
+      setStepHeaderDisabled(box, locked);
+    });
+    return heightChanged;
+  }
+  function scrollStepIntoView(id) {
+    var box = sectionBoxes[id];
+    if (!box) return;
+    // force: the multi-select guard exists to stop the page moving on the
+    // first tick of a list. By the time a step hands over, that list is
+    // answered and folded — the card being opened is the thing to look at.
+    scrollSectionIntoView({
+      header: box.header,
+      nodes: [box.el]
+    }, true);
+  }
   function updateSectionBoxStates(groups) {
     if (!sectionBoxesEnabled()) return;
+    if (stepModeEnabled()) {
+      var openBefore = activeSectionId;
+      withScrollAnchor(function () {
+        return applyStepSectionStates(groups);
+      });
+      if (activeSectionId && activeSectionId !== openBefore) scrollStepIntoView(activeSectionId);
+      updateSubmitReveal(groups);
+      return;
+    }
     var startedFlags = SECTION_DEFS.map(function (def, index) {
       return revealedSections[def.id] && groupStarted(groups[index]);
     });
@@ -5972,21 +6274,38 @@ var ContourForm1Logic = function () {
   // finally brings it in. Reveal-once, like sections: un-ticking consent
   // afterwards never yanks the button back out.
   var submitRevealed = false;
+  function allBoxedSectionsComplete(groups) {
+    return SECTION_DEFS.every(function (def, index) {
+      if (!SECTION_BOX_IDS[def.id]) return true;
+      if (!groupHasVisibleField(groups[index])) return true;
+      return groupComplete(groups[index]);
+    });
+  }
   function updateSubmitReveal(groups) {
     var node = formRoot.querySelector(".hs_submit") || formRoot.querySelector(".hs-submit");
     if (!node) return;
+    if (stepModeEnabled()) {
+      // The button is on the page from the start — the whole point of showing
+      // every card is that the end of the form is visible, and a CTA that
+      // appears out of nowhere puts it back out of sight. It wears a muted
+      // style until the form is ready, and stays clickable while it does:
+      // runSubmitGate takes the locks off and names every missing field as a
+      // jump link, which is worth far more than a dead button (Amrit, 23 Aug).
+      node.classList.remove("contour-submit-pending");
+      var button = node.querySelector(".hs-button");
+      if (!button) return;
+      // Muted, but deliberately not aria-disabled: the click does something
+      // useful — it takes the locks off and names every missing field as a
+      // jump link. Announcing "disabled" would tell a screen reader not to
+      // press the one control that would explain what is left.
+      button.classList.toggle("contour-submit--waiting", !allBoxedSectionsComplete(groups));
+      return;
+    }
     if (!featureEnabled("progressiveSections") || !sectionBoxesEnabled() || isInternalMode()) {
       node.classList.remove("contour-submit-pending");
       return;
     }
-    if (!submitRevealed) {
-      var allComplete = SECTION_DEFS.every(function (def, index) {
-        if (!SECTION_BOX_IDS[def.id]) return true;
-        if (!groupHasVisibleField(groups[index])) return true;
-        return groupComplete(groups[index]);
-      });
-      if (allComplete) submitRevealed = true;
-    }
+    if (!submitRevealed && allBoxedSectionsComplete(groups)) submitRevealed = true;
     if (!submitRevealed) {
       // Re-applied every pass: a HubSpot re-render rebuilds this node bare.
       node.classList.add("contour-submit-pending");
