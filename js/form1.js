@@ -91,9 +91,12 @@ var ContourForm1Logic = function () {
     // Logs every decision the stepper makes to the console: which card was
     // pressed, every change of the open card and what caused it, and every
     // reason it declined to move. Off everywhere; switch on per page with
-    // window.ContourForm1Config = { stepDebug: true } when a report needs
-    // pinning down rather than guessing at.
-    stepDebug: false,
+    // window.ContourForm1Config = { stepDebug: false } to silence it.
+    //
+    // TEMPORARILY ON while a card-opening report is being pinned down
+    // (Angad, 24 Aug 2026). Turn back off before this goes to the live page —
+    // it is console noise for every visitor otherwise.
+    stepDebug: true,
     // Mirrors the answers into localStorage as they are given and offers them
     // back on the next visit from the same browser. On by default — see the
     // LOCAL DRAFT CACHE block for what is deliberately never stored.
@@ -5437,6 +5440,12 @@ var ContourForm1Logic = function () {
       // A press on the form is the visitor taking charge, whether or not it
       // lands on something that produces a value.
       if (e.isTrusted && formRoot && formRoot.contains(e.target)) stepUserActed = true;
+      // Logged on the way down, before anything can move. If a press shows up
+      // here and no "pressed:" line follows, the click landed somewhere else
+      // than where it started — the page shifted between press and release.
+      if (e.target && e.target.closest && e.target.closest(".contour-section-box__header")) {
+        stepLog("pointer down on header:", sectionIdForNode(e.target), "at y=" + Math.round(e.clientY));
+      }
       // A press anywhere but the pinned card is the visitor leaving it. The
       // header's own handler re-pins if that is where they went.
       if (stepPinnedId && sectionIdForNode(e.target) !== stepPinnedId) stepPinnedId = null;
