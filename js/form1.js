@@ -88,6 +88,12 @@ var ContourForm1Logic = function () {
     // section above — the handover code below stays for whoever turns this
     // back on (Amrit, 23 Aug 2026).
     autoSelectSingleProgram: false,
+    // Logs every decision the stepper makes to the console: which card was
+    // pressed, every change of the open card and what caused it, and every
+    // reason it declined to move. Off everywhere; switch on per page with
+    // window.ContourForm1Config = { stepDebug: true } when a report needs
+    // pinning down rather than guessing at.
+    stepDebug: false,
     // Mirrors the answers into localStorage as they are given and offers them
     // back on the next visit from the same browser. On by default — see the
     // LOCAL DRAFT CACHE block for what is deliberately never stored.
@@ -5910,7 +5916,10 @@ var ContourForm1Logic = function () {
     if (stepModeEnabled()) {
       // A locked header is furniture: it shows the visitor how much form is
       // left and nothing more.
-      if (!sectionUnlocked[id]) return;
+      stepLog("pressed:", id, "| unlocked:", !!sectionUnlocked[id],
+        "| complete:", box.el.getAttribute("data-contour-complete"),
+        "| open card was:", activeSectionId);
+      if (!sectionUnlocked[id]) return stepLog("  ignored - that card is still pending");
       if (draftCacheEnabled()) {
         draftUserTouched = true;
         scheduleDraftSave();
@@ -5925,8 +5934,8 @@ var ContourForm1Logic = function () {
         // must not be hideable. A finished one folds back to its summary and
         // the form returns to whatever it still needs, which is what the next
         // pass works out.
-        if (box.el.getAttribute("data-contour-complete") !== "1") return;
-        setActiveSection(null);
+        if (box.el.getAttribute("data-contour-complete") !== "1") return stepLog("  ignored - cannot fold an unfinished card");
+        setActiveSection(null, "folded by hand");
       } else {
         sectionVisited[id] = true;
         // Pinned, not just held. Until now a hand-opened card stayed open
@@ -5942,7 +5951,7 @@ var ContourForm1Logic = function () {
           el: box.header,
           top: box.header.getBoundingClientRect().top
         } : null;
-        setActiveSection(id);
+        setActiveSection(id, "opened by hand");
         // The click is an interaction with the section too: it keeps the card
         // open through the pass that follows, rather than the form deciding
         // mid-click that a finished card should hand over again.
@@ -6026,7 +6035,7 @@ var ContourForm1Logic = function () {
       // the locks off already.
       sectionUnlocked[id] = true;
       sectionVisited[id] = true;
-      setActiveSection(id);
+      setActiveSection(id, "focused into");
       lastInteractedSectionId = id;
       // Opened here and now rather than on the queued pass: the field being
       // focused is inside this card, and a tick spent focused into something
@@ -6524,22 +6533,29 @@ var ContourForm1Logic = function () {
      2026). Nothing here reasons about where a card ought to end up. The thing
      that was clicked stays exactly where it was clicked. */
   var stepPressAnchor = null;
-  function setActiveSection(id) {
+  function stepLog() {
+    if (!featureEnabled("stepDebug")) return;
+    try {
+      console.log.apply(console, ["[contour-step]"].concat(Array.prototype.slice.call(arguments)));
+    } catch (err) { }
+  }
+  function setActiveSection(id, why) {
     if (activeSectionId === id) return;
+    stepLog("open card:", activeSectionId, "->", id, "(" + (why || "?") + ")");
     activeSectionId = id;
     activeOpenedAt = Date.now();
   }
   function refreshActiveSection(groups) {
     if (stepPinnedId) {
       if (sectionBoxes[stepPinnedId]) {
-        setActiveSection(stepPinnedId);
+        setActiveSection(stepPinnedId, "pinned");
         return;
       }
       stepPinnedId = null;
     }
     var next = nextStepSectionId(groups);
     if (!activeSectionId || !sectionBoxes[activeSectionId]) {
-      setActiveSection(next);
+      setActiveSection(next, "nothing was open");
       return;
     }
     // Before the visitor does anything the form is still settling — a draft
@@ -6547,15 +6563,15 @@ var ContourForm1Logic = function () {
     // whatever the answers say it should be. Holding a choice made during that
     // window is how a reload ended up back at the top of a half-filled form.
     if (!stepUserActed) {
-      setActiveSection(next);
+      setActiveSection(next, "settling, following the answers");
       return;
     }
     var index = sectionIndexById(activeSectionId);
-    if (index !== -1 && !boxedSectionComplete(groups, index)) return;
-    if (focusInsideBox(activeSectionId)) return;
-    if (attentionSectionId === activeSectionId) return;
-    if (attentionAt <= activeOpenedAt) return;
-    setActiveSection(next);
+    if (index !== -1 && !boxedSectionComplete(groups, index)) return stepLog("holding", activeSectionId, "- unfinished");
+    if (focusInsideBox(activeSectionId)) return stepLog("holding", activeSectionId, "- caret inside");
+    if (attentionSectionId === activeSectionId) return stepLog("holding", activeSectionId, "- pressed inside");
+    if (attentionAt <= activeOpenedAt) return stepLog("holding", activeSectionId, "- nothing pressed since it opened");
+    setActiveSection(next, "finished and left");
   }
   // Read off the card attributes the last pass wrote, so the Enter handler
   // does not recompute the groups on every keystroke.
