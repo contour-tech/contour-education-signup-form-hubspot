@@ -5367,12 +5367,12 @@ var ContourForm1Logic = function () {
     formRoot.addEventListener("change", function (e) {
       // isTrusted: every prefill in this file dispatches its own events, and
       // those must not count as the visitor having started.
-      if (e.isTrusted) stepInteracted = true;
+      if (e.isTrusted) stepInteracted = stepUserActed = true;
       noteSectionInteraction(e.target);
       scheduleSectionEval();
     });
     formRoot.addEventListener("input", function (e) {
-      if (e.isTrusted) stepInteracted = true;
+      if (e.isTrusted) stepInteracted = stepUserActed = true;
       noteSectionInteraction(e.target);
       scheduleSectionEval();
     });
@@ -5418,6 +5418,9 @@ var ContourForm1Logic = function () {
     // would shift the page under the pointer and land the click somewhere the
     // visitor never aimed — the hazard withScrollAnchor exists for.
     document.addEventListener("pointerdown", function (e) {
+      // A press on the form is the visitor taking charge, whether or not it
+      // lands on something that produces a value.
+      if (e.isTrusted && formRoot && formRoot.contains(e.target)) stepUserActed = true;
       noteAttention(e.target);
     }, true);
     document.addEventListener("click", function () {
@@ -5893,8 +5896,10 @@ var ContourForm1Logic = function () {
         scheduleDraftSave();
       }
       // Whichever way this click goes, the visitor has just chosen where they
-      // want to be — the pre-fill pin has had its say.
+      // want to be — the pre-fill pin has had its say, and so has the window
+      // where the form gets to pick the open card for itself.
       stepPinnedId = null;
+      stepUserActed = true;
       if (id === activeSectionId) {
         // The card being worked in does not fold — an unanswered question
         // must not be hideable. A finished one folds back to its summary and
@@ -6366,6 +6371,14 @@ var ContourForm1Logic = function () {
      they were halfway down. Adding a visit is idempotent, so repeating it
      costs nothing. */
   var stepInteracted = false;
+  /* Separate from stepInteracted, and the difference matters. Seeding asks
+     "has the visitor started answering?", which only a typed or chosen value
+     settles. The settling bypass below asks "has the visitor done anything
+     deliberate yet?", and a press on a card header is exactly that — sharing
+     one flag meant a restored draft never left the settling window, so every
+     pass reset the open card and a click on any other header opened it for a
+     frame and lost it again (Angad, 24 Aug 2026). */
+  var stepUserActed = false;
   function seedStepVisits(groups) {
     if (stepInteracted) return;
     SECTION_DEFS.forEach(function (def, index) {
@@ -6468,11 +6481,11 @@ var ContourForm1Logic = function () {
       setActiveSection(next);
       return;
     }
-    // Before the first real interaction the form is still settling — a draft
+    // Before the visitor does anything the form is still settling — a draft
     // arriving, HubSpot inserting a dependent group — and the open card is
     // whatever the answers say it should be. Holding a choice made during that
     // window is how a reload ended up back at the top of a half-filled form.
-    if (!stepInteracted) {
+    if (!stepUserActed) {
       setActiveSection(next);
       return;
     }
