@@ -4774,7 +4774,11 @@ var ContourForm1Logic = function () {
       reportFieldError(wrap, focusTargetIn(wrap));
       flagged.push(wrap);
     });
-    if (stepModeEnabled()) flagStepSections(flagged);
+    if (stepModeEnabled()) {
+      submitAttempted = true;
+      lastStepReportKey = null;
+      flagStepSections(flagged);
+    }
     showFormErrorSummary(flagged);
     // HubSpot renders a nudged message on its own schedule. Two passes: the
     // first fills in anything it declined to mark, the second stands our
@@ -5350,13 +5354,30 @@ var ContourForm1Logic = function () {
     // opens it — nobody should be typing into a folded box.
     formRoot.addEventListener("focusin", function (e) {
       noteSectionInteraction(e.target);
+      noteAttention(e.target);
       expandSectionBoxForWrap(e.target);
     });
+    // On the document, not the form: a click that lands outside every card is
+    // what releases the open one, and that click is often not on the form at
+    // all. Capture, so nothing downstream can stop it being seen.
+    //
+    // Read on the way down, acted on the way out. The press has to be read
+    // before it can move focus, but a card folding between press and release
+    // would shift the page under the pointer and land the click somewhere the
+    // visitor never aimed — the hazard withScrollAnchor exists for.
+    document.addEventListener("pointerdown", function (e) {
+      noteAttention(e.target);
+    }, true);
+    document.addEventListener("click", function () {
+      scheduleSectionEval();
+    }, true);
     // Leaving a card is the step mode's hand-over cue — a finished card holds
     // while the caret is still in it, so something has to run the pass once
     // the caret is gone. Deliberately not noteSectionInteraction: leaving a
     // section is not working in it.
-    formRoot.addEventListener("focusout", function () {
+    formRoot.addEventListener("focusout", function (e) {
+      var to = e.relatedTarget;
+      if (!to || !formRoot.contains(to)) releaseAttentionOnBlur();
       scheduleSectionEval();
     });
     evaluateSections({
@@ -6121,13 +6142,64 @@ var ContourForm1Logic = function () {
     if (!id || !SECTION_BOX_IDS[id]) return true;
     return !!sectionUnlocked[id];
   }
-  function flagStepSections(wraps) {
+  function setStepFlags(wraps) {
     sectionFlagged = {};
     wraps.forEach(function (wrap) {
       var id = sectionIdForNode(wrap);
       if (id && SECTION_BOX_IDS[id]) sectionFlagged[id] = true;
     });
+  }
+  function flagStepSections(wraps) {
+    setStepFlags(wraps);
     scheduleSectionEval();
+  }
+  /* Once a submit attempt has been turned down, the form stays in "here is
+     what is missing" mode and the report follows the visitor forward. Without
+     this the summary froze on the first card's problems: the four contact
+     fields stayed listed long after they were filled, while the section that
+     actually still needed answers carried no mark at all — so the next card
+     read as done (Angad, 24 Aug 2026).
+
+     The list is every field still missing from a card the form has actually
+     opened, recomputed each pass. So it grows as cards unlock, drops each
+     section as it is answered, and empties itself — hiding the block — when
+     nothing is left. Cards the form has not reached stay out of it, which is
+     the whole reason the report was narrowed in the first place. */
+  var submitAttempted = false;
+  var lastStepReportKey = null;
+  function refreshStepReport() {
+    if (!submitAttempted) return;
+    var wraps = [];
+    function consider(wrap) {
+      if (!wrap || wraps.indexOf(wrap) !== -1) return;
+      if (!stepSectionReportable(wrap)) return;
+      wraps.push(wrap);
+    }
+    for (var i = 0; i < submitValidators.length; i++) {
+      var valid = true;
+      try {
+        valid = submitValidators[i].isValid();
+      } catch (err) {
+        valid = true;
+      }
+      if (valid) continue;
+      try {
+        consider(submitValidators[i].anchor());
+      } catch (err) { }
+    }
+    nativeRequiredFailures().forEach(consider);
+    setStepFlags(wraps);
+    // The summary rewrites its own subtree and this pass runs from a
+    // MutationObserver over the form, so rebuilding it on an unchanged list
+    // would have the two feeding each other forever.
+    var key = wraps.map(fieldSummaryLabel).join("|");
+    if (key === lastStepReportKey) return;
+    lastStepReportKey = key;
+    if (wraps.length === 0) {
+      hideFormErrorSummary();
+      return;
+    }
+    showFormErrorSummary(wraps);
   }
   // An empty section is transparent here for the same reason it is to the
   // reveal walker: Preferred Campuses carries no field until a program that
@@ -6161,6 +6233,29 @@ var ContourForm1Logic = function () {
       if (!boxedSectionComplete(groups, i)) return def.id;
     }
     return null;
+  }
+  /* Where the visitor's attention is, which is not the same as where the caret
+     is. Focus alone was too narrow: the gap between two subject tiles, a
+     tile's outer strip, the card's own padding — none of it is focusable, so a
+     click plainly aimed inside the card left focus on the body, and the card
+     folded and handed over under a click meant to pick another subject
+     (Angad, 24 Aug 2026). A pointer-down is read wherever it lands, including
+     outside the form, so clicking away still releases the card. */
+  var attentionSectionId = null;
+  var attentionAt = 0;
+  function noteAttention(target) {
+    attentionSectionId = sectionIdForNode(target);
+    attentionAt = Date.now();
+  }
+  // Focus leaving for nowhere in particular. Two very different things look
+  // identical from here — a press on the card's own dead space, which focuses
+  // nothing, and tabbing or blurring away — so they are told apart by whether
+  // a press landed a moment ago. A click's focusout follows its own
+  // pointerdown within a frame or two; nothing else does.
+  var ATTENTION_CLICK_MS = 250;
+  function releaseAttentionOnBlur() {
+    if (Date.now() - attentionAt < ATTENTION_CLICK_MS) return;
+    attentionSectionId = null;
   }
   function focusInsideBox(id) {
     var box = sectionBoxes[id];
@@ -6200,6 +6295,7 @@ var ContourForm1Logic = function () {
     var index = sectionIndexById(activeSectionId);
     if (index !== -1 && !boxedSectionComplete(groups, index)) return;
     if (focusInsideBox(activeSectionId)) return;
+    if (attentionSectionId === activeSectionId) return;
     activeSectionId = next;
   }
   // Accurate here in a way it would not be on the submit button: a locked
@@ -6213,6 +6309,7 @@ var ContourForm1Logic = function () {
     var heightChanged = false;
     refreshSectionUnlocks(groups);
     refreshActiveSection(groups);
+    refreshStepReport();
     SECTION_DEFS.forEach(function (def, index) {
       var box = sectionBoxes[def.id];
       if (!box) return;
