@@ -5660,6 +5660,9 @@ var ContourForm1Logic = function () {
     style.textContent = "" +
       box + " { margin: 0 0 20px; border: 1px solid rgba(12, 49, 102, 0.12); border-radius: 16px; background: #FFFFFF; box-shadow: 0 1px 3px rgba(12, 49, 102, 0.06); }" +
       box + "--empty { display: none; }" +
+      // The page's nav is sticky, so a card scrolled hard to the top would
+      // sit under it.
+      box + " { scroll-margin-top: 96px; }" +
       // The header is a slim band in the person-tabs voice — small caps on a
       // faint navy wash — so it reads as the section's chrome, one tier above
       // the field labels inside, rather than a second bold label.
@@ -5932,6 +5935,7 @@ var ContourForm1Logic = function () {
         // another. A press is a decision; it outranks the step until the
         // visitor makes another one (Angad, 24 Aug 2026).
         stepPinnedId = id;
+        stepScrollToId = id;
         setActiveSection(id);
         // The click is an interaction with the section too: it keeps the card
         // open through the pass that follows, rather than the form deciding
@@ -6503,6 +6507,7 @@ var ContourForm1Logic = function () {
   // would otherwise be handed over from in the same breath it opened, and
   // never actually be seen. It holds until the visitor does something.
   var activeOpenedAt = 0;
+  var stepScrollToId = null;
   function setActiveSection(id) {
     if (activeSectionId === id) return;
     activeSectionId = id;
@@ -6653,6 +6658,40 @@ var ContourForm1Logic = function () {
     });
     return heightChanged;
   }
+  /* A press on a header is the visitor navigating, and the page has to follow
+     it. Folding the card above takes its height out of the document — the
+     contact card is 560px of it — so the page can end up hundreds of pixels
+     from where it was, and on a short page it clamps to the top. The card that
+     was pressed is then open but sitting low on the screen with a different
+     section filling the middle, which reads as the form having opened
+     something else entirely (Angad, 24 Aug 2026).
+
+     Deliberately not scrollSectionIntoView: that one is for a hand-over the
+     form decided on, so it stays put unless the new section is genuinely off
+     screen. This was asked for, so it always moves. Twice — once now and once
+     after the fold animation, because the layout it is aiming at is still
+     collapsing. */
+  function scrollCardIntoView(id) {
+    var box = sectionBoxes[id];
+    if (!box || !box.el || !box.el.scrollIntoView) return;
+    var smooth = !prefersReducedMotion();
+    function land() {
+      if (!box.el.isConnected) return;
+      noteIntentionalScroll();
+      try {
+        // The card, not its header: scroll-margin-top lives on the card, and
+        // it is what keeps the band clear of the page's sticky nav.
+        box.el.scrollIntoView({
+          behavior: smooth ? "smooth" : "auto",
+          block: "start"
+        });
+      } catch (err) {
+        box.el.scrollIntoView();
+      }
+    }
+    if (window.requestAnimationFrame) window.requestAnimationFrame(land); else land();
+    setTimeout(land, COLLAPSE_ANIM_MS);
+  }
   function scrollStepIntoView(id) {
     var box = sectionBoxes[id];
     if (!box) return;
@@ -6671,7 +6710,13 @@ var ContourForm1Logic = function () {
       withScrollAnchor(function () {
         return applyStepSectionStates(groups);
       });
-      if (activeSectionId && activeSectionId !== openBefore) scrollStepIntoView(activeSectionId);
+      if (stepScrollToId) {
+        var asked = stepScrollToId;
+        stepScrollToId = null;
+        scrollCardIntoView(asked);
+      } else if (activeSectionId && activeSectionId !== openBefore) {
+        scrollStepIntoView(activeSectionId);
+      }
       updateSubmitReveal(groups);
       return;
     }
