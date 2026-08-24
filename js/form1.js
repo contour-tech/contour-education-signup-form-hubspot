@@ -1566,7 +1566,7 @@ var ContourForm1Logic = function () {
   function handleAutoSelectedProgram() {
     if (autoProgramHandoffDone) return;
     autoProgramHandoffDone = true;
-    if (!featureEnabled("progressiveSections") || isInternalMode()) return;
+    if (!sectionFlowActive() || isInternalMode()) return;
     lastInteractedSectionId = "programs";
     sectionBoxManualOpen.programs = true;
     delete sectionBoxManualCollapsed.programs;
@@ -4563,6 +4563,25 @@ var ContourForm1Logic = function () {
     if (typed.length < SCHOOL_MIN_SEARCH_CHARS) return false;
     return document.activeElement !== input;
   }
+  /* "Answered" and "answered acceptably" are different questions. HubSpot
+     draws its verdict on a field into the field's own error list, and it does
+     so synchronously on blur — so a visible message IS the verdict, with no
+     race to beat. Completeness reads it: a card holding a rejected answer is
+     not a finished card, however non-empty its fields are. Without this, an
+     email of "ahsdj" folded Contact Information behind a lime tick with
+     HubSpot's own "Please enter a valid email address." still inside it
+     (Angad, 24 Aug 2026). display is read rather than geometry so the check
+     keeps working inside a folded card. */
+  function fieldWrapperInvalid(wrap) {
+    if (!wrap || !wrap.querySelectorAll) return false;
+    var lists = wrap.querySelectorAll(".hs-error-msgs");
+    for (var i = 0; i < lists.length; i++) {
+      if (lists[i].style.display === "none") continue;
+      if ((lists[i].textContent || "").trim() === "") continue;
+      return true;
+    }
+    return false;
+  }
   function fieldWrapperAnswered(wrap) {
     if (!wrap || !wrap.querySelectorAll) return true;
     var school = wrap.querySelector('input[name="school_text"]');
@@ -5151,6 +5170,9 @@ var ContourForm1Logic = function () {
     var entries = groupFieldWraps(nodes);
     for (var i = 0; i < entries.length; i++) {
       if (!fieldVisibleInSection(entries[i])) continue;
+      // Ahead of the required check: an optional field holding a rejected
+      // answer still stops the section — wrong beats missing.
+      if (fieldWrapperInvalid(entries[i].wrap)) return false;
       if (!fieldIsRequired(entries[i].wrap)) continue;
       if (!fieldWrapperAnswered(entries[i].wrap)) return false;
     }
@@ -5353,6 +5375,32 @@ var ContourForm1Logic = function () {
       if (e.isTrusted) stepInteracted = true;
       noteSectionInteraction(e.target);
       scheduleSectionEval();
+    });
+    /* Enter in a text box is "implicit submission" — the browser submits the
+       form, and half-filled that meant the gate, an error walk, and the next
+       card lighting up while someone was still typing a school name. In step
+       mode Enter now reads as "done with this answer": the field is blurred
+       and the ordinary hand-over decides — a finished card advances, an
+       unfinished one shows what is wrong and stays. Once every card is
+       complete Enter is a real submit again. The school picker's Enter (a
+       highlighted suggestion) has already preventDefaulted by the time this
+       runs, so a pick is never stolen (Angad, 24 Aug 2026). */
+    formRoot.addEventListener("keydown", function (e) {
+      if (e.key !== "Enter" || e.defaultPrevented) return;
+      if (!stepModeEnabled()) return;
+      var t = e.target;
+      if (!t || t.tagName !== "INPUT" && t.tagName !== "SELECT") return;
+      var type = (t.type || "").toLowerCase();
+      if (type === "submit" || type === "button") return;
+      if (stepFormReady()) return;
+      e.preventDefault();
+      // Enter is the visitor saying they are done here — it outranks the
+      // holds that keep a card open while they might still be in it.
+      attentionSectionId = null;
+      attentionAt = Date.now();
+      try {
+        t.blur();
+      } catch (err) { }
     });
     // Tabbing or being focused into a collapsed card (error links, drafts)
     // opens it — nobody should be typing into a folded box.
@@ -5726,7 +5774,10 @@ var ContourForm1Logic = function () {
       box + "--locked .contour-section-box__title { color: rgba(12, 49, 102, 0.66); }" +
       box + "--locked .contour-section-box__status { display: flex; background: transparent; border: 2px solid rgba(12, 49, 102, 0.28); }" +
       box + "--locked .contour-section-box__status svg { display: none; }" +
-      box + "--locked .contour-section-box__summary { display: block; text-align: right; font-size: 11px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: rgba(12, 49, 102, 0.4); }" +
+      // The state word, wherever it is used: set small against the far edge of
+      // the band so it never reads as one of the answers.
+      box + '--collapsed[data-contour-pending="1"] .contour-section-box__summary { display: block; text-align: right; font-size: 11px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; }' +
+      box + '--locked[data-contour-pending="1"] .contour-section-box__summary { color: rgba(12, 49, 102, 0.4); }' +
       // No pencil on a card there is no way into.
       box + "--locked .contour-section-box__action { display: none; }" +
       // A card a submit attempt found a problem in. The band takes the error
@@ -5741,6 +5792,18 @@ var ContourForm1Logic = function () {
       box + "--flagged .contour-section-box__status { display: flex; background: #FFFFFF; border: 0; color: #8A0C22; }" +
       box + "--flagged .contour-section-box__status svg { display: none; }" +
       box + '--flagged .contour-section-box__status::after { content: "!"; font-size: 13px; font-weight: 800; line-height: 1; }' +
+      // The disc used to show on every folded card, which was safe when only
+      // a finished card could fold. In step mode any non-active card folds,
+      // so an unfinished one wore a tick it had not earned — an empty
+      // Academic Details reading as done (Angad, 24 Aug 2026). Unfinished and
+      // folded now wears the same hollow ring as a pending card; the tick is
+      // reserved for complete.
+      box + '--collapsed[data-contour-complete="0"]:not(.contour-section-box--flagged) .contour-section-box__status { background: transparent; border: 2px solid rgba(12, 49, 102, 0.28); }' +
+      box + '--collapsed[data-contour-complete="0"]:not(.contour-section-box--flagged) .contour-section-box__status svg { display: none; }' +
+      // On a navy band the navy ring is invisible, and the state word has to
+      // hold its own against knocked-out white.
+      box + '--collapsed[data-contour-complete="0"]:not(.contour-section-box--flagged):not(.contour-section-box--locked) .contour-section-box__status { border-color: rgba(255, 255, 255, 0.45); }' +
+      box + '--collapsed[data-contour-pending="1"]:not(.contour-section-box--flagged):not(.contour-section-box--locked) .contour-section-box__summary { color: rgba(255, 255, 255, 0.55); }' +
       // Belt to the collapsed state's braces: the content is already clipped
       // and visibility:hidden, and a stray pointer cannot reach into it.
       box + "--locked .contour-section-box__content-inner { pointer-events: none; }" +
@@ -6056,6 +6119,7 @@ var ContourForm1Logic = function () {
       var el = q(fields[i].selector);
       var wrap = el ? fieldWrapper(el) : null;
       if (!wrap) continue;
+      if (fieldWrapperInvalid(wrap)) return false;
       if (!fieldIsRequired(wrap)) continue;
       if (!fieldWrapperAnswered(wrap)) return false;
     }
@@ -6227,6 +6291,16 @@ var ContourForm1Logic = function () {
       } catch (err) { }
     }
     nativeRequiredFailures().forEach(consider);
+    // Rejected answers as well as missing ones. A field HubSpot has turned
+    // down is answered, so nativeRequiredFailures never sees it — which left
+    // a card that could not be submitted carrying no mark and contributing
+    // nothing to the list, while its own message sat inside it.
+    Array.prototype.forEach.call(formRoot.querySelectorAll("." + FIELD_WRAPPER_CLASS), function (wrap) {
+      if (!fieldWrapperInvalid(wrap)) return;
+      if (!isElementVisible(wrap)) return;
+      consider(wrap);
+    });
+    wraps.sort(documentOrder);
     setStepFlags(wraps);
     nudgeStepReport(wraps);
     // The summary rewrites its own subtree and this pass runs from a
@@ -6396,6 +6470,34 @@ var ContourForm1Logic = function () {
     if (attentionAt <= activeOpenedAt) return;
     setActiveSection(next);
   }
+  // Read off the card attributes the last pass wrote, so the Enter handler
+  // does not recompute the groups on every keystroke.
+  function stepFormReady() {
+    for (var i = 0; i < SECTION_DEFS.length; i++) {
+      var def = SECTION_DEFS[i];
+      if (!SECTION_BOX_IDS[def.id]) continue;
+      var box = sectionBoxes[def.id];
+      // A card HubSpot has not rendered yet is not evidence of anything, and
+      // the safe reading of "not sure" is "not ready": Enter blurs instead of
+      // submitting, which costs a keystroke rather than a bad submission.
+      if (!box) return false;
+      if (box.el.classList.contains("contour-section-box--empty")) continue;
+      if (box.el.getAttribute("data-contour-complete") !== "1") return false;
+    }
+    return true;
+  }
+  // The summary slot carries one of two things: a row of answers, or a single
+  // state word. They are set differently — the word small and hard against the
+  // far edge of the band — so the attribute that tells them apart is written
+  // here with the text rather than alongside it. Preferred Campuses lost its
+  // PENDING tag to exactly that drift: the branch for a card with no fields
+  // yet wrote the word and not the mark (Angad, 24 Aug 2026).
+  function setStepSummary(box, text) {
+    if (box.summary.textContent !== text) box.summary.textContent = text;
+    var word = text === STEP_PENDING_LABEL ? "1" : null;
+    if ((box.el.getAttribute("data-contour-pending") || null) === word) return;
+    if (word) box.el.setAttribute("data-contour-pending", word); else box.el.removeAttribute("data-contour-pending");
+  }
   // Accurate here in a way it would not be on the submit button: a locked
   // header really does nothing at all when pressed.
   function setStepHeaderDisabled(box, disabled) {
@@ -6428,7 +6530,7 @@ var ContourForm1Logic = function () {
       var title = sectionTitle(def) || "";
       if (box.title.textContent !== title) box.title.textContent = title;
       if (empty) {
-        if (box.summary.textContent !== STEP_PENDING_LABEL) box.summary.textContent = STEP_PENDING_LABEL;
+        setStepSummary(box, STEP_PENDING_LABEL);
         box.el.classList.toggle(STEP_FLAGGED_CLASS, false);
         box.header.classList.toggle("contour-section-box__header--togglable", false);
         if (setSectionBoxCollapsed(def.id, true)) heightChanged = true;
@@ -6456,7 +6558,10 @@ var ContourForm1Logic = function () {
       // state instead — a bare title on a bare band read as broken rather
       // than as waiting (Angad, 23 Aug).
       var summaryText = locked ? STEP_PENDING_LABEL : sectionBoxSummary(def);
-      if (box.summary.textContent !== summaryText) box.summary.textContent = summaryText;
+      // An unlocked card folded before it is finished is still pending; its
+      // partial answers show if it has any, the label if it has none.
+      if (!locked && !complete && !summaryText) summaryText = STEP_PENDING_LABEL;
+      setStepSummary(box, summaryText);
       if (setSectionBoxCollapsed(def.id, !open)) heightChanged = true;
       // setSectionBoxCollapsed puts every folded header in the tab order as
       // the way back into its card. A locked one is not a way into anything.
