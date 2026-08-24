@@ -5586,9 +5586,12 @@ var ContourForm1Logic = function () {
   function noteIntentionalScroll() {
     intentionalScrollAt = Date.now();
   }
-  function withScrollAnchor(fn) {
-    var anchor = scrollAnchorElement();
-    var before = anchor ? anchor.getBoundingClientRect().top : null;
+  // preferred: an element the caller knows is the right thing to hold still,
+  // with the position it held before the change. A header the visitor just
+  // pressed beats anything guessed from focus.
+  function withScrollAnchor(fn, preferred) {
+    var anchor = preferred && preferred.el && preferred.el.isConnected ? preferred.el : scrollAnchorElement();
+    var before = anchor === (preferred && preferred.el) ? preferred.top : anchor ? anchor.getBoundingClientRect().top : null;
     var changed = fn();
     if (!changed || !anchor || before === null || !anchor.isConnected) return;
     pinScrollAnchor(anchor, before);
@@ -5935,7 +5938,10 @@ var ContourForm1Logic = function () {
         // another. A press is a decision; it outranks the step until the
         // visitor makes another one (Angad, 24 Aug 2026).
         stepPinnedId = id;
-        stepScrollToId = id;
+        stepPressAnchor = box.header.getBoundingClientRect ? {
+          el: box.header,
+          top: box.header.getBoundingClientRect().top
+        } : null;
         setActiveSection(id);
         // The click is an interaction with the section too: it keeps the card
         // open through the pass that follows, rather than the form deciding
@@ -6507,7 +6513,17 @@ var ContourForm1Logic = function () {
   // would otherwise be handed over from in the same breath it opened, and
   // never actually be seen. It holds until the visitor does something.
   var activeOpenedAt = 0;
-  var stepScrollToId = null;
+  /* What the visitor just pressed, and where it was on screen when they
+     pressed it. Folding one card and opening another moves everything between
+     them, and the header they aimed at can travel hundreds of pixels — so the
+     page is held still against that header instead of being sent chasing after
+     the card. Scrolling the page to the opened card was worse than the problem
+     it fixed: a smooth scroll is still running when the next press comes, so
+     the page slides while the visitor aims, and a header above the open card
+     moves out from under the pointer before the click lands (Angad, 24 Aug
+     2026). Nothing here reasons about where a card ought to end up. The thing
+     that was clicked stays exactly where it was clicked. */
+  var stepPressAnchor = null;
   function setActiveSection(id) {
     if (activeSectionId === id) return;
     activeSectionId = id;
@@ -6658,40 +6674,6 @@ var ContourForm1Logic = function () {
     });
     return heightChanged;
   }
-  /* A press on a header is the visitor navigating, and the page has to follow
-     it. Folding the card above takes its height out of the document — the
-     contact card is 560px of it — so the page can end up hundreds of pixels
-     from where it was, and on a short page it clamps to the top. The card that
-     was pressed is then open but sitting low on the screen with a different
-     section filling the middle, which reads as the form having opened
-     something else entirely (Angad, 24 Aug 2026).
-
-     Deliberately not scrollSectionIntoView: that one is for a hand-over the
-     form decided on, so it stays put unless the new section is genuinely off
-     screen. This was asked for, so it always moves. Twice — once now and once
-     after the fold animation, because the layout it is aiming at is still
-     collapsing. */
-  function scrollCardIntoView(id) {
-    var box = sectionBoxes[id];
-    if (!box || !box.el || !box.el.scrollIntoView) return;
-    var smooth = !prefersReducedMotion();
-    function land() {
-      if (!box.el.isConnected) return;
-      noteIntentionalScroll();
-      try {
-        // The card, not its header: scroll-margin-top lives on the card, and
-        // it is what keeps the band clear of the page's sticky nav.
-        box.el.scrollIntoView({
-          behavior: smooth ? "smooth" : "auto",
-          block: "start"
-        });
-      } catch (err) {
-        box.el.scrollIntoView();
-      }
-    }
-    if (window.requestAnimationFrame) window.requestAnimationFrame(land); else land();
-    setTimeout(land, COLLAPSE_ANIM_MS);
-  }
   function scrollStepIntoView(id) {
     var box = sectionBoxes[id];
     if (!box) return;
@@ -6707,16 +6689,15 @@ var ContourForm1Logic = function () {
     if (!sectionBoxesEnabled()) return;
     if (stepModeEnabled()) {
       var openBefore = activeSectionId;
+      var pressed = stepPressAnchor;
+      stepPressAnchor = null;
       withScrollAnchor(function () {
         return applyStepSectionStates(groups);
-      });
-      if (stepScrollToId) {
-        var asked = stepScrollToId;
-        stepScrollToId = null;
-        scrollCardIntoView(asked);
-      } else if (activeSectionId && activeSectionId !== openBefore) {
-        scrollStepIntoView(activeSectionId);
-      }
+      }, pressed);
+      // Not after a press: that scroll is for a hand-over the form decided on,
+      // and here it would cancel the very anchor holding the pressed header
+      // still — noteIntentionalScroll is what tells the pin to stand down.
+      if (!pressed && activeSectionId && activeSectionId !== openBefore) scrollStepIntoView(activeSectionId);
       updateSubmitReveal(groups);
       return;
     }
