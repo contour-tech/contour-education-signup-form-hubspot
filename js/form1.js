@@ -6065,11 +6065,24 @@ var ContourForm1Logic = function () {
         return opt.checked;
       }).length;
       if (subjects) parts.push(subjects === 1 ? "1 subject" : subjects + " subjects");
+      // Where nothing runs for the location and year level there is nothing to
+      // pick, so the card folds complete with nothing to show for itself — a
+      // lime tick over a blank line. It reports what actually happened.
+      if (parts.length === 0) {
+        var waitlist = q('input[name="join_no_program_waitlist"]');
+        var offered = waitlist && isElementVisible(fieldWrapper(waitlist));
+        if (waitlist && waitlist.checked) return "Waitlist joined";
+        if (offered) return "No programs available yet";
+      }
       return parts.join(" \u00b7 ");
     }
     if (def.id === "finish") {
       var referral = getValue(FIELD_SELECTORS.referral);
-      return [referral, "Terms agreed"].filter(Boolean).join(" \u00b7 ");
+      // Read the box rather than assert it. This line was unconditional, so a
+      // folded Final Details claimed the terms had been agreed before anyone
+      // had ticked anything (Angad, 24 Aug 2026).
+      var consent = q('input[name="tos_privacy_consent"]');
+      return [referral, consent && consent.checked ? "Terms agreed" : ""].filter(Boolean).join(" \u00b7 ");
     }
     if (def.id === "campus") {
       return qAll(FIELD_SELECTORS.campus).filter(function (opt) {
@@ -6510,6 +6523,15 @@ var ContourForm1Logic = function () {
     seedStepVisits(groups);
     refreshSectionUnlocks(groups);
     refreshActiveSection(groups);
+    /* Being open is what "seen" means, so it is recorded here and the locks
+       are worked out again over it. Marking the visit at the end of the pass
+       instead left the cards below waiting a whole event for their turn: a
+       card that arrives already complete — the waitlist one — unlocked nothing
+       until some unrelated click ran another pass, so Preferred Campuses and
+       Final Details sat there saying PENDING with nothing standing in their
+       way (Angad, 24 Aug 2026). */
+    if (activeSectionId) sectionVisited[activeSectionId] = true;
+    refreshSectionUnlocks(groups);
     refreshStepReport();
     SECTION_DEFS.forEach(function (def, index) {
       var box = sectionBoxes[def.id];
@@ -6549,7 +6571,6 @@ var ContourForm1Logic = function () {
       if (complete) delete sectionFlagged[def.id];
       box.el.classList.toggle(STEP_FLAGGED_CLASS, !!sectionFlagged[def.id]);
       var open = !locked && def.id === activeSectionId;
-      if (open) sectionVisited[def.id] = true;
       // A locked card has nothing to show and the open one will not fold
       // while it is unanswered, so the pointer only changes over a card that
       // will actually respond to the click.
