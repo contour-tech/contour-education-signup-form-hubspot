@@ -5343,10 +5343,14 @@ var ContourForm1Logic = function () {
       formRoot.classList.add("contour-sections-on");
     }
     formRoot.addEventListener("change", function (e) {
+      // isTrusted: every prefill in this file dispatches its own events, and
+      // those must not count as the visitor having started.
+      if (e.isTrusted) stepInteracted = true;
       noteSectionInteraction(e.target);
       scheduleSectionEval();
     });
     formRoot.addEventListener("input", function (e) {
+      if (e.isTrusted) stepInteracted = true;
       noteSectionInteraction(e.target);
       scheduleSectionEval();
     });
@@ -5376,6 +5380,8 @@ var ContourForm1Logic = function () {
     // the caret is gone. Deliberately not noteSectionInteraction: leaving a
     // section is not working in it.
     formRoot.addEventListener("focusout", function (e) {
+      // The report's own blur nudge fires this. It is not the visitor leaving.
+      if (stepNudging) return;
       var to = e.relatedTarget;
       if (!to || !formRoot.contains(to)) releaseAttentionOnBlur();
       scheduleSectionEval();
@@ -5832,9 +5838,10 @@ var ContourForm1Logic = function () {
         // the form returns to whatever it still needs, which is what the next
         // pass works out.
         if (box.el.getAttribute("data-contour-complete") !== "1") return;
-        activeSectionId = null;
+        setActiveSection(null);
       } else {
-        activeSectionId = id;
+        sectionVisited[id] = true;
+        setActiveSection(id);
         // The click is an interaction with the section too: it keeps the card
         // open through the pass that follows, rather than the form deciding
         // mid-click that a finished card should hand over again.
@@ -5917,7 +5924,8 @@ var ContourForm1Logic = function () {
       // way focus reaches a locked card is a submit attempt, which has taken
       // the locks off already.
       sectionUnlocked[id] = true;
-      activeSectionId = id;
+      sectionVisited[id] = true;
+      setActiveSection(id);
       lastInteractedSectionId = id;
       // Opened here and now rather than on the queued pass: the field being
       // focused is inside this card, and a tick spent focused into something
@@ -6167,6 +6175,37 @@ var ContourForm1Logic = function () {
      the whole reason the report was narrowed in the first place. */
   var submitAttempted = false;
   var lastStepReportKey = null;
+  var STEP_NUDGED_ATTR = "data-contour-step-nudged";
+  var stepNudging = false;
+  /* The band and the summary say a card is short of answers; the fields
+     themselves have to say which ones. HubSpot draws its message from its own
+     blur handler, so each reported field gets one synthetic blur — once, and
+     only in the card that is open. A folded card full of red is what the
+     narrowing was for (Angad, 24 Aug 2026). */
+  function nudgeStepReport(wraps) {
+    var pending = [];
+    wraps.forEach(function (wrap) {
+      if (!wrap.getAttribute || wrap.getAttribute(STEP_NUDGED_ATTR) === "1") return;
+      if (sectionIdForNode(wrap) !== activeSectionId) return;
+      // Once per field: the nudge dispatches focusout, which runs the section
+      // pass, which would arrive back here and nudge it again.
+      wrap.setAttribute(STEP_NUDGED_ATTR, "1");
+      pending.push(wrap);
+    });
+    if (pending.length === 0) return;
+    stepNudging = true;
+    pending.forEach(nudgeNativeValidation);
+    stepNudging = false;
+    // HubSpot renders on its own schedule, and never validates the consent
+    // checkbox outside a submit it no longer gets to run.
+    [160, 650].forEach(function (delay) {
+      setTimeout(function () {
+        pending.forEach(ensureNativeRequiredFallback);
+        dedupeFieldErrors();
+        syncFieldErrorAria();
+      }, delay);
+    });
+  }
   function refreshStepReport() {
     if (!submitAttempted) return;
     var wraps = [];
@@ -6189,6 +6228,7 @@ var ContourForm1Logic = function () {
     }
     nativeRequiredFailures().forEach(consider);
     setStepFlags(wraps);
+    nudgeStepReport(wraps);
     // The summary rewrites its own subtree and this pass runs from a
     // MutationObserver over the form, so rebuilding it on an unchanged list
     // would have the two feeding each other forever.
@@ -6210,12 +6250,48 @@ var ContourForm1Logic = function () {
     if (!groupHasVisibleField(nodes)) return true;
     return groupComplete(nodes);
   }
+  /* A card gets its turn if it still needs an answer OR if it has never been
+     opened. The second half matters more than it looks: a section can read
+     complete without ever asking anything. Where no program runs for the
+     location and year level, Program Interest drops its required mark and the
+     card holds nothing but the waitlist offer — so the step walked straight
+     past it, and the student went from Academic Details to Preferred Campuses
+     having never been told there was nothing for them. Every card the form has
+     something to show now gets seen (Angad, 24 Aug 2026). */
+  var sectionVisited = {};
+  function stepNeedsAttention(groups, index, def) {
+    if (!SECTION_BOX_IDS[def.id] || !sectionBoxes[def.id]) return false;
+    // Nothing to show at all: not a step, and it cannot be opened anyway —
+    // an empty card is display:none.
+    if (!groupHasVisibleField(groups[index])) return false;
+    if (!sectionVisited[def.id]) return true;
+    return !groupComplete(groups[index]);
+  }
+  /* Answers already in place before the visitor has done anything were given
+     by someone who has seen the card — a restored draft, a pre-fill link — so
+     the step must not march them back through it. Only sections that have
+     actually been started count, or a fresh form would treat Programs as seen
+     merely because nothing in it is required yet.
+
+     Re-seeded every pass until the first real interaction rather than once: a
+     draft restores asynchronously, and a single seeding on the first pass ran
+     before the values landed, which put the visitor back at the top of a form
+     they were halfway down. Adding a visit is idempotent, so repeating it
+     costs nothing. */
+  var stepInteracted = false;
+  function seedStepVisits(groups) {
+    if (stepInteracted) return;
+    SECTION_DEFS.forEach(function (def, index) {
+      if (!SECTION_BOX_IDS[def.id]) return;
+      if (groupStarted(groups[index]) && boxedSectionComplete(groups, index)) sectionVisited[def.id] = true;
+    });
+  }
   function refreshSectionUnlocks(groups) {
     var reached = true;
     SECTION_DEFS.forEach(function (def, index) {
       if (!SECTION_BOX_IDS[def.id]) return;
       if (reached) sectionUnlocked[def.id] = true;
-      if (!boxedSectionComplete(groups, index)) reached = false;
+      if (stepNeedsAttention(groups, index, def)) reached = false;
     });
   }
   // Anything that hands over the whole form — a submit attempt, a pre-fill
@@ -6223,14 +6299,17 @@ var ContourForm1Logic = function () {
   // error inside a card the form refuses to open.
   function unlockAllSectionSteps() {
     SECTION_DEFS.forEach(function (def) {
-      if (SECTION_BOX_IDS[def.id]) sectionUnlocked[def.id] = true;
+      if (!SECTION_BOX_IDS[def.id]) return;
+      sectionUnlocked[def.id] = true;
+      // Handing the whole form over says every card has been seen. Without
+      // this the step would insist on walking a pre-filled visitor back
+      // through cards their record already answered.
+      sectionVisited[def.id] = true;
     });
   }
-  function firstIncompleteSectionId(groups) {
+  function nextStepSectionId(groups) {
     for (var i = 0; i < SECTION_DEFS.length; i++) {
-      var def = SECTION_DEFS[i];
-      if (!SECTION_BOX_IDS[def.id] || !sectionBoxes[def.id]) continue;
-      if (!boxedSectionComplete(groups, i)) return def.id;
+      if (stepNeedsAttention(groups, i, SECTION_DEFS[i])) return SECTION_DEFS[i].id;
     }
     return null;
   }
@@ -6279,24 +6358,43 @@ var ContourForm1Logic = function () {
   // be open, and the link exists to add subjects. The pin holds that card
   // open until the visitor moves somewhere else themselves.
   var stepPinnedId = null;
+  // When the open card last changed. A card that arrives already complete —
+  // the waitlist one, or a section whose only field turned out not to apply —
+  // would otherwise be handed over from in the same breath it opened, and
+  // never actually be seen. It holds until the visitor does something.
+  var activeOpenedAt = 0;
+  function setActiveSection(id) {
+    if (activeSectionId === id) return;
+    activeSectionId = id;
+    activeOpenedAt = Date.now();
+  }
   function refreshActiveSection(groups) {
     if (stepPinnedId) {
       if (sectionBoxes[stepPinnedId]) {
-        activeSectionId = stepPinnedId;
+        setActiveSection(stepPinnedId);
         return;
       }
       stepPinnedId = null;
     }
-    var next = firstIncompleteSectionId(groups);
+    var next = nextStepSectionId(groups);
     if (!activeSectionId || !sectionBoxes[activeSectionId]) {
-      activeSectionId = next;
+      setActiveSection(next);
+      return;
+    }
+    // Before the first real interaction the form is still settling — a draft
+    // arriving, HubSpot inserting a dependent group — and the open card is
+    // whatever the answers say it should be. Holding a choice made during that
+    // window is how a reload ended up back at the top of a half-filled form.
+    if (!stepInteracted) {
+      setActiveSection(next);
       return;
     }
     var index = sectionIndexById(activeSectionId);
     if (index !== -1 && !boxedSectionComplete(groups, index)) return;
     if (focusInsideBox(activeSectionId)) return;
     if (attentionSectionId === activeSectionId) return;
-    activeSectionId = next;
+    if (attentionAt <= activeOpenedAt) return;
+    setActiveSection(next);
   }
   // Accurate here in a way it would not be on the submit button: a locked
   // header really does nothing at all when pressed.
@@ -6307,6 +6405,7 @@ var ContourForm1Logic = function () {
   }
   function applyStepSectionStates(groups) {
     var heightChanged = false;
+    seedStepVisits(groups);
     refreshSectionUnlocks(groups);
     refreshActiveSection(groups);
     refreshStepReport();
@@ -6348,6 +6447,7 @@ var ContourForm1Logic = function () {
       if (complete) delete sectionFlagged[def.id];
       box.el.classList.toggle(STEP_FLAGGED_CLASS, !!sectionFlagged[def.id]);
       var open = !locked && def.id === activeSectionId;
+      if (open) sectionVisited[def.id] = true;
       // A locked card has nothing to show and the open one will not fold
       // while it is unanswered, so the pointer only changes over a card that
       // will actually respond to the click.
