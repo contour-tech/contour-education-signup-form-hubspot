@@ -5166,6 +5166,14 @@ var ContourForm1Logic = function () {
     }
     return false;
   }
+  function groupHasVisibleError(nodes) {
+    var entries = groupFieldWraps(nodes);
+    for (var i = 0; i < entries.length; i++) {
+      if (!fieldVisibleInSection(entries[i])) continue;
+      if (fieldWrapperInvalid(entries[i].wrap)) return true;
+    }
+    return false;
+  }
   function groupComplete(nodes) {
     var entries = groupFieldWraps(nodes);
     for (var i = 0; i < entries.length; i++) {
@@ -5423,7 +5431,8 @@ var ContourForm1Logic = function () {
       if (e.isTrusted && formRoot && formRoot.contains(e.target)) stepUserActed = true;
       noteAttention(e.target);
     }, true);
-    document.addEventListener("click", function () {
+    document.addEventListener("click", function (e) {
+      if (stepModeEnabled() && pressWasOnPendingCard(e.target)) return;
       scheduleSectionEval();
     }, true);
     // Leaving a card is the step mode's hand-over cue — a finished card holds
@@ -6241,6 +6250,12 @@ var ContourForm1Logic = function () {
   }
   function flagStepSections(wraps) {
     setStepFlags(wraps);
+    // Applied here rather than left to the queued pass: this is the answer to
+    // a button the visitor has just pressed, and a beat of nothing happening
+    // reads as the press not having landed.
+    Object.keys(sectionBoxes).forEach(function (id) {
+      if (sectionBoxes[id]) sectionBoxes[id].el.classList.toggle(STEP_FLAGGED_CLASS, !!sectionFlagged[id]);
+    });
     scheduleSectionEval();
   }
   /* Once a submit attempt has been turned down, the form stays in "here is
@@ -6423,8 +6438,19 @@ var ContourForm1Logic = function () {
   var attentionSectionId = null;
   var attentionAt = 0;
   function noteAttention(target) {
-    attentionSectionId = sectionIdForNode(target);
+    // A press on a card the form has not opened yet is not a move. Its header
+    // does nothing by design, so it must not set the rest of the step going
+    // either: pressing a PENDING header while a finished card was open folded
+    // that card and opened the next one, which from the visitor's seat is a
+    // press on one section opening a different one (Angad, 24 Aug 2026).
+    var id = sectionIdForNode(target);
+    if (id && SECTION_BOX_IDS[id] && !sectionUnlocked[id]) return;
+    attentionSectionId = id;
     attentionAt = Date.now();
+  }
+  function pressWasOnPendingCard(target) {
+    var id = sectionIdForNode(target);
+    return !!(id && SECTION_BOX_IDS[id] && !sectionUnlocked[id]);
   }
   // Focus leaving for nowhere in particular. Two very different things look
   // identical from here — a press on the card's own dead space, which focuses
@@ -6582,8 +6608,17 @@ var ContourForm1Logic = function () {
       // The mark comes off the moment the card is put right, without waiting
       // for another submit attempt to tell it so.
       if (complete) delete sectionFlagged[def.id];
-      box.el.classList.toggle(STEP_FLAGGED_CLASS, !!sectionFlagged[def.id]);
       var open = !locked && def.id === activeSectionId;
+      // Two ways a card earns the band. A submit attempt naming fields inside
+      // it, which is the report's doing; or — at any time, submit or no — the
+      // card folding away with a message already on screen inside it. The
+      // second is knowledge the form has anyway, and without it a rejected
+      // answer folded behind the same quiet ring as a card nobody had reached,
+      // so a known problem left the screen unmarked (Angad, 24 Aug 2026). The
+      // open card is left alone: its message is right there under the field,
+      // and reddening the band someone is working under says nothing new.
+      var flagged = !!sectionFlagged[def.id] || !open && !locked && groupHasVisibleError(nodes);
+      box.el.classList.toggle(STEP_FLAGGED_CLASS, flagged);
       // A locked card has nothing to show and the open one will not fold
       // while it is unanswered, so the pointer only changes over a card that
       // will actually respond to the click.
