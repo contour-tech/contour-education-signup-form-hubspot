@@ -5375,12 +5375,14 @@ var ContourForm1Logic = function () {
     formRoot.addEventListener("change", function (e) {
       // isTrusted: every prefill in this file dispatches its own events, and
       // those must not count as the visitor having started.
-      if (e.isTrusted) stepInteracted = stepUserActed = true;
+      // Answering is the visitor moving on from choosing where to be, so the
+      // pin stands down and the ordinary rules take the card from here.
+      if (e.isTrusted) stepInteracted = stepUserActed = true, stepPinnedId = null;
       noteSectionInteraction(e.target);
       scheduleSectionEval();
     });
     formRoot.addEventListener("input", function (e) {
-      if (e.isTrusted) stepInteracted = stepUserActed = true;
+      if (e.isTrusted) stepInteracted = stepUserActed = true, stepPinnedId = null;
       noteSectionInteraction(e.target);
       scheduleSectionEval();
     });
@@ -5429,6 +5431,9 @@ var ContourForm1Logic = function () {
       // A press on the form is the visitor taking charge, whether or not it
       // lands on something that produces a value.
       if (e.isTrusted && formRoot && formRoot.contains(e.target)) stepUserActed = true;
+      // A press anywhere but the pinned card is the visitor leaving it. The
+      // header's own handler re-pins if that is where they went.
+      if (stepPinnedId && sectionIdForNode(e.target) !== stepPinnedId) stepPinnedId = null;
       noteAttention(e.target);
     }, true);
     document.addEventListener("click", function (e) {
@@ -5918,6 +5923,15 @@ var ContourForm1Logic = function () {
         setActiveSection(null);
       } else {
         sectionVisited[id] = true;
+        // Pinned, not just held. Until now a hand-opened card stayed open
+        // because several conditions happened to agree — the card is
+        // unfinished, or the caret is in it, or nothing has been pressed since
+        // it opened. Any one of those failing on a browser or a timing this
+        // was not tested against, and the form takes the card back and opens
+        // its own next step instead, which is a press on one section opening
+        // another. A press is a decision; it outranks the step until the
+        // visitor makes another one (Angad, 24 Aug 2026).
+        stepPinnedId = id;
         setActiveSection(id);
         // The click is an interaction with the section too: it keeps the card
         // open through the pass that follows, rather than the form deciding
