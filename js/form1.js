@@ -629,7 +629,7 @@ var ContourForm1Logic = function () {
       // is always dead-centre in the disc at any zoom.
       opt + ' label::before { content: ""; flex: 0 0 auto; width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid rgba(12, 49, 102, 0.3); background: #FFFFFF center / 0 0 no-repeat; box-sizing: border-box; transition: background-color 0.16s ease, border-color 0.16s ease; }' +
       opt + " label:has(input:checked) { background: #0C3166 !important; border-color: #0C3166 !important; }" +
-      opt + ' label:has(input:checked)::before { background-color: #007AFF; background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\'%3E%3Cpath d=\'M20 6L9 17l-5-5\' fill=\'none\' stroke=\'%23FFFFFF\' stroke-width=\'4\' stroke-linecap=\'round\' stroke-linejoin=\'round\'/%3E%3C/svg%3E"); background-size: 11px 11px; border-color: #007AFF; }' +
+      opt + ' label:has(input:checked)::before { background-color: #007AFF; background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\'%3E%3Cpath d=\'M20 6.5L9 17.5l-5-5\' fill=\'none\' stroke=\'%23FFFFFF\' stroke-width=\'4\' stroke-linecap=\'round\' stroke-linejoin=\'round\'/%3E%3C/svg%3E"); background-size: 11px 11px; border-width: 2px; border-color: #FFFFFF; }' +
       opt + " label:has(input:checked) span { color: #FFFFFF !important; }" +
       opt + " label:has(input:focus-visible) { box-shadow: 0 0 0 3px rgba(52, 120, 247, 0.35); }" +
       // The one-level note hangs under the pill, indented past the marker.
@@ -5894,7 +5894,7 @@ var ContourForm1Logic = function () {
       // No ring on the band either way: the disc has enough contrast against
       // the navy to carry itself, and it goes one step larger than the tiles'
       // so the tick reads at this size (Amrit, 22 Aug).
-      box + "__status { flex: 0 0 auto; display: none; align-items: center; justify-content: center; width: 22px; height: 22px; box-sizing: border-box; border-radius: 50%; background: #007AFF; color: #FFFFFF; }" +
+      box + '__status { flex: 0 0 auto; display: none; align-items: center; justify-content: center; width: 24px; height: 24px; box-sizing: border-box; border-radius: 50%; border: 2px solid #FFFFFF; background: #007AFF; color: #FFFFFF; }' +
       box + "__status svg { display: block; }" +
       box + "--collapsed .contour-section-box__status { display: flex; }" +
       box + "__title { flex: 0 0 auto; font-size: 12.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #0C3166; }" +
@@ -6056,7 +6056,7 @@ var ContourForm1Logic = function () {
       box + "--locked { border-color: rgba(12, 49, 102, 0.22); }" +
       box + "--locked .contour-section-box__header, " + box + "--locked .contour-section-box__header:hover { background: rgba(12, 49, 102, 0.04); border-bottom-color: transparent; cursor: default; }" +
       box + "--locked .contour-section-box__title { color: rgba(12, 49, 102, 0.66); }" +
-      box + "--locked .contour-section-box__status { display: flex; background: transparent; border: 2px solid rgba(12, 49, 102, 0.28); }" +
+      box + "--locked .contour-section-box__status { display: flex; background: transparent; border-color: rgba(12, 49, 102, 0.28); }" +
       box + "--locked .contour-section-box__status svg { display: none; }" +
       // The state word, wherever it is used: set small against the far edge of
       // the band so it never reads as one of the answers.
@@ -6073,7 +6073,7 @@ var ContourForm1Logic = function () {
       box + "--flagged .contour-section-box__title { color: #FFFFFF; }" +
       box + "--flagged .contour-section-box__summary { color: rgba(255, 255, 255, 0.75); }" +
       box + "--flagged .contour-section-box__action { color: #FFFFFF; }" +
-      box + "--flagged .contour-section-box__status { display: flex; background: #FFFFFF; border: 0; color: #8A0C22; }" +
+      box + "--flagged .contour-section-box__status { display: flex; background: #FFFFFF; border-color: #FFFFFF; color: #8A0C22; }" +
       box + "--flagged .contour-section-box__status svg { display: none; }" +
       box + '--flagged .contour-section-box__status::after { content: "!"; font-size: 13px; font-weight: 800; line-height: 1; }' +
       // The disc used to show on every folded card, which was safe when only
@@ -6082,7 +6082,7 @@ var ContourForm1Logic = function () {
       // Academic Details reading as done (Angad, 24 Aug 2026). Unfinished and
       // folded now wears the same hollow ring as a pending card; the tick is
       // reserved for complete.
-      box + '--collapsed[data-contour-complete="0"]:not(.contour-section-box--flagged) .contour-section-box__status { background: transparent; border: 2px solid rgba(12, 49, 102, 0.28); }' +
+      box + '--collapsed[data-contour-complete="0"]:not(.contour-section-box--flagged) .contour-section-box__status { background: transparent; border-color: rgba(12, 49, 102, 0.28); }' +
       box + '--collapsed[data-contour-complete="0"]:not(.contour-section-box--flagged) .contour-section-box__status svg { display: none; }' +
       // On a navy band the navy ring is invisible, and the state word has to
       // hold its own against knocked-out white.
@@ -6114,7 +6114,7 @@ var ContourForm1Logic = function () {
     var status = document.createElement("span");
     status.className = "contour-section-box__status";
     status.setAttribute("aria-hidden", "true");
-    status.innerHTML = '<svg viewBox="0 0 24 24" width="11" height="11" focusable="false"><path d="M20 6L9 17l-5-5" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    status.innerHTML = '<svg viewBox="0 0 24 24" width="11" height="11" focusable="false"><path d="M20 6.5L9 17.5l-5-5" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
     var title = document.createElement("span");
     title.className = "contour-section-box__title";
     var summary = document.createElement("span");
