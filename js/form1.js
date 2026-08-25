@@ -8758,7 +8758,7 @@ var ContourForm1Logic = function () {
   }
   // Grey helper note under the intake year dropdown clarifying when the
   // 2027 program actually starts (Amitav's request).
-  var INTAKE_YEAR_NOTE_TEXT = "Our 2027 program begins in November 2026 with a two-week free trial.";
+  var INTAKE_YEAR_NOTE_TEXT = "Some of our 2027 programs begin as early as November 2026 with a two-week free trial.";
   function ensureIntakeYearNote() {
     var fieldEl = q(FIELD_SELECTORS.intakeYear);
     if (!fieldEl) return;
