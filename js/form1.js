@@ -3648,7 +3648,9 @@ var ContourForm1Logic = function () {
     var parts = phoneGroupParts(group);
     if (!parts.real || !parts.proxy) return;
     var dial = parts.select ? dialCodeForIso(parts.select.value) : null;
-    var typed = (parts.proxy.value || "").trim();
+    // Read as a national number even if something put a dial code in our box:
+    // whatever seeds it, only one code goes into the composed value.
+    var typed = phoneNationalDigits((parts.proxy.value || "").trim());
     // Empty stays empty: a box holding nothing but a dial code is what made
     // "+91" read as an answered phone number in the first place.
     var next = typed === "" ? "" : (dial ? "+" + dial + " " : "") + typed;
@@ -3698,10 +3700,14 @@ var ContourForm1Logic = function () {
       if (!proxy) {
         proxy = document.createElement("input");
         proxy.type = "tel";
-        // Carries the page stylesheet's own number-box class as well, so rules
-        // written for that box (widths, the guardian row's 100% override)
-        // apply to ours rather than skipping it.
-        proxy.className = "hs-input contour-intl-phone__number " + PHONE_PROXY_CLASS;
+        /* Deliberately NOT carrying contour-intl-phone__number. That class is
+           the page's own, and the page's script is what seeds a dial code
+           into the box wearing it — so borrowing it for the styling had the
+           page seeding ours as well, and the write-through then put a second
+           dial code in front of that. "+91 +91 123456789" fails HubSpot's own
+           character check, which is the error that showed under the student's
+           phone on the Guardian flow (Amrit, 25 Aug 2026). */
+        proxy.className = "hs-input " + PHONE_PROXY_CLASS;
         proxy.setAttribute("inputmode", "tel");
         proxy.setAttribute("autocomplete", "tel-national");
         if (real.placeholder) proxy.placeholder = real.placeholder;
@@ -6092,6 +6098,10 @@ var ContourForm1Logic = function () {
          stylesheet's own, repeated to win the cascade against it. */
       box + ' .hs-fieldtype-intl-phone select.hs-input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), ' + box + ' .contour-intl-phone select.hs-input:not([type="checkbox"]):not([type="radio"]):not([type="file"]) { flex: 0 0 33% !important; width: 33% !important; max-width: none !important; min-width: 0 !important; }' +
       box + ' input.hs-input[type="tel"]:not(.contour-phone-real):not([type="checkbox"]):not([type="radio"]) { flex: 1 1 auto !important; width: auto !important; min-width: 0 !important; }' +
+      // The guardian row forces 100% on every .hs-input that is not one of the
+      // page's own phone parts; ours is not one of those by design, so it says
+      // so here instead of borrowing the class that would have it seeded.
+      ".hs-form fieldset.contour-person-card__row--guardian input.contour-phone-proxy { width: auto !important; flex: 1 1 auto !important; min-width: 0 !important; }" +
       // A question, not a verdict: the form's own quiet helper-text voice, with
       // the correction as the only thing asking to be pressed.
       box + " .contour-email-suggest { margin-top: 6px; font-size: 13px; color: #6b7280; }" +
