@@ -3505,25 +3505,170 @@ var ContourForm1Logic = function () {
     return phoneDialByIso[String(iso || "").toUpperCase()] || null;
   }
   var PHONE_LABELLED_ATTR = "data-contour-dial-labelled";
+  var PHONE_FULL_LABEL_ATTR = "data-contour-country-label";
+  /* A native select's closed box shows the selected option's own text, and
+     "Australia (+61)" needs 170px where the box has 131. So the text changes
+     with the state: the full name while the list is open, where there is room
+     and the name is what you are scanning for, and "AU +61" once chosen, where
+     all that is left to say is which country this number belongs to.
+
+     The ISO code rather than the dial code alone, because dial codes are not
+     unique — +1 is the United States and Canada both, +44 is the UK and
+     Jersey. "AU" answers "which country" in a way "+61" cannot. */
+  function shortCountryLabel(opt) {
+    var dial = dialCodeForIso(opt.value);
+    var iso = String(opt.value || "").toUpperCase();
+    if (!dial) return opt.getAttribute(PHONE_FULL_LABEL_ATTR) || opt.textContent;
+    return iso + " +" + dial;
+  }
+  function setCountryLabelsExpanded(select, expanded) {
+    Array.prototype.forEach.call(select.options, function (opt) {
+      var full = opt.getAttribute(PHONE_FULL_LABEL_ATTR);
+      if (!full) return;
+      var wanted = expanded || !opt.selected ? full : shortCountryLabel(opt);
+      if (opt.textContent !== wanted) opt.textContent = wanted;
+    });
+  }
   function labelPhoneCountryOptions() {
     if (!formRoot) return;
     Array.prototype.forEach.call(formRoot.querySelectorAll(".hs-fieldtype-intl-phone select, .contour-intl-phone select"), function (select) {
       // Re-applied after a HubSpot re-render rebuilds the options, but not on
       // every pass over the same ones — 200 labels is not free.
-      if (select.getAttribute(PHONE_LABELLED_ATTR) === "1") return;
-      select.setAttribute(PHONE_LABELLED_ATTR, "1");
-      Array.prototype.forEach.call(select.options, function (opt) {
-        if (!opt.value) return;
-        var dial = dialCodeForIso(opt.value);
-        if (!dial) return;
-        var name = (opt.textContent || "").replace(/\s*\(\+\d+\)\s*$/, "");
-        var labelled = name + " (+" + dial + ")";
-        if (opt.textContent !== labelled) opt.textContent = labelled;
-      });
+      if (select.getAttribute(PHONE_LABELLED_ATTR) !== "1") {
+        select.setAttribute(PHONE_LABELLED_ATTR, "1");
+        Array.prototype.forEach.call(select.options, function (opt) {
+          if (!opt.value) return;
+          var dial = dialCodeForIso(opt.value);
+          if (!dial) return;
+          var name = (opt.textContent || "").replace(/\s*\(\+\d+\)\s*$/, "");
+          opt.setAttribute(PHONE_FULL_LABEL_ATTR, name + " (+" + dial + ")");
+        });
+        // Full names back while the list is being read, short again once it
+        // closes. focus covers the keyboard, pointerdown the mouse — the list
+        // renders after both, so it is never caught mid-swap.
+        select.addEventListener("focus", function () {
+          setCountryLabelsExpanded(select, true);
+        });
+        select.addEventListener("pointerdown", function () {
+          setCountryLabelsExpanded(select, true);
+        });
+        select.addEventListener("blur", function () {
+          setCountryLabelsExpanded(select, false);
+        });
+        select.addEventListener("change", function () {
+          setCountryLabelsExpanded(select, false);
+        });
+      }
+      if (document.activeElement !== select) setCountryLabelsExpanded(select, false);
+    });
+  }
+  /* The dial code sat inside the number box because HubSpot's widget puts it
+     there, and it puts it straight back when removed — the value it composes
+     for submission is read off that box. So the box is not fought: it is taken
+     off the screen, and one of ours stands in front of it.
+
+     One direction only. Ours holds the national number and writes
+     "+<dial> <national>" through to HubSpot's, which then normalises it
+     however it likes — invisibly, and without anything of ours having to be
+     right about the format. There is nothing to race, because nothing is
+     being contested (Amrit, 25 Aug 2026).
+
+     HubSpot's box stays in the document rather than being removed: it is what
+     the widget composes from, what carries the field name on the student's
+     control, and what every check in this file already reads. It is only
+     hidden, and kept out of the tab order so nobody lands in a box they
+     cannot see. */
+  var PHONE_PROXY_CLASS = "contour-phone-proxy";
+  var PHONE_PROXY_ATTR = "data-contour-phone-proxied";
+  function phoneGroupParts(group) {
+    return {
+      real: group.querySelector('input[type="tel"]:not(.' + PHONE_PROXY_CLASS + ')'),
+      proxy: group.querySelector("." + PHONE_PROXY_CLASS),
+      select: group.querySelector("select")
+    };
+  }
+  function pushProxyThrough(group) {
+    var parts = phoneGroupParts(group);
+    if (!parts.real || !parts.proxy) return;
+    var dial = parts.select ? dialCodeForIso(parts.select.value) : null;
+    var typed = (parts.proxy.value || "").trim();
+    // Empty stays empty: a box holding nothing but a dial code is what made
+    // "+91" read as an answered phone number in the first place.
+    var next = typed === "" ? "" : (dial ? "+" + dial + " " : "") + typed;
+    if (parts.real.value === next) return;
+    parts.real.value = next;
+    parts.real.dispatchEvent(new Event("input", { bubbles: true }));
+    parts.real.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+  // The other way, for values this file did not type: a restored draft, a
+  // pre-fill link, HubSpot seeding the box on a country change.
+  function pullProxyFromReal(group) {
+    var parts = phoneGroupParts(group);
+    if (!parts.real || !parts.proxy) return;
+    if (document.activeElement === parts.proxy) return;
+    var national = phoneNationalDigits(parts.real.value || "");
+    if ((parts.proxy.value || "").replace(/\D/g, "") === national) return;
+    parts.proxy.value = national;
+  }
+  var PHONE_SELECT_BOUND_ATTR = "data-contour-phone-select-bound";
+  function enhancePhoneBoxes() {
+    if (!formRoot) return;
+    Array.prototype.forEach.call(formRoot.querySelectorAll(".hs-fieldtype-intl-phone, .contour-intl-phone"), function (group) {
+      var real = group.querySelector('input[type="tel"]:not(.' + PHONE_PROXY_CLASS + ')');
+      var select = group.querySelector("select");
+      if (!real || !select) return;
+      var proxy = group.querySelector("." + PHONE_PROXY_CLASS);
+      // Tagging the widget's box and building ours are separate jobs: HubSpot
+      // rebuilds that box whenever the country changes, so it arrives untagged
+      // again and has to be re-hidden — while the proxy beside it is still the
+      // same element the visitor is typing in, and must not be replaced under
+      // them (Amrit, 25 Aug 2026).
+      // Unconditional, not guarded by the attribute: the widget rewrites this
+      // box's class list on a country change while leaving our attribute on
+      // it, so a guard here let it come back into view with the flag still
+      // saying it had been dealt with. All three writes are idempotent.
+      real.setAttribute(PHONE_PROXY_ATTR, "1");
+      if (!real.classList.contains("contour-phone-real")) real.classList.add("contour-phone-real");
+      if (real.getAttribute("tabindex") !== "-1") real.setAttribute("tabindex", "-1");
+      if (real.getAttribute("aria-hidden") !== "true") real.setAttribute("aria-hidden", "true");
+      if (!proxy) {
+        proxy = document.createElement("input");
+        proxy.type = "tel";
+        proxy.className = "hs-input " + PHONE_PROXY_CLASS;
+        proxy.setAttribute("inputmode", "tel");
+        proxy.setAttribute("autocomplete", "tel-national");
+        if (real.placeholder) proxy.placeholder = real.placeholder;
+        var wrap = fieldWrapper(real);
+        var label = wrap && wrap.querySelector("label");
+        if (label && label.id) proxy.setAttribute("aria-labelledby", label.id);
+        else if (label) proxy.setAttribute("aria-label", (label.textContent || "Phone Number").replace(/\*/g, "").trim());
+        proxy.addEventListener("input", function () {
+          pushProxyThrough(group);
+        });
+        proxy.addEventListener("change", function () {
+          pushProxyThrough(group);
+        });
+      }
+      // Kept immediately after the widget's box wherever that box has moved to.
+      if (proxy.previousElementSibling !== real) real.parentNode.insertBefore(proxy, real.nextSibling);
+      if (select.getAttribute(PHONE_SELECT_BOUND_ATTR) !== "1") {
+        select.setAttribute(PHONE_SELECT_BOUND_ATTR, "1");
+        // The dial code moved, so the composed value has to move with it —
+        // after the widget has finished reseeding the box it is about to
+        // rebuild.
+        select.addEventListener("change", function () {
+          setTimeout(function () {
+            enhancePhoneBoxes();
+            pushProxyThrough(group);
+          }, 0);
+        });
+      }
+      pullProxyFromReal(group);
     });
   }
   function refreshDerivedFieldState() {
     labelPhoneCountryOptions();
+    enhancePhoneBoxes();
     evaluateProgramInterestOptions();
     evaluateInterestedSubjectsOptions();
     evaluateCampusOptions();
@@ -5419,6 +5564,7 @@ var ContourForm1Logic = function () {
       sectionEvalQueued = false;
       evaluateSections();
       labelPhoneCountryOptions();
+      enhancePhoneBoxes();
       clearAnsweredRequiredFallbacks();
       dedupeFieldErrors();
       syncFieldErrorAria();
@@ -5878,12 +6024,17 @@ var ContourForm1Logic = function () {
          the cap have to go with it, and the :not() chain is the page
          stylesheet's own, repeated to win the cascade against it. */
       box + ' .hs-fieldtype-intl-phone select.hs-input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), ' + box + ' .contour-intl-phone select.hs-input:not([type="checkbox"]):not([type="radio"]):not([type="file"]) { flex: 0 0 33% !important; width: 33% !important; max-width: none !important; min-width: 0 !important; }' +
-      box + ' .hs-fieldtype-intl-phone input.hs-input[type="tel"]:not([type="checkbox"]):not([type="radio"]):not([type="file"]), ' + box + ' .contour-intl-phone input.hs-input[type="tel"]:not([type="checkbox"]):not([type="radio"]):not([type="file"]) { flex: 1 1 auto !important; width: auto !important; min-width: 0 !important; }' +
+      box + ' .hs-fieldtype-intl-phone input.hs-input[type="tel"]:not(.contour-phone-real):not([type="checkbox"]):not([type="radio"]), ' + box + ' .contour-intl-phone input.hs-input[type="tel"]:not(.contour-phone-real):not([type="checkbox"]):not([type="radio"]) { flex: 1 1 auto !important; width: auto !important; min-width: 0 !important; }' +
       // A question, not a verdict: the form's own quiet helper-text voice, with
       // the correction as the only thing asking to be pressed.
       box + " .contour-email-suggest { margin-top: 6px; font-size: 13px; color: #6b7280; }" +
       box + " .contour-email-suggest__fix { appearance: none; -webkit-appearance: none; border: 0; background: none; padding: 0; font: inherit; font-weight: 700; color: #0C3166; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }" +
       box + " .contour-email-suggest__fix:hover { color: #007AFF; }" +
+      // Hidden, not removed: the widget still composes from it, it still
+      // carries the field name on the student's control, and every check in
+      // this file still reads it. clip rather than display:none, so the widget
+      // has a laid-out box to work with.
+      box + ' .hs-fieldtype-intl-phone input.hs-input.contour-phone-real:not([type="checkbox"]):not([type="radio"]):not([type="file"]), ' + box + ' .contour-intl-phone input.hs-input.contour-phone-real:not([type="checkbox"]):not([type="radio"]):not([type="file"]) { position: absolute !important; flex: 0 0 0 !important; width: 1px !important; min-width: 0 !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0 !important; opacity: 0 !important; }' +
       // The one remaining native control joins the palette.
       box + ' input[type="checkbox"][name="tos_privacy_consent"] { accent-color: #0C3166; }' +
       // The hr separators earned their keep on the flat form; cards make
@@ -7192,8 +7343,14 @@ var ContourForm1Logic = function () {
   // sibling instead; the dial code lives on the select, so what is typed in the
   // box is the national number on its own.
   function typableInput(input) {
-    if (!input || input.type !== "hidden") return input;
-    var group = input.closest(".hs-fieldtype-intl-phone");
+    if (!input) return input;
+    // The visible box is ours now, so anything that wants to blur, mark or
+    // report on this field has to be pointed at that rather than at the
+    // widget's own, which is off the screen.
+    var group = input.closest(".hs-fieldtype-intl-phone, .contour-intl-phone");
+    var proxy = group && group.querySelector("." + PHONE_PROXY_CLASS);
+    if (proxy) return proxy;
+    if (input.type !== "hidden") return input;
     return (group && group.querySelector('input[type="tel"]')) || input;
   }
   function contourErrorList(input, errorClass) {
@@ -7324,14 +7481,37 @@ var ContourForm1Logic = function () {
     }
     return true;
   }
+  /* The other half of the same idea, for the slip one edit cannot reach:
+     gmail.asdkas.com, gmail.subdomain.com. Nobody's mailbox is at gmail
+     under someone else's domain, so when a known provider's name turns up as
+     the first label of a domain that is not theirs, the address they meant is
+     the provider's own (Amrit, 25 Aug 2026).
+
+     Only the first label, and only these providers. "mail.myschool.edu.au" is
+     ordinary and untouched, because "mail" is not one of these names; and a
+     domain that genuinely is the provider's — yahoo.com.au — is on the known
+     list already and never reaches here. */
+  function emailProviderMisplaced(domain) {
+    var first = domain.split(".")[0];
+    if (!first) return null;
+    for (var i = 0; i < EMAIL_TYPO_DOMAINS.length; i++) {
+      var known = EMAIL_TYPO_DOMAINS[i];
+      if (known === domain) return null;
+      if (known.split(".")[0] === first) return known;
+    }
+    return null;
+  }
   function emailDomainSuggestion(value) {
     var at = value.lastIndexOf("@");
     if (at < 1) return null;
     var domain = value.slice(at + 1).toLowerCase();
     if (EMAIL_TYPO_EXEMPT.indexOf(domain) !== -1) return null;
+    if (EMAIL_TYPO_DOMAINS.indexOf(domain) !== -1) return null;
     for (var i = 0; i < EMAIL_TYPO_DOMAINS.length; i++) {
       if (withinOneEdit(domain, EMAIL_TYPO_DOMAINS[i])) return value.slice(0, at + 1) + EMAIL_TYPO_DOMAINS[i];
     }
+    var misplaced = emailProviderMisplaced(domain);
+    if (misplaced) return value.slice(0, at + 1) + misplaced;
     return null;
   }
   function contactFormatIsValid(config, input) {
