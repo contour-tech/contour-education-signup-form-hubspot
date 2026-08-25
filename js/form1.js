@@ -574,6 +574,9 @@ var ContourForm1Logic = function () {
       // card read as one mass, and the fill is the only thing saying which
       // brand was picked. On trial — one value to put back (Amrit, 25 Aug 2026).
       ".hs-form .contour-program-card--selected::before { opacity: 1; background: #005FCC; }" +
+      // The edge goes with the fill; a navy outline round a blue card was the
+      // old colour still showing through.
+      ".hs-form .contour-program-card--selected { border-color: #005FCC !important; }" +
       // The navy fill is a positioned layer, so in-flow card content needs a
       // stacking context of its own to paint above it.
       ".hs-form .contour-program-card__body { position: relative; z-index: 1; }" +
@@ -1935,7 +1938,7 @@ var ContourForm1Logic = function () {
     if (document.getElementById("contour-disabled-field-styles")) return;
     var style = document.createElement("style");
     style.id = "contour-disabled-field-styles";
-    style.textContent = ".hs-form select:disabled, .hs-form input:disabled, .hs-form input.contour-prefill-locked[readonly] { opacity: 0.55; background-color: #f1f0ec; cursor: not-allowed; }" + ".hs-form select.contour-prefill-locked { opacity: 0.55; background-color: #f1f0ec; cursor: not-allowed; pointer-events: none; }" + ".contour-prefill-banner { display: flex; align-items: flex-start; gap: 14px; margin: 0 0 24px; padding: 18px 22px; border: 1px solid rgba(12, 49, 102, 0.12); border-radius: 16px; background: #FFFFFF; box-shadow: 0 1px 3px rgba(12, 49, 102, 0.06); }" + ".contour-prefill-banner__badge { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; box-sizing: border-box; border: 2px solid #0C3166; border-radius: 50%; background: #D7FC3D; color: #0C3166; font-size: 15px; font-weight: 700; }" + ".contour-prefill-banner__content { flex: 1; min-width: 0; }" + ".contour-prefill-banner__title { margin: 0 0 2px; font-size: 15px; font-weight: 700; color: #0C3166; }" + ".contour-prefill-banner__text { margin: 0 0 8px; font-size: 13.5px; line-height: 1.45; color: #6b7280; }" + ".contour-prefill-banner__reset { display: inline-block; font-size: 13px; font-weight: 600; color: #0C3166; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }" + ".contour-prefill-banner__reset:hover { color: #0540F2; }" + ".contour-subject-summary { margin: 24px 0; padding: 20px 22px; border: 1px solid rgba(12, 49, 102, 0.12); border-radius: 16px; background: #FFF9F1; box-shadow: 0 1px 3px rgba(12, 49, 102, 0.06); }" + ".contour-subject-summary__heading { font-size: 15px; font-weight: 700; color: #0C3166; margin-bottom: 14px; }" + ".contour-subject-summary__grid { display: flex; flex-wrap: wrap; gap: 24px; }" + ".contour-subject-summary__col { flex: 1 1 180px; min-width: 160px; }" + ".contour-subject-summary__col-title { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #6b7280; margin-bottom: 8px; }" + ".contour-subject-summary__chips { display: flex; flex-wrap: wrap; gap: 6px; }" + ".contour-subject-chip { display: inline-block; padding: 5px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 600; line-height: 1.3; }" + ".contour-subject-chip--navy { background: #092749; color: #FFFFFF; }" + ".contour-subject-chip--lime { background: #D7FC3D; color: #0C3166; }" + ".contour-subject-chip--blue { background: #007AFF; color: #FFFFFF; }" + ".contour-ucat-intake-note { margin: 24px 0; }" + ".contour-welcome-consultation__waitlist-note { margin: 0; padding: 14px 18px; border: 1px solid #f0d9a6; border-radius: 12px; background: #FFF3D6; color: #8a5a00; font-size: 14px; line-height: 1.5; font-weight: 600; }" + ".contour-form-loader { display: flex; flex-direction: column; align-items: center; padding: 60px 0; }" + ".contour-form-loader__spinner { width: 36px; height: 36px; border: 4px solid #e3e0d8; border-top-color: #1a1a2e; border-radius: 50%; animation: contour-spin 0.8s linear infinite; }" + "@keyframes contour-spin { to { transform: rotate(360deg); } }" + ".contour-form-loader__text { margin-top: 12px; font-size: 14px; }";
+    style.textContent = ".hs-form select:disabled, .hs-form input:disabled, .hs-form input.contour-prefill-locked[readonly] { opacity: 0.55; background-color: #f1f0ec; cursor: not-allowed; }" + ".hs-form select.contour-prefill-locked { opacity: 0.55; background-color: #f1f0ec; cursor: not-allowed; pointer-events: none; }" + ".contour-prefill-banner { display: flex; align-items: flex-start; gap: 14px; margin: 0 0 24px; padding: 18px 22px; border: 1px solid rgba(12, 49, 102, 0.12); border-radius: 16px; background: #FFFFFF; box-shadow: 0 1px 3px rgba(12, 49, 102, 0.06); }" + ".contour-prefill-banner__badge { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; box-sizing: border-box; border: 2px solid #0C3166; border-radius: 50%; background: #007AFF; color: #FFFFFF; font-size: 15px; font-weight: 700; }" + ".contour-prefill-banner__content { flex: 1; min-width: 0; }" + ".contour-prefill-banner__title { margin: 0 0 2px; font-size: 15px; font-weight: 700; color: #0C3166; }" + ".contour-prefill-banner__text { margin: 0 0 8px; font-size: 13.5px; line-height: 1.45; color: #6b7280; }" + ".contour-prefill-banner__reset { display: inline-block; font-size: 13px; font-weight: 600; color: #0C3166; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }" + ".contour-prefill-banner__reset:hover { color: #0540F2; }" + ".contour-subject-summary { margin: 24px 0; padding: 20px 22px; border: 1px solid rgba(12, 49, 102, 0.12); border-radius: 16px; background: #FFF9F1; box-shadow: 0 1px 3px rgba(12, 49, 102, 0.06); }" + ".contour-subject-summary__heading { font-size: 15px; font-weight: 700; color: #0C3166; margin-bottom: 14px; }" + ".contour-subject-summary__grid { display: flex; flex-wrap: wrap; gap: 24px; }" + ".contour-subject-summary__col { flex: 1 1 180px; min-width: 160px; }" + ".contour-subject-summary__col-title { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #6b7280; margin-bottom: 8px; }" + ".contour-subject-summary__chips { display: flex; flex-wrap: wrap; gap: 6px; }" + ".contour-subject-chip { display: inline-block; padding: 5px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 600; line-height: 1.3; }" + ".contour-subject-chip--navy { background: #092749; color: #FFFFFF; }" + ".contour-subject-chip--lime { background: #D7FC3D; color: #0C3166; }" + ".contour-subject-chip--blue { background: #007AFF; color: #FFFFFF; }" + ".contour-ucat-intake-note { margin: 24px 0; }" + ".contour-welcome-consultation__waitlist-note { margin: 0; padding: 14px 18px; border: 1px solid #f0d9a6; border-radius: 12px; background: #FFF3D6; color: #8a5a00; font-size: 14px; line-height: 1.5; font-weight: 600; }" + ".contour-form-loader { display: flex; flex-direction: column; align-items: center; padding: 60px 0; }" + ".contour-form-loader__spinner { width: 36px; height: 36px; border: 4px solid #e3e0d8; border-top-color: #1a1a2e; border-radius: 50%; animation: contour-spin 0.8s linear infinite; }" + "@keyframes contour-spin { to { transform: rotate(360deg); } }" + ".contour-form-loader__text { margin-top: 12px; font-size: 14px; }";
     document.head.appendChild(style);
   }
   function getClassification(inputEl) {
@@ -2510,9 +2513,24 @@ var ContourForm1Logic = function () {
       return;
     }
     if (!note) {
-      note = document.createElement("div");
-      note.className = "hs-field-desc " + CAMPUS_NOTE_CLASS;
-      note.textContent = CAMPUS_NOTE_TEXT;
+      // Built like the school hint — badge, then the line — so the form has
+      // one shape for "here is something you should know" rather than a new
+      // one per note. Amber rather than that hint's blue: the school hint
+      // tells you what to do next, this one reports something the form did
+      // without being asked, and those deserve different weight (Amrit,
+      // 25 Aug 2026).
+      note = document.createElement("p");
+      note.className = CAMPUS_NOTE_CLASS;
+      note.setAttribute("role", "status");
+      note.setAttribute("aria-live", "polite");
+      var icon = document.createElement("span");
+      icon.className = CAMPUS_NOTE_CLASS + "__icon";
+      icon.setAttribute("aria-hidden", "true");
+      icon.textContent = "i";
+      var text = document.createElement("span");
+      text.textContent = CAMPUS_NOTE_TEXT;
+      note.appendChild(icon);
+      note.appendChild(text);
       wrap.appendChild(note);
       return;
     }
@@ -3654,10 +3672,17 @@ var ContourForm1Logic = function () {
   var PHONE_SELECT_BOUND_ATTR = "data-contour-phone-select-bound";
   function enhancePhoneBoxes() {
     if (!formRoot) return;
-    Array.prototype.forEach.call(formRoot.querySelectorAll(".hs-fieldtype-intl-phone, .contour-intl-phone"), function (group) {
-      var real = group.querySelector('input[type="tel"]:not(.' + PHONE_PROXY_CLASS + ')');
-      var select = group.querySelector("select");
-      if (!real || !select) return;
+    // Found by shape rather than by container class: a select next to a tel
+    // box is a phone widget whoever built it. The guardian's is HubSpot's
+    // .hs-fieldtype-intl-phone and the student's is a .contour-intl-phone
+    // assembled elsewhere on the page, and keying off those names left the
+    // student's untouched on the Guardian flow — the dial code still sitting
+    // in the box, and the restored draft putting it back (Amrit, 25 Aug 2026).
+    Array.prototype.forEach.call(formRoot.querySelectorAll('input[type="tel"]'), function (real) {
+      if (real.classList.contains(PHONE_PROXY_CLASS)) return;
+      var group = real.parentElement;
+      var select = group && group.querySelector("select");
+      if (!group || !select) return;
       var proxy = group.querySelector("." + PHONE_PROXY_CLASS);
       // Tagging the widget's box and building ours are separate jobs: HubSpot
       // rebuilds that box whenever the country changes, so it arrives untagged
@@ -3675,7 +3700,10 @@ var ContourForm1Logic = function () {
       if (!proxy) {
         proxy = document.createElement("input");
         proxy.type = "tel";
-        proxy.className = "hs-input " + PHONE_PROXY_CLASS;
+        // Carries the page stylesheet's own number-box class as well, so rules
+        // written for that box (widths, the guardian row's 100% override)
+        // apply to ours rather than skipping it.
+        proxy.className = "hs-input contour-intl-phone__number " + PHONE_PROXY_CLASS;
         proxy.setAttribute("inputmode", "tel");
         proxy.setAttribute("autocomplete", "tel-national");
         if (real.placeholder) proxy.placeholder = real.placeholder;
@@ -6065,7 +6093,7 @@ var ContourForm1Logic = function () {
          the cap have to go with it, and the :not() chain is the page
          stylesheet's own, repeated to win the cascade against it. */
       box + ' .hs-fieldtype-intl-phone select.hs-input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), ' + box + ' .contour-intl-phone select.hs-input:not([type="checkbox"]):not([type="radio"]):not([type="file"]) { flex: 0 0 33% !important; width: 33% !important; max-width: none !important; min-width: 0 !important; }' +
-      box + ' .hs-fieldtype-intl-phone input.hs-input[type="tel"]:not(.contour-phone-real):not([type="checkbox"]):not([type="radio"]), ' + box + ' .contour-intl-phone input.hs-input[type="tel"]:not(.contour-phone-real):not([type="checkbox"]):not([type="radio"]) { flex: 1 1 auto !important; width: auto !important; min-width: 0 !important; }' +
+      box + ' input.hs-input[type="tel"]:not(.contour-phone-real):not([type="checkbox"]):not([type="radio"]) { flex: 1 1 auto !important; width: auto !important; min-width: 0 !important; }' +
       // A question, not a verdict: the form's own quiet helper-text voice, with
       // the correction as the only thing asking to be pressed.
       box + " .contour-email-suggest { margin-top: 6px; font-size: 13px; color: #6b7280; }" +
@@ -6075,7 +6103,7 @@ var ContourForm1Logic = function () {
       // carries the field name on the student's control, and every check in
       // this file still reads it. clip rather than display:none, so the widget
       // has a laid-out box to work with.
-      box + ' .hs-fieldtype-intl-phone input.hs-input.contour-phone-real:not([type="checkbox"]):not([type="radio"]):not([type="file"]), ' + box + ' .contour-intl-phone input.hs-input.contour-phone-real:not([type="checkbox"]):not([type="radio"]):not([type="file"]) { position: absolute !important; flex: 0 0 0 !important; width: 1px !important; min-width: 0 !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0 !important; opacity: 0 !important; }' +
+      box + ' input.hs-input.contour-phone-real:not([type="checkbox"]):not([type="radio"]):not([type="file"]) { position: absolute !important; flex: 0 0 0 !important; width: 1px !important; min-width: 0 !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0 !important; opacity: 0 !important; }' +
       /* Campus tiles. Unpicked they take the page's own cream, so the card
          reads as a surface with wells cut into it rather than white boxes on
          white; picked they take #005FCC, which separates a chosen campus from
@@ -6086,7 +6114,8 @@ var ContourForm1Logic = function () {
       box + '[data-contour-section="campus"] .hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display:has(input:checked) { background-color: #005FCC !important; border-color: #005FCC !important; }' +
       box + '[data-contour-section="campus"] .hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display:has(input:checked) span, ' + box + '[data-contour-section="campus"] .hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display:has(input:checked) .contour-campus-name, ' + box + '[data-contour-section="campus"] .hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display:has(input:checked) .contour-campus-address { color: #FFFFFF !important; }' +
       // Why Online is ticked when nobody ticked it.
-      box + " .contour-campus-note { margin: 14px 0 0; padding: 12px 16px; border: 1px solid rgba(0, 95, 204, 0.22); border-left: 3px solid #005FCC; border-radius: 12px; background: rgba(0, 95, 204, 0.06); font-size: 13.5px; line-height: 1.45; color: #0C3166; }" +
+      box + " .contour-campus-note { display: flex; align-items: flex-start; gap: 8px; margin: 14px 0 0; padding: 10px 12px; border: 1px solid #f0d9a6; border-radius: 10px; background: #FFF3D6; color: #8a5a00; font-size: 13px; line-height: 1.45; font-weight: 600; }" +
+      box + " .contour-campus-note__icon { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; width: 16px; height: 16px; margin-top: 1px; border-radius: 50%; background: #B4790A; color: #FFFFFF; font-size: 11px; font-weight: 700; line-height: 1; }" +
       // The one remaining native control joins the palette.
       box + ' input[type="checkbox"][name="tos_privacy_consent"] { accent-color: #0C3166; }' +
       // The hr separators earned their keep on the flat form; cards make
@@ -7338,8 +7367,13 @@ var ContourForm1Logic = function () {
   // Names may not carry digits, and a value of nothing but whitespace reads as
   // filled to HubSpot's required check, so both are rejected here. A truly
   // empty box stays HubSpot's required error to report.
-  var NAME_DIGIT_PATTERN = /\d/;
-  var NAME_MESSAGE = "Please enter a valid name.";
+  /* Anything that is not a letter, a space, or the punctuation real names
+     carry: O'Brien, Anne-Marie, D'Souza, St. John. Accented and non-Latin
+     letters are letters — \u00C0 up covers the Latin supplement and beyond, so
+     José and Nguyễn are names and "a@g.com" pasted into a name box is not
+     (Amrit, 25 Aug 2026). Digits were the only thing caught before. */
+  var NAME_DIGIT_PATTERN = /[^A-Za-z\u00C0-\u024F\u0370-\uFFFF '.\u2019-]/;
+  var NAME_MESSAGE = "Please use letters only \u2014 no numbers or symbols.";
   var CONTACT_FORMAT_FIELDS = [
     {
       selector: FIELD_SELECTORS.firstName,
