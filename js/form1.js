@@ -6023,7 +6023,7 @@ var ContourForm1Logic = function () {
       // takes its time coming up: it has the room the pill used to occupy, and
       // a longer taper is what keeps it from reading as a hard line drawn
       // across the card (Angad, 25 Aug 2026).
-      box + ' .contour-person-tabs--static::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: linear-gradient(to right, rgba(12, 49, 102, 0), rgba(12, 49, 102, 0) 10px, rgba(12, 49, 102, 0.14) 130px, rgba(12, 49, 102, 0.14)); }' +
+      box + ' .contour-person-tabs--static::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: linear-gradient(to right, rgba(12, 49, 102, 0), rgba(12, 49, 102, 0) 10px, rgba(12, 49, 102, 0.85) 130px, rgba(12, 49, 102, 0.85)); }' +
       // A step up from the base 11.5/700 so the segment names read as
       // headers, while staying under the card band's 12.5px.
       // Level with the card's own band rather than a step under it: left-
@@ -6038,17 +6038,20 @@ var ContourForm1Logic = function () {
       // The offset comes from the measured pill width (set in
       // ensurePersonStaticHeader); the fallback keeps the rule clear of the
       // shortest sensible pill if a pass runs before it can be measured.
-      box + ' .contour-person-tabs--static:has(.contour-person-tabs__you)::before { left: var(--contour-seg-rule-start, 46px); background: linear-gradient(to right, rgba(12, 49, 102, 0), rgba(12, 49, 102, 0.14) 48px, rgba(12, 49, 102, 0.14) calc(100% - 48px), rgba(12, 49, 102, 0)); }' +
+      box + ' .contour-person-tabs--static:has(.contour-person-tabs__you)::before { left: var(--contour-seg-rule-start, 46px); background: linear-gradient(to right, rgba(12, 49, 102, 0), rgba(12, 49, 102, 0.85) 48px, rgba(12, 49, 102, 0.85) calc(100% - 48px), rgba(12, 49, 102, 0)); }' +
       // Label on the left: the rule starts past it, measured, and the taper
       // turns round — short coming up out of the label, long going away at the
       // far edge. Last of the three, so it wins the tie on source order over
       // the two above, which it deliberately shares specificity with.
       box + " .contour-person-tabs--static.contour-person-tabs--label-left .contour-person-tabs__label { padding-left: 0; padding-right: 0; }" +
+      // The solid run is the brand navy rather than the 0.14 wash it was — on
+      // trial, so the number to put back is 0.14 in all six stops if it reads
+      // too heavy (Amrit, 25 Aug 2026).
       // Solid where it leaves the label, tapering only at the far end. A rule
       // that fades in as well has two soft ends and reads as floating; the end
       // beside the text is where it is anchored, so it starts at full strength
       // and only the end going nowhere fades out (Amrit, 25 Aug 2026).
-      box + ' .contour-person-tabs--static.contour-person-tabs--label-left::before { left: var(--contour-seg-rule-start, 130px); background: linear-gradient(to right, rgba(12, 49, 102, 0.14), rgba(12, 49, 102, 0.14) calc(100% - 130px), rgba(12, 49, 102, 0) calc(100% - 10px), rgba(12, 49, 102, 0)); }' +
+      box + ' .contour-person-tabs--static.contour-person-tabs--label-left::before { left: var(--contour-seg-rule-start, 130px); background: linear-gradient(to right, rgba(12, 49, 102, 0.85), rgba(12, 49, 102, 0.85) calc(100% - 130px), rgba(12, 49, 102, 0) calc(100% - 10px), rgba(12, 49, 102, 0)); }' +
       box + " .contour-person-tabs--mid { margin-top: 26px; border-top: 0; }" +
       box + " .contour-person-group-host { margin-bottom: 0 !important; }" +
       box + " .contour-person-group-host > .contour-person-card__row { border: 0 !important; border-radius: 0 !important; }" +
