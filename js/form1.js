@@ -5866,6 +5866,11 @@ var ContourForm1Logic = function () {
       // have to go with it.
       box + ' .hs-fieldtype-intl-phone select.hs-input:not([type="checkbox"]):not([type="radio"]):not([type="file"]) { flex: 0 0 58% !important; width: 58% !important; max-width: none !important; min-width: 0 !important; }' +
       box + ' .hs-fieldtype-intl-phone input.hs-input[type="tel"]:not([type="checkbox"]):not([type="radio"]):not([type="file"]) { flex: 1 1 auto !important; width: auto !important; min-width: 0 !important; }' +
+      // A question, not a verdict: the form's own quiet helper-text voice, with
+      // the correction as the only thing asking to be pressed.
+      box + " .contour-email-suggest { margin-top: 6px; font-size: 13px; color: #6b7280; }" +
+      box + " .contour-email-suggest__fix { appearance: none; -webkit-appearance: none; border: 0; background: none; padding: 0; font: inherit; font-weight: 700; color: #0C3166; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }" +
+      box + " .contour-email-suggest__fix:hover { color: #007AFF; }" +
       // The one remaining native control joins the palette.
       box + ' input[type="checkbox"][name="tos_privacy_consent"] { accent-color: #0C3166; }' +
       // The hr separators earned their keep on the flat form; cards make
@@ -7234,6 +7239,88 @@ var ContourForm1Logic = function () {
     }
     return digits.slice(dial.length);
   }
+  /* The generic pattern accepts anything shaped like an address, so
+     "angad@gamil.asdai.com" sails through it (Angad, 25 Aug 2026). Two layers
+     answer that, and which layer a rule belongs in matters more than the rules
+     themselves.
+
+     Blocking is structure only — things that cannot be an address whoever owns
+     the domain. No domain lookups: half the students sign up on a school
+     address (edu.vic.edu.au, catholic.edu.au, a one-school domain nobody has
+     heard of), and any list of "real" domains turns those away. A network
+     check is worse still, since it fails whoever is behind a captive portal or
+     a slow DNS.
+
+     The typo layer never blocks. It only recognises a handful of consumer
+     domains and only within one edit of them, which is far enough to catch
+     gamil/gmial/hotmial and nowhere near far enough to reach a school domain —
+     and it offers the correction rather than refusing the address, so being
+     wrong about it costs a glance. */
+  var EMAIL_TYPO_DOMAINS = ["gmail.com", "hotmail.com", "outlook.com", "yahoo.com", "yahoo.com.au", "icloud.com", "bigpond.com", "live.com", "me.com", "optusnet.com.au"];
+  // Real domains that happen to sit one edit from one of the above. mail.com
+  // is a live mail host and one insertion from gmail.com, so without this it
+  // would be told it meant something else every time.
+  var EMAIL_TYPO_EXEMPT = ["mail.com", "email.com", "gmx.com", "aol.com", "live.com.au", "yahoo.co.uk", "me.com.au"];
+  function emailStructureIsValid(value) {
+    if (!EMAIL_PATTERN.test(value)) return false;
+    var at = value.lastIndexOf("@");
+    if (at < 1) return false;
+    var domain = value.slice(at + 1).toLowerCase();
+    if (domain.indexOf("..") !== -1) return false;
+    var labels = domain.split(".");
+    // A domain with no dot cannot be reached from outside its own network, and
+    // nobody signing up here has one.
+    if (labels.length < 2) return false;
+    for (var i = 0; i < labels.length; i++) {
+      var label = labels[i];
+      if (label === "") return false;
+      if (label.charAt(0) === "-" || label.charAt(label.length - 1) === "-") return false;
+    }
+    // The last label is the public suffix: letters only, at least two of them.
+    return /^[a-z]{2,}$/.test(labels[labels.length - 1]);
+  }
+  /* One edit away, counting a swap of two neighbours as one. Plain edit
+     distance calls a swap two changes, which would miss the whole family this
+     is for — gamil for gmail, gmial, hotmial, yahho are all neighbours in the
+     wrong order, and they are the typos people actually make. */
+  function withinOneEdit(a, b) {
+    if (a === b) return false;
+    var la = a.length, lb = b.length;
+    if (Math.abs(la - lb) > 1) return false;
+    if (la === lb) {
+      var diff = [];
+      for (var i = 0; i < la; i++) {
+        if (a.charAt(i) !== b.charAt(i)) {
+          diff.push(i);
+          if (diff.length > 2) return false;
+        }
+      }
+      if (diff.length === 1) return true;
+      // Two differences are only forgiven when they are the same two letters
+      // the other way round, and adjacent.
+      if (diff.length !== 2 || diff[1] !== diff[0] + 1) return false;
+      return a.charAt(diff[0]) === b.charAt(diff[1]) && a.charAt(diff[1]) === b.charAt(diff[0]);
+    }
+    // One longer than the other: the extra character has to be the only thing
+    // between them.
+    var longer = la > lb ? a : b;
+    var shorter = la > lb ? b : a;
+    for (var j = 0; j < shorter.length; j++) {
+      if (longer.charAt(j) === shorter.charAt(j)) continue;
+      return longer.slice(j + 1) === shorter.slice(j);
+    }
+    return true;
+  }
+  function emailDomainSuggestion(value) {
+    var at = value.lastIndexOf("@");
+    if (at < 1) return null;
+    var domain = value.slice(at + 1).toLowerCase();
+    if (EMAIL_TYPO_EXEMPT.indexOf(domain) !== -1) return null;
+    for (var i = 0; i < EMAIL_TYPO_DOMAINS.length; i++) {
+      if (withinOneEdit(domain, EMAIL_TYPO_DOMAINS[i])) return value.slice(0, at + 1) + EMAIL_TYPO_DOMAINS[i];
+    }
+    return null;
+  }
   function contactFormatIsValid(config, input) {
     var raw = input.value || "";
     var value = raw.trim();
@@ -7245,7 +7332,7 @@ var ContourForm1Logic = function () {
     }
     // Blank is HubSpot's own required error to report, not ours.
     if (value === "") return true;
-    if (config.kind === "email") return EMAIL_PATTERN.test(value);
+    if (config.kind === "email") return emailStructureIsValid(value);
     if (!PHONE_ALLOWED_CHARS.test(value)) return false;
     var national = phoneNationalDigits(value);
     // Dial code and nothing else. HubSpot's own required error owns that state
@@ -7267,9 +7354,57 @@ var ContourForm1Logic = function () {
       return el.style.display !== "none" && el.className.indexOf("contour-") === -1 && el.textContent.trim() !== "";
     });
   }
+  /* The typo note. Not an error: the address is structurally fine and may well
+     be right, so it offers the correction and gets out of the way rather than
+     refusing to let the form go. Shown on the way out of the box, taken back
+     the moment the address changes or is put right. */
+  var EMAIL_SUGGEST_CLASS = "contour-email-suggest";
+  function emailSuggestionNode(input) {
+    var wrap = fieldWrapper(input) || input.parentElement;
+    return wrap ? wrap.querySelector("." + EMAIL_SUGGEST_CLASS) : null;
+  }
+  function clearEmailSuggestion(input) {
+    var node = emailSuggestionNode(input);
+    if (node && node.parentNode) node.parentNode.removeChild(node);
+  }
+  function refreshEmailSuggestion(input, allowShow) {
+    if (!input) return;
+    var suggestion = allowShow ? emailDomainSuggestion((input.value || "").trim()) : null;
+    if (!suggestion) {
+      clearEmailSuggestion(input);
+      return;
+    }
+    var node = emailSuggestionNode(input);
+    if (!node) {
+      var wrap = fieldWrapper(input) || input.parentElement;
+      if (!wrap) return;
+      node = document.createElement("div");
+      node.className = "hs-field-desc " + EMAIL_SUGGEST_CLASS;
+      wrap.appendChild(node);
+    }
+    if (node.getAttribute("data-contour-suggestion") === suggestion) return;
+    node.setAttribute("data-contour-suggestion", suggestion);
+    node.textContent = "Did you mean ";
+    var button = document.createElement("button");
+    button.type = "button";
+    button.className = EMAIL_SUGGEST_CLASS + "__fix";
+    button.textContent = suggestion;
+    button.addEventListener("click", function () {
+      input.value = suggestion;
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+      clearEmailSuggestion(input);
+      try {
+        input.focus();
+      } catch (err) { }
+    });
+    node.appendChild(button);
+    node.appendChild(document.createTextNode("?"));
+  }
   // allowShow is false until the person has left the field at least once, so a
   // box they have not reached yet is never marked wrong.
   function refreshContactFormatError(config, input, allowShow) {
+    if (config.kind === "email") refreshEmailSuggestion(input, allowShow);
     if (contactFormatIsValid(config, input) || nativeErrorShowing(input)) {
       clearContourError(input, config.errorClass);
       return;
