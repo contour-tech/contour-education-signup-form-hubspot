@@ -63,6 +63,11 @@ var ContourForm1Logic = function () {
     // stop repeating whose field is whose (Luke, 19 Aug 2026; tab design
     // finalised by Amrit, 21 Aug 2026 — see PERSON GROUPS below).
     personGroups: true,
+    // The "This is you" pill on the segment header of whoever is filling the
+    // form in. Off: the band is a name and a rule, which is quieter, and the
+    // rule takes the room the pill used to (Angad, 25 Aug 2026). On restores
+    // the pill and the rule starts past it, measured.
+    personYouPill: false,
     // Renders the Interested Subjects checkboxes as selectable tiles in the
     // program-card language — navy fill and a lime tick when picked. Off
     // restores the plain native checkboxes (Angad's "dopeify" round, 22 Aug
@@ -1064,21 +1069,23 @@ var ContourForm1Logic = function () {
     // at creation, and the heading's own text is never rewritten under it.
     var heading = existing.querySelector(".contour-person-tabs__heading");
     var marker = heading.querySelector(".contour-person-tabs__you");
-    if (isVisitor && !marker) {
+    var wantsMarker = isVisitor && featureEnabled("personYouPill");
+    if (wantsMarker && !marker) {
       marker = document.createElement("span");
       marker.className = "contour-person-tabs__you";
       // "This is you" over plain "You": Amrit wants the pill to carry some
       // width so it reads as a band element, not a stray dot (Amrit, 22 Aug).
       marker.textContent = "This is you";
       heading.insertBefore(marker, heading.firstChild);
-    } else if (!isVisitor && marker) {
+    } else if (!wantsMarker && marker) {
       marker.parentNode.removeChild(marker);
+      marker = null;
     }
     // Only a badged heading spreads across the band: the badge takes the
     // left edge (landing on the same grid line as the field labels below it)
     // and the title keeps the right. A heading without a badge must stay
     // wholly right-aligned, so the modifier goes on and off with the badge.
-    heading.classList.toggle("contour-person-tabs__heading--split", !!isVisitor);
+    heading.classList.toggle("contour-person-tabs__heading--split", !!marker);
     // The separator starts past the pill, and the pill's width is copy —
     // "This is you" is three times "You". So the offset is measured, not
     // hardcoded: a fixed 46px left the wider pill sitting on top of the
@@ -5728,7 +5735,11 @@ var ContourForm1Logic = function () {
       // band leads the card and the 24px that separated it from the question
       // becomes dead space at the top (Amrit, 23 Aug).
       box + " .contour-person-tabs--static.contour-person-tabs--flush { margin-top: 2px; }" +
-      box + ' .contour-person-tabs--static::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: linear-gradient(to right, rgba(12, 49, 102, 0), rgba(12, 49, 102, 0.14) 48px, rgba(12, 49, 102, 0.14) calc(100% - 48px), rgba(12, 49, 102, 0)); }' +
+      // With no pill beside it the rule starts at the band's own left edge and
+      // takes its time coming up: it has the room the pill used to occupy, and
+      // a longer taper is what keeps it from reading as a hard line drawn
+      // across the card (Angad, 25 Aug 2026).
+      box + ' .contour-person-tabs--static::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: linear-gradient(to right, rgba(12, 49, 102, 0), rgba(12, 49, 102, 0.14) 112px, rgba(12, 49, 102, 0.14) calc(100% - 48px), rgba(12, 49, 102, 0)); }' +
       // A step up from the base 11.5/700 so the segment names read as
       // headers, while staying under the card band's 12.5px.
       box + " .contour-person-tabs__heading { font-size: 12px; font-weight: 800; }" +
@@ -5740,7 +5751,7 @@ var ContourForm1Logic = function () {
       // The offset comes from the measured pill width (set in
       // ensurePersonStaticHeader); the fallback keeps the rule clear of the
       // shortest sensible pill if a pass runs before it can be measured.
-      box + " .contour-person-tabs--static:has(.contour-person-tabs__you)::before { left: var(--contour-seg-rule-start, 46px); }" +
+      box + ' .contour-person-tabs--static:has(.contour-person-tabs__you)::before { left: var(--contour-seg-rule-start, 46px); background: linear-gradient(to right, rgba(12, 49, 102, 0), rgba(12, 49, 102, 0.14) 48px, rgba(12, 49, 102, 0.14) calc(100% - 48px), rgba(12, 49, 102, 0)); }' +
       box + " .contour-person-tabs--mid { margin-top: 26px; border-top: 0; }" +
       box + " .contour-person-group-host { margin-bottom: 0 !important; }" +
       box + " .contour-person-group-host > .contour-person-card__row { border: 0 !important; border-radius: 0 !important; }" +
