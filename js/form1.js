@@ -6023,6 +6023,13 @@ var ContourForm1Logic = function () {
       // On a pre-fill link the "Are you a" row above this is gone, so the
       // band leads the card and the 24px that separated it from the question
       // becomes dead space at the top (Amrit, 23 Aug).
+      /* A true hairline where the screen can draw one. 1px of CSS is two
+         device pixels on a retina display, which is why the rule reads heavier
+         than a hairline should; 0.5px there is one device pixel and cannot be
+         rounded away, because the rule sits at a whole 15px. Left at 1px below
+         2dppx, where half a pixel is not a thing a screen can draw and asking
+         for it risks the line vanishing (Amrit, 25 Aug 2026). */
+      "@media (min-resolution: 2dppx) { " + box + " .contour-person-tabs--static::before { height: 0.5px; } }" +
       box + " .contour-person-tabs--static.contour-person-tabs--flush { margin-top: 2px; }" +
       box + " .contour-person-tabs--static.contour-person-tabs--beside-question { margin-top: 44px; }" +
       // With no pill beside it the rule starts at the band's own left edge and
