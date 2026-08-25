@@ -6019,7 +6019,7 @@ var ContourForm1Logic = function () {
       // takes its time coming up: it has the room the pill used to occupy, and
       // a longer taper is what keeps it from reading as a hard line drawn
       // across the card (Angad, 25 Aug 2026).
-      box + ' .contour-person-tabs--static::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: linear-gradient(to right, rgba(12, 49, 102, 0), rgba(12, 49, 102, 0.14) 112px, rgba(12, 49, 102, 0.14) calc(100% - 48px), rgba(12, 49, 102, 0)); }' +
+      box + ' .contour-person-tabs--static::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: linear-gradient(to right, rgba(12, 49, 102, 0), rgba(12, 49, 102, 0.14) 112px, rgba(12, 49, 102, 0.14)); }' +
       // A step up from the base 11.5/700 so the segment names read as
       // headers, while staying under the card band's 12.5px.
       // Level with the card's own band rather than a step under it: left-
@@ -6040,7 +6040,11 @@ var ContourForm1Logic = function () {
       // far edge. Last of the three, so it wins the tie on source order over
       // the two above, which it deliberately shares specificity with.
       box + " .contour-person-tabs--static.contour-person-tabs--label-left .contour-person-tabs__label { padding-left: 0; padding-right: 10px; }" +
-      box + ' .contour-person-tabs--static.contour-person-tabs--label-left::before { left: var(--contour-seg-rule-start, 130px); background: linear-gradient(to right, rgba(12, 49, 102, 0), rgba(12, 49, 102, 0.14) 48px, rgba(12, 49, 102, 0.14) calc(100% - 112px), rgba(12, 49, 102, 0)); }' +
+      // Solid where it leaves the label, tapering only at the far end. A rule
+      // that fades in as well has two soft ends and reads as floating; the end
+      // beside the text is where it is anchored, so it starts at full strength
+      // and only the end going nowhere fades out (Amrit, 25 Aug 2026).
+      box + ' .contour-person-tabs--static.contour-person-tabs--label-left::before { left: var(--contour-seg-rule-start, 130px); background: linear-gradient(to right, rgba(12, 49, 102, 0.14), rgba(12, 49, 102, 0.14) calc(100% - 112px), rgba(12, 49, 102, 0)); }' +
       box + " .contour-person-tabs--mid { margin-top: 26px; border-top: 0; }" +
       box + " .contour-person-group-host { margin-bottom: 0 !important; }" +
       box + " .contour-person-group-host > .contour-person-card__row { border: 0 !important; border-radius: 0 !important; }" +
