@@ -5861,10 +5861,13 @@ var ContourForm1Logic = function () {
       // the cascade against it — both rules carry !important, so it comes down
       // to specificity, and three attribute selectors are worth more than the
       // extra class this adds.
-      /* 44%, which is 175px of the 397px row. Not a taste number: "Australia
-         (+61)" measures 170px in this face at this size, so anything under
-         that clips the country almost every student picks. The rest goes to
-         the number, which had 130px and now has ~222.
+      /* 33% of the row, Amrit's number after seeing 44%. At 397px that is
+         131px, and "Australia (+61)" measures 170, so the label clips — the
+         country name is what goes, since the code is at the end. Called out
+         rather than quietly widened: the closed box of a native select shows
+         the selected option's own text, so the only way to keep the code
+         visible at this width is to put it first ("+61 Australia"), which is
+         a copy decision rather than a CSS one.
 
          Both widgets: the guardian's box is HubSpot's .hs-fieldtype-intl-phone
          and the student's is the .contour-intl-phone this file builds, and
@@ -5874,7 +5877,7 @@ var ContourForm1Logic = function () {
          with flex: 0 0 auto, so width alone changes nothing — the basis and
          the cap have to go with it, and the :not() chain is the page
          stylesheet's own, repeated to win the cascade against it. */
-      box + ' .hs-fieldtype-intl-phone select.hs-input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), ' + box + ' .contour-intl-phone select.hs-input:not([type="checkbox"]):not([type="radio"]):not([type="file"]) { flex: 0 0 44% !important; width: 44% !important; max-width: none !important; min-width: 0 !important; }' +
+      box + ' .hs-fieldtype-intl-phone select.hs-input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), ' + box + ' .contour-intl-phone select.hs-input:not([type="checkbox"]):not([type="radio"]):not([type="file"]) { flex: 0 0 33% !important; width: 33% !important; max-width: none !important; min-width: 0 !important; }' +
       box + ' .hs-fieldtype-intl-phone input.hs-input[type="tel"]:not([type="checkbox"]):not([type="radio"]):not([type="file"]), ' + box + ' .contour-intl-phone input.hs-input[type="tel"]:not([type="checkbox"]):not([type="radio"]):not([type="file"]) { flex: 1 1 auto !important; width: auto !important; min-width: 0 !important; }' +
       // A question, not a verdict: the form's own quiet helper-text voice, with
       // the correction as the only thing asking to be pressed.
