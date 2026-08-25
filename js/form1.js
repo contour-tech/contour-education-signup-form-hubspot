@@ -1118,6 +1118,14 @@ var ContourForm1Logic = function () {
       prev = prev.previousElementSibling;
     }
     existing.classList.toggle("contour-person-tabs--flush", !precededByVisible);
+    // On the Guardian flow HubSpot renders the dependent group inside the
+    // contact-type field's own fieldset, so the band lands beside the question
+    // rather than after the fieldset wrapping it — and misses that fieldset's
+    // bottom margin, sitting 20px closer to the Student/Guardian cards than it
+    // does on the Student flow. Same question, same gap, so it is made up here
+    // (Amrit, 25 Aug 2026).
+    var besideQuestion = !!(prev && prev.classList && prev.classList.contains("hs_web_form_contact_type"));
+    existing.classList.toggle("contour-person-tabs--beside-question", besideQuestion);
   }
   function teardownPersonStacked() {
     var headers = qAll("[data-contour-person-static]");
@@ -3473,7 +3481,49 @@ var ContourForm1Logic = function () {
      settle timer after any bulk fill, the same retry pattern
      defaultContactTypeToStudent() uses for the same hydration reason. Each
      pass is idempotent, so passes that land early or twice are harmless. */
+  /* HubSpot's intl-phone select lists country names alone, so "+61" only
+     appears once it has been chosen — inside the number box, where Angad
+     rightly read it as part of the number rather than as the country's code
+     (25 Aug 2026). The code goes on the country, where it belongs, and the
+     select takes the width to carry it.
+
+     Labels only. The dial code inside the number box is HubSpot's widget
+     writing it there, and it puts it straight back if it is removed — the
+     value it composes for submission is read off that box, so taking the
+     prefix out means owning the submitted number, which is not a thing to do
+     without asking.
+
+     PHONE_DIAL_CODES maps a code to its primary country, so countries sharing
+     one (+1 for Canada, +44 for Jersey) are not in it. Those keep their plain
+     name: a missing code reads as ordinary, a wrong one does not. */
+  var phoneDialByIso = null;
+  function dialCodeForIso(iso) {
+    if (!phoneDialByIso) {
+      phoneDialByIso = {};
+      for (var i = 0; i < PHONE_DIAL_CODES.length; i++) phoneDialByIso[PHONE_DIAL_CODES[i][1].toUpperCase()] = PHONE_DIAL_CODES[i][0];
+    }
+    return phoneDialByIso[String(iso || "").toUpperCase()] || null;
+  }
+  var PHONE_LABELLED_ATTR = "data-contour-dial-labelled";
+  function labelPhoneCountryOptions() {
+    if (!formRoot) return;
+    Array.prototype.forEach.call(formRoot.querySelectorAll(".hs-fieldtype-intl-phone select"), function (select) {
+      // Re-applied after a HubSpot re-render rebuilds the options, but not on
+      // every pass over the same ones — 200 labels is not free.
+      if (select.getAttribute(PHONE_LABELLED_ATTR) === "1") return;
+      select.setAttribute(PHONE_LABELLED_ATTR, "1");
+      Array.prototype.forEach.call(select.options, function (opt) {
+        if (!opt.value) return;
+        var dial = dialCodeForIso(opt.value);
+        if (!dial) return;
+        var name = (opt.textContent || "").replace(/\s*\(\+\d+\)\s*$/, "");
+        var labelled = name + " (+" + dial + ")";
+        if (opt.textContent !== labelled) opt.textContent = labelled;
+      });
+    });
+  }
   function refreshDerivedFieldState() {
+    labelPhoneCountryOptions();
     evaluateProgramInterestOptions();
     evaluateInterestedSubjectsOptions();
     evaluateCampusOptions();
@@ -5368,6 +5418,7 @@ var ContourForm1Logic = function () {
     setTimeout(function () {
       sectionEvalQueued = false;
       evaluateSections();
+      labelPhoneCountryOptions();
       clearAnsweredRequiredFallbacks();
       dedupeFieldErrors();
       syncFieldErrorAria();
@@ -5744,6 +5795,7 @@ var ContourForm1Logic = function () {
       // band leads the card and the 24px that separated it from the question
       // becomes dead space at the top (Amrit, 23 Aug).
       box + " .contour-person-tabs--static.contour-person-tabs--flush { margin-top: 2px; }" +
+      box + " .contour-person-tabs--static.contour-person-tabs--beside-question { margin-top: 44px; }" +
       // With no pill beside it the rule starts at the band's own left edge and
       // takes its time coming up: it has the room the pill used to occupy, and
       // a longer taper is what keeps it from reading as a hard line drawn
@@ -5751,7 +5803,10 @@ var ContourForm1Logic = function () {
       box + ' .contour-person-tabs--static::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: linear-gradient(to right, rgba(12, 49, 102, 0), rgba(12, 49, 102, 0.14) 112px, rgba(12, 49, 102, 0.14) calc(100% - 48px), rgba(12, 49, 102, 0)); }' +
       // A step up from the base 11.5/700 so the segment names read as
       // headers, while staying under the card band's 12.5px.
-      box + " .contour-person-tabs__heading { font-size: 12px; font-weight: 800; }" +
+      // Level with the card's own band rather than a step under it: left-
+      // aligned, this label now leads the rows beneath it instead of sitting
+      // in the corner, so it carries a heading's weight (Amrit, 25 Aug 2026).
+      box + " .contour-person-tabs__heading { font-size: 13px; font-weight: 800; }" +
       box + " .contour-person-tabs--static .contour-person-tabs__heading { position: relative; }" +
       box + " .contour-person-tabs--static .contour-person-tabs__label { position: relative; background: #FFFFFF; padding-left: 10px; }" +
       box + " .contour-person-tabs--static .contour-person-tabs__you { position: relative; }" +
@@ -5800,6 +5855,17 @@ var ContourForm1Logic = function () {
         box + "--collapsed .contour-section-box__header:hover .contour-section-box__action { background: rgba(255, 255, 255, 0.12); }" +
         ""
         : "") +
+      // The country box now carries its dial code, so it needs the room; the
+      // number box has it to spare, being one national number wide.
+      // The :not() chain is the page stylesheet's own, repeated so this wins
+      // the cascade against it — both rules carry !important, so it comes down
+      // to specificity, and three attribute selectors are worth more than the
+      // extra class this adds.
+      // The group is a flex row and the page caps the country box at 130px with
+      // flex: 0 0 auto, so width alone changes nothing — the basis and the cap
+      // have to go with it.
+      box + ' .hs-fieldtype-intl-phone select.hs-input:not([type="checkbox"]):not([type="radio"]):not([type="file"]) { flex: 0 0 58% !important; width: 58% !important; max-width: none !important; min-width: 0 !important; }' +
+      box + ' .hs-fieldtype-intl-phone input.hs-input[type="tel"]:not([type="checkbox"]):not([type="radio"]):not([type="file"]) { flex: 1 1 auto !important; width: auto !important; min-width: 0 !important; }' +
       // The one remaining native control joins the palette.
       box + ' input[type="checkbox"][name="tos_privacy_consent"] { accent-color: #0C3166; }' +
       // The hr separators earned their keep on the flat form; cards make
