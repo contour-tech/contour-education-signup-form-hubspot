@@ -570,7 +570,10 @@ var ContourForm1Logic = function () {
       // Card background: transparent on hover — the translucent highlighter
       // tint fades in only while the card is selected.
       ".hs-form .contour-program-card::before { content: \"\"; position: absolute; inset: 0; border-radius: inherit; background: var(--contour-card-accent-soft, transparent); opacity: 0; transition: opacity 0.5s ease; pointer-events: none; }" +
-      ".hs-form .contour-program-card--selected::before { opacity: 1; background: #0C3166; }" +
+      // #005FCC rather than the navy: stacked navy cards inside a navy-banded
+      // card read as one mass, and the fill is the only thing saying which
+      // brand was picked. On trial — one value to put back (Amrit, 25 Aug 2026).
+      ".hs-form .contour-program-card--selected::before { opacity: 1; background: #005FCC; }" +
       // The navy fill is a positioned layer, so in-flow card content needs a
       // stacking context of its own to paint above it.
       ".hs-form .contour-program-card__body { position: relative; z-index: 1; }" +
@@ -2486,6 +2489,37 @@ var ContourForm1Logic = function () {
     var divider = formRoot.querySelector("#contour-divider-campus");
     if (divider) divider.style.display = shouldShow ? "" : "none";
   }
+  /* Medical Entry runs online and nowhere else, so Online is not a campus
+     choice for it — it is a consequence of picking the program. It was only
+     being forced when MedPrep was the *only* program picked, and that case
+     hides the campus question outright; pick Medical Entry alongside High
+     School Tutoring and the question appeared with Online free to be unticked,
+     which is what Angad hit (23 Aug 2026).
+
+     Forced and explained, rather than forced quietly: a tick nobody made is
+     worth a line saying who made it. */
+  var CAMPUS_NOTE_CLASS = "contour-campus-note";
+  var CAMPUS_NOTE_TEXT = "Online is selected for you because Medical Entry (UCAT) is delivered online. You can still add campuses for your other programs.";
+  function renderCampusOnlineNote(show) {
+    var field = q(FIELD_SELECTORS.campus);
+    var wrap = field ? fieldWrapper(field) : null;
+    if (!wrap) return;
+    var note = wrap.querySelector("." + CAMPUS_NOTE_CLASS);
+    if (!show) {
+      if (note && note.parentNode) note.parentNode.removeChild(note);
+      return;
+    }
+    if (!note) {
+      note = document.createElement("div");
+      note.className = "hs-field-desc " + CAMPUS_NOTE_CLASS;
+      note.textContent = CAMPUS_NOTE_TEXT;
+      wrap.appendChild(note);
+      return;
+    }
+    // Kept last: HubSpot appends its own error list on a re-render, and the
+    // note explaining a tick belongs under the ticks, not under the error.
+    if (note !== wrap.lastElementChild) wrap.appendChild(note);
+  }
   function evaluateCampusOptions() {
     var location = getValue(FIELD_SELECTORS.location);
     var selectedPrograms = getCheckedValues(FIELD_SELECTORS.programInterest);
@@ -2499,14 +2533,21 @@ var ContourForm1Logic = function () {
       toggleFieldWrapper(q(FIELD_SELECTORS.campus), false);
       toggleCampusDivider(false);
       updateCampusRequiredMark(false);
+      // Nothing on screen to explain.
+      renderCampusOnlineNote(false);
       return;
     }
     var fieldShouldShow = selectedPrograms.length > 0;
+    // MedPrep alongside something else: the question is asked, and Online is
+    // answered for them.
+    var medPrepWithOthers = selectedPrograms.indexOf("MedPrep") !== -1;
     options.forEach(function (opt) {
       var classification = getCampusClassification(opt);
       var shouldShow = fieldShouldShow && subjectMatchesLocation(classification.state, location);
       shouldShow ? showOption(opt) : hideOption(opt);
+      if (medPrepWithOthers && classification.code === "ONLINE" && shouldShow && !opt.checked) setCheckboxChecked(opt, true);
     });
+    renderCampusOnlineNote(fieldShouldShow && medPrepWithOthers);
     toggleFieldWrapper(q(FIELD_SELECTORS.campus), fieldShouldShow);
     toggleCampusDivider(fieldShouldShow);
     updateCampusRequiredMark(fieldShouldShow);
@@ -6035,6 +6076,17 @@ var ContourForm1Logic = function () {
       // this file still reads it. clip rather than display:none, so the widget
       // has a laid-out box to work with.
       box + ' .hs-fieldtype-intl-phone input.hs-input.contour-phone-real:not([type="checkbox"]):not([type="radio"]):not([type="file"]), ' + box + ' .contour-intl-phone input.hs-input.contour-phone-real:not([type="checkbox"]):not([type="radio"]):not([type="file"]) { position: absolute !important; flex: 0 0 0 !important; width: 1px !important; min-width: 0 !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0 !important; opacity: 0 !important; }' +
+      /* Campus tiles. Unpicked they take the page's own cream, so the card
+         reads as a surface with wells cut into it rather than white boxes on
+         white; picked they take #005FCC, which separates a chosen campus from
+         the navy band above it in a way navy-on-navy cannot (Amrit, 25 Aug
+         2026). :not(:has(input:checked)) mirrors the "Are you a" rule above —
+         the page stylesheet's own shape, so this wins on specificity. */
+      box + '[data-contour-section="campus"] .hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display:not(:has(input:checked)) { background-color: #FFF9F1 !important; }' +
+      box + '[data-contour-section="campus"] .hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display:has(input:checked) { background-color: #005FCC !important; border-color: #005FCC !important; }' +
+      box + '[data-contour-section="campus"] .hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display:has(input:checked) span, ' + box + '[data-contour-section="campus"] .hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display:has(input:checked) .contour-campus-name, ' + box + '[data-contour-section="campus"] .hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display:has(input:checked) .contour-campus-address { color: #FFFFFF !important; }' +
+      // Why Online is ticked when nobody ticked it.
+      box + " .contour-campus-note { margin: 14px 0 0; padding: 12px 16px; border: 1px solid rgba(0, 95, 204, 0.22); border-left: 3px solid #005FCC; border-radius: 12px; background: rgba(0, 95, 204, 0.06); font-size: 13.5px; line-height: 1.45; color: #0C3166; }" +
       // The one remaining native control joins the palette.
       box + ' input[type="checkbox"][name="tos_privacy_consent"] { accent-color: #0C3166; }' +
       // The hr separators earned their keep on the flat form; cards make
