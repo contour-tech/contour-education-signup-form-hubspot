@@ -1113,7 +1113,8 @@ var ContourForm1Logic = function () {
     // a left-aligned one, where the label is what the rule has to clear.
     var leader = labelLeft ? heading : marker;
     var leadWidth = leader ? leader.offsetWidth : 0;
-    if (leadWidth > 0) existing.style.setProperty("--contour-seg-rule-start", (leadWidth + 12) + "px"); else existing.style.removeProperty("--contour-seg-rule-start");
+    if (leadWidth > 0) existing.style.setProperty("--contour-seg-rule-start", (leadWidth + 10) + "px"); else existing.style.removeProperty("--contour-seg-rule-start");
+    syncSegRuleStart();
     if (existing.nextSibling !== anchorRow) anchorRow.parentNode.insertBefore(existing, anchorRow);
     var precededByVisible = false;
     var prev = existing.previousElementSibling;
@@ -1133,6 +1134,25 @@ var ContourForm1Logic = function () {
     // (Amrit, 25 Aug 2026).
     var besideQuestion = !!(prev && prev.classList && prev.classList.contains("hs_web_form_contact_type"));
     existing.classList.toggle("contour-person-tabs--beside-question", besideQuestion);
+  }
+  /* "Student Details" and "Guardian Details" are different lengths, so a rule
+     measured off each one starts in a different place and the two bands read
+     as unaligned even though each is individually correct. The widest heading
+     sets the start for all of them, so the rules line up down the card and the
+     gap after the shorter label is simply larger (Amrit, 25 Aug 2026). */
+  function syncSegRuleStart() {
+    var bands = qAll("[data-contour-person-static]");
+    if (bands.length === 0) return;
+    var widest = 0;
+    bands.forEach(function (band) {
+      var own = parseFloat(band.style.getPropertyValue("--contour-seg-rule-start"));
+      if (own > widest) widest = own;
+    });
+    if (!widest) return;
+    bands.forEach(function (band) {
+      var wanted = widest + "px";
+      if (band.style.getPropertyValue("--contour-seg-rule-start") !== wanted) band.style.setProperty("--contour-seg-rule-start", wanted);
+    });
   }
   function teardownPersonStacked() {
     var headers = qAll("[data-contour-person-static]");
@@ -3576,7 +3596,7 @@ var ContourForm1Logic = function () {
     var dial = dialCodeForIso(opt.value);
     var iso = String(opt.value || "").toUpperCase();
     if (!dial) return opt.getAttribute(PHONE_FULL_LABEL_ATTR) || opt.textContent;
-    return iso + " +" + dial;
+    return iso + " (+" + dial + ")";
   }
   function setCountryLabelsExpanded(select, expanded) {
     Array.prototype.forEach.call(select.options, function (opt) {
@@ -6039,7 +6059,7 @@ var ContourForm1Logic = function () {
       // turns round — short coming up out of the label, long going away at the
       // far edge. Last of the three, so it wins the tie on source order over
       // the two above, which it deliberately shares specificity with.
-      box + " .contour-person-tabs--static.contour-person-tabs--label-left .contour-person-tabs__label { padding-left: 0; padding-right: 10px; }" +
+      box + " .contour-person-tabs--static.contour-person-tabs--label-left .contour-person-tabs__label { padding-left: 0; padding-right: 0; }" +
       // Solid where it leaves the label, tapering only at the far end. A rule
       // that fades in as well has two soft ends and reads as floating; the end
       // beside the text is where it is anchored, so it starts at full strength
