@@ -63,13 +63,19 @@ var ContourForm1Logic = function () {
     // stop repeating whose field is whose (Luke, 19 Aug 2026; tab design
     // finalised by Amrit, 21 Aug 2026 — see PERSON GROUPS below).
     personGroups: true,
+    // Which end of the segment band carries "Student Details" / "Guardian
+    // Details". Left by default: it lands on the same grid line as the field
+    // labels under it, so the band reads as a heading for the rows rather than
+    // a note tucked into the corner (Angad, 25 Aug 2026). On puts it back on
+    // the right, and the rule's taper turns round with it.
+    personLabelRight: false,
     // The "This is you" pill on the segment header of whoever is filling the
     // form in. Off: the band is a name and a rule, which is quieter, and the
     // rule takes the room the pill used to (Angad, 25 Aug 2026). On restores
     // the pill and the rule starts past it, measured.
     personYouPill: false,
     // Renders the Interested Subjects checkboxes as selectable tiles in the
-    // program-card language — navy fill and a lime tick when picked. Off
+    // program-card language — navy fill and a blue tick when picked. Off
     // restores the plain native checkboxes (Angad's "dopeify" round, 22 Aug
     // 2026; the earlier wall-of-boxes concern is gone now that the matrix
     // filters the list down per student).
@@ -623,7 +629,7 @@ var ContourForm1Logic = function () {
       // is always dead-centre in the disc at any zoom.
       opt + ' label::before { content: ""; flex: 0 0 auto; width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid rgba(12, 49, 102, 0.3); background: #FFFFFF center / 0 0 no-repeat; box-sizing: border-box; transition: background-color 0.16s ease, border-color 0.16s ease; }' +
       opt + " label:has(input:checked) { background: #0C3166 !important; border-color: #0C3166 !important; }" +
-      opt + ' label:has(input:checked)::before { background-color: #D7FC3D; background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\'%3E%3Cpath d=\'M20 6L9 17l-5-5\' fill=\'none\' stroke=\'%230C3166\' stroke-width=\'4\' stroke-linecap=\'round\' stroke-linejoin=\'round\'/%3E%3C/svg%3E"); background-size: 11px 11px; border-color: #D7FC3D; }' +
+      opt + ' label:has(input:checked)::before { background-color: #007AFF; background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\'%3E%3Cpath d=\'M20 6L9 17l-5-5\' fill=\'none\' stroke=\'%23FFFFFF\' stroke-width=\'4\' stroke-linecap=\'round\' stroke-linejoin=\'round\'/%3E%3C/svg%3E"); background-size: 11px 11px; border-color: #007AFF; }' +
       opt + " label:has(input:checked) span { color: #FFFFFF !important; }" +
       opt + " label:has(input:focus-visible) { box-shadow: 0 0 0 3px rgba(52, 120, 247, 0.35); }" +
       // The one-level note hangs under the pill, indented past the marker.
@@ -1086,6 +1092,8 @@ var ContourForm1Logic = function () {
     // and the title keeps the right. A heading without a badge must stay
     // wholly right-aligned, so the modifier goes on and off with the badge.
     heading.classList.toggle("contour-person-tabs__heading--split", !!marker);
+    var labelLeft = !featureEnabled("personLabelRight");
+    existing.classList.toggle("contour-person-tabs--label-left", labelLeft);
     // The separator starts past the pill, and the pill's width is copy —
     // "This is you" is three times "You". So the offset is measured, not
     // hardcoded: a fixed 46px left the wider pill sitting on top of the
@@ -1093,12 +1101,12 @@ var ContourForm1Logic = function () {
     // strength with a hard edge (Amrit, 22 Aug). Skipped while the pill is
     // laid out at zero width (hidden guardian segment) — a later pass, once
     // it is on screen, sets the real number.
-    if (marker) {
-      var pillWidth = marker.offsetWidth;
-      if (pillWidth > 0) existing.style.setProperty("--contour-seg-rule-start", (pillWidth + 12) + "px");
-    } else {
-      existing.style.removeProperty("--contour-seg-rule-start");
-    }
+    // Whatever leads the band decides where the rule may start: the pill on a
+    // right-aligned band, and the whole heading — pill and label together — on
+    // a left-aligned one, where the label is what the rule has to clear.
+    var leader = labelLeft ? heading : marker;
+    var leadWidth = leader ? leader.offsetWidth : 0;
+    if (leadWidth > 0) existing.style.setProperty("--contour-seg-rule-start", (leadWidth + 12) + "px"); else existing.style.removeProperty("--contour-seg-rule-start");
     if (existing.nextSibling !== anchorRow) anchorRow.parentNode.insertBefore(existing, anchorRow);
     var precededByVisible = false;
     var prev = existing.previousElementSibling;
@@ -1398,6 +1406,7 @@ var ContourForm1Logic = function () {
       // dropped: with no wrapper nodes it needs a positioned overlay that
       // drifts whenever validation errors change a segment's height).
       ".hs-form .contour-person-tabs--static { justify-content: flex-end; }" +
+      ".hs-form .contour-person-tabs--static.contour-person-tabs--label-left { justify-content: flex-start; }" +
       // inline-flex so the "You" badge sits optically centred against the
       // heading's cap height rather than on its baseline.
       // min-height is the badge's own height, so a band carrying the badge and
@@ -5680,15 +5689,15 @@ var ContourForm1Logic = function () {
       box + "--collapsed .contour-section-box__header { border-radius: 16px; border-bottom-color: transparent; }" +
       box + "__header--togglable { cursor: pointer; }" +
       box + "--collapsed .contour-section-box__header:hover { background: rgba(12, 49, 102, 0.08); }" +
-      // Lime disc + navy tick — the same mark as the subject tiles, the one
-      // confirmation glyph the design keeps.
-      // No ring at all on the band: lime on navy is already the brand's
-      // highest-contrast pair, so the white halo only fuzzed the edge and a
-      // navy border vanished into the band. The disc carries itself and goes
-      // one step larger so the tick reads (Amrit, 22 Aug). The prefill
-      // banner's badge keeps its navy edge — that one sits on a white card,
-      // where lime does need an outline to hold its shape.
-      box + "__status { flex: 0 0 auto; display: none; align-items: center; justify-content: center; width: 22px; height: 22px; box-sizing: border-box; border-radius: 50%; background: #D7FC3D; color: #0C3166; }" +
+      // Blue disc + white tick — the same mark as the subject tiles, the one
+      // confirmation glyph the design keeps. It was lime until the highlighter
+      // was reserved for CTAs, where it does the most work (Angad, 25 Aug
+      // 2026); the prefill banner's badge is still lime, being a badge rather
+      // than a confirmation.
+      // No ring on the band either way: the disc has enough contrast against
+      // the navy to carry itself, and it goes one step larger than the tiles'
+      // so the tick reads at this size (Amrit, 22 Aug).
+      box + "__status { flex: 0 0 auto; display: none; align-items: center; justify-content: center; width: 22px; height: 22px; box-sizing: border-box; border-radius: 50%; background: #007AFF; color: #FFFFFF; }" +
       box + "__status svg { display: block; }" +
       box + "--collapsed .contour-section-box__status { display: flex; }" +
       box + "__title { flex: 0 0 auto; font-size: 12.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #0C3166; }" +
@@ -5752,6 +5761,12 @@ var ContourForm1Logic = function () {
       // ensurePersonStaticHeader); the fallback keeps the rule clear of the
       // shortest sensible pill if a pass runs before it can be measured.
       box + ' .contour-person-tabs--static:has(.contour-person-tabs__you)::before { left: var(--contour-seg-rule-start, 46px); background: linear-gradient(to right, rgba(12, 49, 102, 0), rgba(12, 49, 102, 0.14) 48px, rgba(12, 49, 102, 0.14) calc(100% - 48px), rgba(12, 49, 102, 0)); }' +
+      // Label on the left: the rule starts past it, measured, and the taper
+      // turns round — short coming up out of the label, long going away at the
+      // far edge. Last of the three, so it wins the tie on source order over
+      // the two above, which it deliberately shares specificity with.
+      box + " .contour-person-tabs--static.contour-person-tabs--label-left .contour-person-tabs__label { padding-left: 0; padding-right: 10px; }" +
+      box + ' .contour-person-tabs--static.contour-person-tabs--label-left::before { left: var(--contour-seg-rule-start, 130px); background: linear-gradient(to right, rgba(12, 49, 102, 0), rgba(12, 49, 102, 0.14) 48px, rgba(12, 49, 102, 0.14) calc(100% - 112px), rgba(12, 49, 102, 0)); }' +
       box + " .contour-person-tabs--mid { margin-top: 26px; border-top: 0; }" +
       box + " .contour-person-group-host { margin-bottom: 0 !important; }" +
       box + " .contour-person-group-host > .contour-person-card__row { border: 0 !important; border-radius: 0 !important; }" +
@@ -5779,7 +5794,7 @@ var ContourForm1Logic = function () {
         box + "--collapsed .contour-section-box__header:hover { background: #123B73; }" +
         box + "__title { color: #FFFFFF; }" +
         box + "__summary { color: rgba(255, 255, 255, 0.72); }" +
-        // White pencil: the lime disc stays the band's one accent, and the
+        // White pencil: the blue disc stays the band's one accent, and the
         // icon sits in the same voice as the title text (Amrit, 22 Aug).
         box + "__action { color: #FFFFFF; }" +
         box + "--collapsed .contour-section-box__header:hover .contour-section-box__action { background: rgba(255, 255, 255, 0.12); }" +
@@ -5801,7 +5816,7 @@ var ContourForm1Logic = function () {
       // rules above wherever they overlap.
       // Not faded out — a card at half strength read as broken rather than as
       // waiting its turn. It keeps a navy edge, a navy title at reading
-      // weight, a hollow ring where the finished card has its lime tick, and
+      // weight, a hollow ring where the finished card has its tick, and
       // the word PENDING in the slot the summary will fill (Angad, 23 Aug).
       box + "--locked { border-color: rgba(12, 49, 102, 0.22); }" +
       box + "--locked .contour-section-box__header, " + box + "--locked .contour-section-box__header:hover { background: rgba(12, 49, 102, 0.04); border-bottom-color: transparent; cursor: default; }" +
@@ -6116,7 +6131,7 @@ var ContourForm1Logic = function () {
       if (subjects) parts.push(subjects === 1 ? "1 subject" : subjects + " subjects");
       // Where nothing runs for the location and year level there is nothing to
       // pick, so the card folds complete with nothing to show for itself — a
-      // lime tick over a blank line. It reports what actually happened.
+      // tick over a blank line. It reports what actually happened.
       if (parts.length === 0) {
         var waitlist = q('input[name="join_no_program_waitlist"]');
         var offered = waitlist && isElementVisible(fieldWrapper(waitlist));
