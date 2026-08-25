@@ -6013,7 +6013,13 @@ var ContourForm1Logic = function () {
       // The separator runs through the text line rather than under it — the
       // label masks it with the card's white, the pill rides it with a white
       // ring, and the rule ties the two ends of the band together.
-      box + " .contour-person-tabs--static { background: none; border: 0; border-radius: 0; position: relative; padding: 6px 0 !important; margin: 24px 0 2px; }" +
+      // Height pinned rather than left to content: 6 + 18 + 6. The rule below
+      // is then placed at a whole 15px instead of at 50% of whatever each band
+      // happened to measure, so the two bands cannot round to different device
+      // rows — which is what had one reading heavier than the other (Amrit,
+      // 25 Aug 2026).
+      box + " .contour-person-tabs--static { background: none; border: 0; border-radius: 0; position: relative; box-sizing: border-box; height: 30px; padding: 6px 0 !important; margin: 24px 0 2px; }" +
+      box + " .contour-person-tabs--static .contour-person-tabs__heading { min-height: 18px; line-height: 18px; }" +
       // On a pre-fill link the "Are you a" row above this is gone, so the
       // band leads the card and the 24px that separated it from the question
       // becomes dead space at the top (Amrit, 23 Aug).
@@ -6023,7 +6029,7 @@ var ContourForm1Logic = function () {
       // takes its time coming up: it has the room the pill used to occupy, and
       // a longer taper is what keeps it from reading as a hard line drawn
       // across the card (Angad, 25 Aug 2026).
-      box + ' .contour-person-tabs--static::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 1px; transform: translateY(-50%); background: linear-gradient(to right, rgba(12, 49, 102, 0), rgba(12, 49, 102, 0) 60px, rgba(12, 49, 102, 0.85) 260px, rgba(12, 49, 102, 0.85)); }' +
+      box + ' .contour-person-tabs--static::before { content: ""; position: absolute; left: 0; right: 0; top: 15px; height: 1px; background: linear-gradient(to right, rgba(12, 49, 102, 0), rgba(12, 49, 102, 0) 60px, rgba(12, 49, 102, 0.85) 260px, rgba(12, 49, 102, 0.85)); }' +
       // A step up from the base 11.5/700 so the segment names read as
       // headers, while staying under the card band's 12.5px.
       // Level with the card's own band rather than a step under it: left-
