@@ -1113,8 +1113,11 @@ var ContourForm1Logic = function () {
     // a left-aligned one, where the label is what the rule has to clear.
     var leader = labelLeft ? heading : marker;
     var leadWidth = leader ? leader.offsetWidth : 0;
+    // Measured off this band's own heading, so each rule sits the same 10px
+    // after its own label whatever that label says. Sharing one start across
+    // the bands lines the rules up but leaves the shorter label with a longer
+    // gap, which is the thing that looked wrong (Amrit, 25 Aug 2026).
     if (leadWidth > 0) existing.style.setProperty("--contour-seg-rule-start", (leadWidth + 10) + "px"); else existing.style.removeProperty("--contour-seg-rule-start");
-    syncSegRuleStart();
     if (existing.nextSibling !== anchorRow) anchorRow.parentNode.insertBefore(existing, anchorRow);
     var precededByVisible = false;
     var prev = existing.previousElementSibling;
@@ -1134,25 +1137,6 @@ var ContourForm1Logic = function () {
     // (Amrit, 25 Aug 2026).
     var besideQuestion = !!(prev && prev.classList && prev.classList.contains("hs_web_form_contact_type"));
     existing.classList.toggle("contour-person-tabs--beside-question", besideQuestion);
-  }
-  /* "Student Details" and "Guardian Details" are different lengths, so a rule
-     measured off each one starts in a different place and the two bands read
-     as unaligned even though each is individually correct. The widest heading
-     sets the start for all of them, so the rules line up down the card and the
-     gap after the shorter label is simply larger (Amrit, 25 Aug 2026). */
-  function syncSegRuleStart() {
-    var bands = qAll("[data-contour-person-static]");
-    if (bands.length === 0) return;
-    var widest = 0;
-    bands.forEach(function (band) {
-      var own = parseFloat(band.style.getPropertyValue("--contour-seg-rule-start"));
-      if (own > widest) widest = own;
-    });
-    if (!widest) return;
-    bands.forEach(function (band) {
-      var wanted = widest + "px";
-      if (band.style.getPropertyValue("--contour-seg-rule-start") !== wanted) band.style.setProperty("--contour-seg-rule-start", wanted);
-    });
   }
   function teardownPersonStacked() {
     var headers = qAll("[data-contour-person-static]");
@@ -6039,7 +6023,7 @@ var ContourForm1Logic = function () {
       // takes its time coming up: it has the room the pill used to occupy, and
       // a longer taper is what keeps it from reading as a hard line drawn
       // across the card (Angad, 25 Aug 2026).
-      box + ' .contour-person-tabs--static::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: linear-gradient(to right, rgba(12, 49, 102, 0), rgba(12, 49, 102, 0.14) 112px, rgba(12, 49, 102, 0.14)); }' +
+      box + ' .contour-person-tabs--static::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: linear-gradient(to right, rgba(12, 49, 102, 0), rgba(12, 49, 102, 0) 10px, rgba(12, 49, 102, 0.14) 130px, rgba(12, 49, 102, 0.14)); }' +
       // A step up from the base 11.5/700 so the segment names read as
       // headers, while staying under the card band's 12.5px.
       // Level with the card's own band rather than a step under it: left-
@@ -6064,7 +6048,7 @@ var ContourForm1Logic = function () {
       // that fades in as well has two soft ends and reads as floating; the end
       // beside the text is where it is anchored, so it starts at full strength
       // and only the end going nowhere fades out (Amrit, 25 Aug 2026).
-      box + ' .contour-person-tabs--static.contour-person-tabs--label-left::before { left: var(--contour-seg-rule-start, 130px); background: linear-gradient(to right, rgba(12, 49, 102, 0.14), rgba(12, 49, 102, 0.14) calc(100% - 112px), rgba(12, 49, 102, 0)); }' +
+      box + ' .contour-person-tabs--static.contour-person-tabs--label-left::before { left: var(--contour-seg-rule-start, 130px); background: linear-gradient(to right, rgba(12, 49, 102, 0.14), rgba(12, 49, 102, 0.14) calc(100% - 130px), rgba(12, 49, 102, 0) calc(100% - 10px), rgba(12, 49, 102, 0)); }' +
       box + " .contour-person-tabs--mid { margin-top: 26px; border-top: 0; }" +
       box + " .contour-person-group-host { margin-bottom: 0 !important; }" +
       box + " .contour-person-group-host > .contour-person-card__row { border: 0 !important; border-radius: 0 !important; }" +
