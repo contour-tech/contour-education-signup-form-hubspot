@@ -6124,7 +6124,10 @@ var ContourForm1Logic = function () {
       // Why Online is ticked when nobody ticked it.
       // 500 rather than the hint's 600: two lines of bold amber is a raised
       // voice for a sentence that is explaining a convenience.
-      box + " .contour-campus-note { margin: 14px 0 0; padding: 11px 14px; border: 1px solid #f0d9a6; border-radius: 10px; background: #FFF3D6; color: #8a5a00; font-size: 13px; line-height: 1.5; font-weight: 500; }" +
+      // 22px above rather than 14: the note follows a row of tall tiles, not a
+      // line of text, so it needs the same air between it and the last tile
+      // that the tiles have between their own rows.
+      box + " .contour-campus-note { margin: 22px 0 0; padding: 11px 14px; border: 1px solid #f0d9a6; border-radius: 10px; background: #FFF3D6; color: #8a5a00; font-size: 13px; line-height: 1.5; font-weight: 500; }" +
       // The one remaining native control joins the palette.
       box + ' input[type="checkbox"][name="tos_privacy_consent"] { accent-color: #0C3166; }' +
       // The hr separators earned their keep on the flat form; cards make
