@@ -2513,24 +2513,21 @@ var ContourForm1Logic = function () {
       return;
     }
     if (!note) {
-      // Built like the school hint — badge, then the line — so the form has
-      // one shape for "here is something you should know" rather than a new
-      // one per note. Amber rather than that hint's blue: the school hint
-      // tells you what to do next, this one reports something the form did
-      // without being asked, and those deserve different weight (Amrit,
-      // 25 Aug 2026).
+      /* No badge. The amber already says "notice", so the icon was saying it
+         twice — and the school hint's badge works because that hint is one
+         short line, where it reads as a bullet; beside two lines of prose it
+         reads as decoration (Amrit, 25 Aug 2026).
+
+         It also leaves the two notes differing in shape and not only colour:
+         a blue badge over one line means "do this next", an amber block of
+         prose means "this was done for you". That is a stronger distinction
+         than the same shape in two colours, and it is the one that matters,
+         since the second kind is easy to mistake for an error. */
       note = document.createElement("p");
       note.className = CAMPUS_NOTE_CLASS;
       note.setAttribute("role", "status");
       note.setAttribute("aria-live", "polite");
-      var icon = document.createElement("span");
-      icon.className = CAMPUS_NOTE_CLASS + "__icon";
-      icon.setAttribute("aria-hidden", "true");
-      icon.textContent = "i";
-      var text = document.createElement("span");
-      text.textContent = CAMPUS_NOTE_TEXT;
-      note.appendChild(icon);
-      note.appendChild(text);
+      note.textContent = CAMPUS_NOTE_TEXT;
       wrap.appendChild(note);
       return;
     }
@@ -6114,8 +6111,9 @@ var ContourForm1Logic = function () {
       box + '[data-contour-section="campus"] .hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display:has(input:checked) { background-color: #005FCC !important; border-color: #005FCC !important; }' +
       box + '[data-contour-section="campus"] .hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display:has(input:checked) span, ' + box + '[data-contour-section="campus"] .hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display:has(input:checked) .contour-campus-name, ' + box + '[data-contour-section="campus"] .hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display:has(input:checked) .contour-campus-address { color: #FFFFFF !important; }' +
       // Why Online is ticked when nobody ticked it.
-      box + " .contour-campus-note { display: flex; align-items: flex-start; gap: 8px; margin: 14px 0 0; padding: 10px 12px; border: 1px solid #f0d9a6; border-radius: 10px; background: #FFF3D6; color: #8a5a00; font-size: 13px; line-height: 1.45; font-weight: 600; }" +
-      box + " .contour-campus-note__icon { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; width: 16px; height: 16px; margin-top: 1px; border-radius: 50%; background: #B4790A; color: #FFFFFF; font-size: 11px; font-weight: 700; line-height: 1; }" +
+      // 500 rather than the hint's 600: two lines of bold amber is a raised
+      // voice for a sentence that is explaining a convenience.
+      box + " .contour-campus-note { margin: 14px 0 0; padding: 11px 14px; border: 1px solid #f0d9a6; border-radius: 10px; background: #FFF3D6; color: #8a5a00; font-size: 13px; line-height: 1.5; font-weight: 500; }" +
       // The one remaining native control joins the palette.
       box + ' input[type="checkbox"][name="tos_privacy_consent"] { accent-color: #0C3166; }' +
       // The hr separators earned their keep on the flat form; cards make
