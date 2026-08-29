@@ -5871,7 +5871,7 @@ var ContourForm1Logic = function () {
      (a newly revealed section, an error) and to the visitor's own, since
      fighting either would be worse than the jump. */
   var COLLAPSE_ANIM_MS = 420;
-  var anchorPinActive = false;
+  var anchorPin = null;
   var intentionalScrollAt = 0;
   function noteIntentionalScroll() {
     intentionalScrollAt = Date.now();
@@ -5887,11 +5887,25 @@ var ContourForm1Logic = function () {
     pinScrollAnchor(anchor, before);
   }
   function pinScrollAnchor(anchor, before) {
-    if (anchorPinActive) return;
     if (!window.requestAnimationFrame) return;
-    anchorPinActive = true;
-    var deadline = Date.now() + COLLAPSE_ANIM_MS;
-    var startedAt = Date.now();
+    var now = Date.now();
+    // A press landing inside the previous fold's animation window retargets
+    // the running pin rather than being dropped: the newest press is the
+    // thing the visitor chose to look at, and a fold with no anchor at all
+    // leaves the page wherever the browser's own focus scroll threw it.
+    if (anchorPin) {
+      anchorPin.anchor = anchor;
+      anchorPin.before = before;
+      anchorPin.deadline = now + COLLAPSE_ANIM_MS;
+      anchorPin.startedAt = now;
+      return;
+    }
+    var pin = anchorPin = {
+      anchor: anchor,
+      before: before,
+      deadline: now + COLLAPSE_ANIM_MS,
+      startedAt: now
+    };
     var cancelled = false;
     function cancel() {
       cancelled = true;
@@ -5900,18 +5914,29 @@ var ContourForm1Logic = function () {
     window.addEventListener("wheel", cancel, { passive: true });
     window.addEventListener("touchmove", cancel, { passive: true });
     function stop() {
-      anchorPinActive = false;
+      anchorPin = null;
       window.removeEventListener("wheel", cancel);
       window.removeEventListener("touchmove", cancel);
     }
     function frame() {
-      if (cancelled || Date.now() > deadline || !anchor.isConnected) return stop();
+      if (cancelled || Date.now() > pin.deadline || !pin.anchor.isConnected) return stop();
       // A reveal or an error report asked for the page to move on purpose.
-      if (intentionalScrollAt > startedAt) return stop();
-      var rect = anchor.getBoundingClientRect();
-      if (rect.height === 0 || (anchor.closest && anchor.closest(".contour-section-box--collapsed"))) return stop();
-      var delta = rect.top - before;
-      if (Math.abs(delta) >= 1) window.scrollBy(0, delta);
+      if (intentionalScrollAt > pin.startedAt) return stop();
+      var rect = pin.anchor.getBoundingClientRect();
+      if (rect.height === 0) return stop();
+      // An anchor inside a folded card has left the screen and means nothing.
+      // Its header has not — a folding card's header is the one part of it
+      // that stays put, which makes it the best anchor a fold can have.
+      if (pin.anchor.closest && !pin.anchor.closest(".contour-section-box__header") && pin.anchor.closest(".contour-section-box--collapsed")) return stop();
+      var delta = rect.top - pin.before;
+      if (Math.abs(delta) >= 1) {
+        var yBefore = window.scrollY;
+        window.scrollBy(0, delta);
+        // The page ran out of room: scrollBy against the top does nothing,
+        // and a pin that can no longer hold its anchor has nothing left to
+        // do but fight whoever scrolls next.
+        if (window.scrollY === yBefore) return stop();
+      }
       window.requestAnimationFrame(frame);
     }
     window.requestAnimationFrame(frame);
