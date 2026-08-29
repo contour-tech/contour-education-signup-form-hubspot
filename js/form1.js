@@ -6333,9 +6333,10 @@ var ContourForm1Logic = function () {
         // Focus is what holds a finished card open, and Safari does not focus
         // a button on click — without this the pencil would open the card and
         // the very next pass would hand straight back to the form's own step.
-        try {
-          box.header.focus();
-        } catch (err) { }
+        // Quietly: the browser's own focus scroll teleports the page to the
+        // header and the anchor pin then drags it back, a visible jerk on
+        // every jump between sections. Holding position is the pin's job.
+        focusQuietly(box.header);
       }
       scheduleSectionEval();
       return;
