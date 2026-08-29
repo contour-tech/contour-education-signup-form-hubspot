@@ -3575,11 +3575,19 @@ var ContourForm1Logic = function () {
 
      The ISO code rather than the dial code alone, because dial codes are not
      unique — +1 is the United States and Canada both, +44 is the UK and
-     Jersey. "AU" answers "which country" in a way "+61" cannot. */
+     Jersey. "AU" answers "which country" in a way "+61" cannot.
+
+     On a phone the ISO goes too: the country box shares one row with the
+     number box at a third of maybe 300px, and "AU (+61)" crowds it where
+     "+61" sits with room. The ambiguity the ISO guards against is accepted
+     there — the open list still shows full names, so the pick itself is
+     never blind (Amrit, 29 Aug 2026). */
+  var phoneNarrowViewport = window.matchMedia ? window.matchMedia("(max-width: 480px)") : null;
   function shortCountryLabel(opt) {
     var dial = dialCodeForIso(opt.value);
     var iso = String(opt.value || "").toUpperCase();
     if (!dial) return opt.getAttribute(PHONE_FULL_LABEL_ATTR) || opt.textContent;
+    if (phoneNarrowViewport && phoneNarrowViewport.matches) return "+" + dial;
     return iso + " (+" + dial + ")";
   }
   function setCountryLabelsExpanded(select, expanded) {
@@ -3621,6 +3629,13 @@ var ContourForm1Logic = function () {
         });
       }
       if (document.activeElement !== select) setCountryLabelsExpanded(select, false);
+    });
+  }
+  // A rotation across the 480px line changes what the short label should
+  // say, and nothing else would revisit an already-labelled select.
+  if (phoneNarrowViewport && phoneNarrowViewport.addEventListener) {
+    phoneNarrowViewport.addEventListener("change", function () {
+      labelPhoneCountryOptions();
     });
   }
   /* The dial code sat inside the number box because HubSpot's widget puts it
@@ -6245,7 +6260,19 @@ var ContourForm1Logic = function () {
       // The CTA before the form is ready: still there, still clickable so the
       // gate can say what is missing, plainly not the live button yet.
       ".hs-form .hs_submit .hs-button.contour-submit--waiting, .hs-form .hs-submit .hs-button.contour-submit--waiting { background-color: rgba(12, 49, 102, 0.10) !important; border-color: transparent !important; color: rgba(12, 49, 102, 0.45) !important; box-shadow: none !important; }" +
-      "@media (max-width: 767px) { " + box + "__header { padding: 16px 16px 0; } " + box + "--collapsed .contour-section-box__header { padding-bottom: 16px; } " + box + "__content-inner { padding: 6px 16px 16px; } }";
+      // The band's padding is the same on all four sides whether the card is
+      // open or folded — the old "16px 16px 0" left the title pressed against
+      // the band's bottom edge on an open card (Amrit, 29 Aug 2026).
+      // 14px on top of the content rather than 6: the first question needs
+      // the same air below the band that the band's own text has inside it.
+      // The phone widgets stay a row on a phone: the page header's stylesheet
+      // stands the guardian's into a column under 480px, and a full-width
+      // country box over a full-width number box reads as two answers to one
+      // question. The country box holds a bare "+61" at this width (see
+      // shortCountryLabel), so a third of the row fits it. The :not() chain
+      // is the page rule's own, repeated so this wins the cascade against
+      // it — both carry !important, so it comes down to specificity.
+      "@media (max-width: 767px) { " + box + "__header { padding: 14px 16px; } " + box + "__content-inner { padding: 14px 16px 18px; } " + box + ' .hs-fieldtype-intl-phone.hs-input:not([type="checkbox"]):not([type="radio"]):not([type="file"]) { flex-direction: row !important; } ' + box + " .contour-intl-phone { flex-direction: row !important; } }";
     document.head.appendChild(style);
   }
   function ensureSectionBox(def, firstNode) {
@@ -8220,7 +8247,7 @@ var ContourForm1Logic = function () {
     // specificity as the header CSS's ".hs-dependent-field > .hs-form-field"
     // full-width default, so it can't lose to it on specificity — only the
     // first selector applies if HubSpot ever nests the field deeper.
-    style.textContent = ".hs-form .hs_student_phone_number, .hs-form .hs-dependent-field > .hs_student_phone_number { flex: 0 0 calc(50% - 0.375rem) !important; box-sizing: border-box; margin-bottom: 0 !important; min-width: 0 !important; }" + ".hs-form .contour-intl-phone { display: flex; align-items: stretch; gap: 0.5rem; width: 100%; box-sizing: border-box; }" + '.hs-form select.contour-intl-phone__country:not([type="checkbox"]):not([type="radio"]):not([type="file"]) { flex: 0 0 auto !important; width: auto !important; min-width: 90px; max-width: 130px; }' + '.hs-form input.contour-intl-phone__number:not([type="checkbox"]):not([type="radio"]):not([type="file"]) { flex: 1 1 auto !important; width: auto !important; min-width: 0; }' + "@media screen and (max-width: 767px) { .hs-form .hs_student_phone_number, .hs-form .hs-dependent-field > .hs_student_phone_number { flex: 0 0 100% !important; } }" + '@media screen and (max-width: 480px) { .hs-form .contour-intl-phone { flex-direction: column; } .hs-form select.contour-intl-phone__country:not([type="checkbox"]):not([type="radio"]):not([type="file"]) { max-width: 100%; width: 100% !important; } }';
+    style.textContent = ".hs-form .hs_student_phone_number, .hs-form .hs-dependent-field > .hs_student_phone_number { flex: 0 0 calc(50% - 0.375rem) !important; box-sizing: border-box; margin-bottom: 0 !important; min-width: 0 !important; }" + ".hs-form .contour-intl-phone { display: flex; align-items: stretch; gap: 0.5rem; width: 100%; box-sizing: border-box; }" + '.hs-form select.contour-intl-phone__country:not([type="checkbox"]):not([type="radio"]):not([type="file"]) { flex: 0 0 auto !important; width: auto !important; min-width: 90px; max-width: 130px; }' + '.hs-form input.contour-intl-phone__number:not([type="checkbox"]):not([type="radio"]):not([type="file"]) { flex: 1 1 auto !important; width: auto !important; min-width: 0; }' + "@media screen and (max-width: 767px) { .hs-form .hs_student_phone_number, .hs-form .hs-dependent-field > .hs_student_phone_number { flex: 0 0 100% !important; } }" + '@media screen and (max-width: 480px) { .hs-form select.contour-intl-phone__country:not([type="checkbox"]):not([type="radio"]):not([type="file"]) { min-width: 76px; } }';
     document.head.appendChild(style);
   }
   var STUDENT_PHONE_DEFAULT_ISO = "au";
