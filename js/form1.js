@@ -5599,7 +5599,12 @@ var ContourForm1Logic = function () {
     var target = entry.header || entry.nodes[0];
     if (!target || !target.getBoundingClientRect) return;
     var viewport = window.innerHeight || 0;
-    if (!viewport || target.getBoundingClientRect().top < viewport - 48) return;
+    if (!viewport) return;
+    // Off screen in either direction counts: a fold above the new section
+    // can leave it stranded past the top of the viewport, not just below
+    // the bottom.
+    var top = target.getBoundingClientRect().top;
+    if (top >= 0 && top < viewport - 48) return;
     noteIntentionalScroll();
     target.scrollIntoView({
       behavior: "smooth",
@@ -7088,8 +7093,10 @@ var ContourForm1Logic = function () {
     // force: the multi-select guard exists to stop the page moving on the
     // first tick of a list. By the time a step hands over, that list is
     // answered and folded — the card being opened is the thing to look at.
+    // The box, not its header: scroll-margin for the sticky nav lives on the
+    // box, and a scrolled bare header ends up sitting flush under the nav.
     scrollSectionIntoView({
-      header: box.header,
+      header: box.el,
       nodes: [box.el]
     }, true);
   }
