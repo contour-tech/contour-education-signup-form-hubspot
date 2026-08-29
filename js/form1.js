@@ -7106,13 +7106,32 @@ var ContourForm1Logic = function () {
       var openBefore = activeSectionId;
       var pressed = stepPressAnchor;
       stepPressAnchor = null;
+      // No press to anchor on: hold the open card's header instead. The
+      // generic anchor guess lands on the card that is about to fold, and an
+      // anchor that folds is a hand-over where the whole page lurches up by
+      // the folded card's height.
+      var autoAnchor = null;
+      if (!pressed && openBefore && sectionBoxes[openBefore] && sectionBoxes[openBefore].header.getBoundingClientRect) {
+        autoAnchor = {
+          el: sectionBoxes[openBefore].header,
+          top: sectionBoxes[openBefore].header.getBoundingClientRect().top
+        };
+      }
       withScrollAnchor(function () {
         return applyStepSectionStates(groups);
-      }, pressed);
+      }, pressed || autoAnchor);
       // Not after a press: that scroll is for a hand-over the form decided on,
       // and here it would cancel the very anchor holding the pressed header
       // still — noteIntentionalScroll is what tells the pin to stand down.
-      if (!pressed && activeSectionId && activeSectionId !== openBefore) scrollStepIntoView(activeSectionId);
+      // Deferred past the fold: fired straight away it computes its endpoint
+      // against a layout the collapse is still moving, and lands wherever
+      // the page was mid-animation rather than at the new section.
+      if (!pressed && activeSectionId && activeSectionId !== openBefore) {
+        var stepScrollTo = activeSectionId;
+        setTimeout(function () {
+          if (activeSectionId === stepScrollTo) scrollStepIntoView(stepScrollTo);
+        }, COLLAPSE_ANIM_MS + 60);
+      }
       updateSubmitReveal(groups);
       return;
     }
