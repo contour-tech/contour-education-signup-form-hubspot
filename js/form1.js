@@ -2153,12 +2153,28 @@ var ContourForm1Logic = function () {
       var deliveryOk = subjectMatchesDelivery(classification);
       var intakeOk = subjectMatchesIntake(classification, selectedIntakeYear);
       var audienceOk = subjectMatchesAudience(classification);
-      var prefetchBlocked = prefetchCodes.length > 0 && !!(classification.code && prefetchCodes.indexOf(classification.code) !== -1 || subjectExclusionKey(classification) && prefetchedKeys[subjectExclusionKey(classification)]);
+      var alreadyHeld = prefetchCodes.length > 0 && !!classification.code && prefetchCodes.indexOf(classification.code) !== -1;
+      var prefetchBlocked = alreadyHeld || prefetchCodes.length > 0 && !!(subjectExclusionKey(classification) && prefetchedKeys[subjectExclusionKey(classification)]);
       var shouldShow = !prefetchBlocked && !!location && selectedPrograms.length > 0 && locationOk && programOk && yearOk && deliveryOk && intakeOk && audienceOk && !ucatBlockedForIntake(classification, selectedIntakeYear);
-      // A tick that predates the prefetch response would still submit from a
-      // hidden input — clear it while the input is still clickable.
-      if (prefetchBlocked && opt.checked) setCheckboxChecked(opt, false);
-      shouldShow ? showOption(opt) : hideOption(opt);
+      // The submission overwrites the Web Form - Interested Subject property
+      // wholesale, so a subject the record already holds must keep travelling
+      // in it — otherwise adding one subject through the prefill link drops
+      // the rest from the property, and the email built on that property
+      // misreports the signup (Mani, 29 Aug 2026). It stays ticked in its
+      // hidden input; on screen the summary card is what represents it.
+      if (alreadyHeld && !opt.checked) setCheckboxChecked(opt, true);
+      // A tick that predates the prefetch response on the other level of a
+      // held subject would still submit from a hidden input — clear it while
+      // the input is still clickable.
+      if (prefetchBlocked && !alreadyHeld && opt.checked) setCheckboxChecked(opt, false);
+      if (alreadyHeld) {
+        // hideOption clears the tick as it hides — a held subject hides bare
+        // so its tick survives to submission.
+        var heldWrap = optionWrapper(opt);
+        if (heldWrap) heldWrap.style.display = "none";
+      } else {
+        shouldShow ? showOption(opt) : hideOption(opt);
+      }
       updateInterviewProgramNote(opt, classification, yearLevel, shouldShow);
       if (shouldShow) {
         anyVisible = true;
@@ -2610,6 +2626,16 @@ var ContourForm1Logic = function () {
   var EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   var prefetchedTrialSubjectCodes = [];
   var prefetchedEnrolledSubjectCodes = [];
+  // A held subject (already trialling/enrolled per the prefill fetch) stays
+  // ticked in a hidden input purely so the submission carries it — see
+  // evaluateInterestedSubjectsOptions. UI that reacts to "what the visitor
+  // picked this session" must leave those ticks out.
+  function isHeldSubjectOption(opt) {
+    if (prefetchedTrialSubjectCodes.length === 0 && prefetchedEnrolledSubjectCodes.length === 0) return false;
+    var code = getClassification(opt).code;
+    if (!code) return false;
+    return prefetchedTrialSubjectCodes.indexOf(code) !== -1 || prefetchedEnrolledSubjectCodes.indexOf(code) !== -1;
+  }
   function startUrlPrefetch() {
     if (!PREFETCH_ENDPOINT) return null;
     var studentId = getUrlParam(STUDENT_ID_PARAM);
@@ -3856,9 +3882,13 @@ var ContourForm1Logic = function () {
     anz: "https://calendly.com/contourmedprep/welcome-consultation-anz",
     uk: "https://calendly.com/contourmedprep/welcome-consultation-uk"
   };
+  // Held subjects are skipped in both: a student already trialling UCAT has
+  // had their Welcome Consultation, so their hidden tick must not resurrect
+  // the Calendly block or the TestPrep booking restriction on a prefill visit.
   function isTestprepSelected() {
     var checkedSubjects = qAll(FIELD_SELECTORS.interestedSubjects + ":checked");
     for (var i = 0; i < checkedSubjects.length; i++) {
+      if (isHeldSubjectOption(checkedSubjects[i])) continue;
       if (getClassification(checkedSubjects[i]).program === "TestPrep") return true;
     }
     return false;
@@ -3866,6 +3896,7 @@ var ContourForm1Logic = function () {
   function isUcatSelected() {
     var checkedSubjects = qAll(FIELD_SELECTORS.interestedSubjects + ":checked");
     for (var i = 0; i < checkedSubjects.length; i++) {
+      if (isHeldSubjectOption(checkedSubjects[i])) continue;
       if (isUcatSubject(getClassification(checkedSubjects[i]))) return true;
       var labelText = optionLabelText(checkedSubjects[i]);
       if (UCAT_UK_PATTERN.test(labelText) || UCAT_ANZ_PATTERN.test(labelText)) return true;
@@ -4054,7 +4085,11 @@ var ContourForm1Logic = function () {
   function renderSubjectSummary() {
     var container = ensureSubjectSummary();
     var grid = container.querySelector(".contour-subject-summary__grid");
-    var interested = qAll(FIELD_SELECTORS.interestedSubjects + ":checked").map(function (opt) {
+    var interested = qAll(FIELD_SELECTORS.interestedSubjects + ":checked").filter(function (opt) {
+      // Held subjects already sit in the Trialing/Enrolled columns below;
+      // their hidden submission tick must not duplicate them up here.
+      return !isHeldSubjectOption(opt);
+    }).map(function (opt) {
       return optionLabelText(opt);
     });
     var trialing = prefetchedTrialSubjectCodes.map(subjectCodeToLabel);
