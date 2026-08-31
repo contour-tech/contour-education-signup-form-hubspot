@@ -4070,8 +4070,15 @@ var ContourForm1Logic = function () {
     container.appendChild(grid);
     var subjectsField = q(FIELD_SELECTORS.interestedSubjects);
     var subjectsWrap = subjectsField ? fieldWrapper(subjectsField) : null;
-    if (subjectsWrap && subjectsWrap.parentNode) {
-      subjectsWrap.parentNode.insertBefore(container, subjectsWrap.nextSibling);
+    // Anchored after the whole fieldset row, not after the field inside it:
+    // when every option is held the row collapses (collapseEmptyFieldset),
+    // and a summary sitting inside it vanished with the row even though the
+    // trialing and enrolled chips are exactly what should still show there
+    // (Amrit, 31 Aug 2026).
+    var subjectsRow = subjectsWrap && subjectsWrap.closest ? subjectsWrap.closest("fieldset[class*=form-columns-]") : null;
+    var summaryAnchor = subjectsRow || subjectsWrap;
+    if (summaryAnchor && summaryAnchor.parentNode) {
+      summaryAnchor.parentNode.insertBefore(container, summaryAnchor.nextSibling);
     } else {
       var submitBlock = formRoot.querySelector(".hs-submit");
       if (submitBlock && submitBlock.parentNode) {
