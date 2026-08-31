@@ -6024,7 +6024,7 @@ var ContourForm1Logic = function () {
       // sit under it. 96px cleared the nav but read as too tight on the live
       // page — the card wants a strip of daylight under the bar, not to butt
       // against it (Akshay, 31 Aug 2026).
-      box + " { scroll-margin-top: 116px; }" +
+      box + " { scroll-margin-top: 125px; }" +
       // The header is a slim band in the person-tabs voice — small caps on a
       // faint navy wash — so it reads as the section's chrome, one tier above
       // the field labels inside, rather than a second bold label.
