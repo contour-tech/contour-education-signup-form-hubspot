@@ -5741,10 +5741,23 @@ var ContourForm1Logic = function () {
       // A press on the form is the visitor taking charge, whether or not it
       // lands on something that produces a value.
       if (e.isTrusted && formRoot && formRoot.contains(e.target)) stepUserActed = true;
+      var pressId = sectionIdForNode(e.target);
       // A press anywhere but the pinned card is the visitor leaving it. The
       // header's own handler re-pins if that is where they went.
-      if (stepPinnedId && sectionIdForNode(e.target) !== stepPinnedId) stepPinnedId = null;
+      if (stepPinnedId && pressId !== stepPinnedId) stepPinnedId = null;
       noteAttention(e.target);
+      // A locked card's header does nothing when the click arrives, so a
+      // press on one is not a press the hand-over needs to wait for.
+      pressedSectionId = pressId && SECTION_BOX_IDS[pressId] && sectionUnlocked[pressId] ? pressId : null;
+    }, true);
+    // Released is released even when no click follows — a drag off the
+    // header, a cancelled touch. The attention window covers the sliver
+    // between this and the click event itself.
+    document.addEventListener("pointerup", function () {
+      pressedSectionId = null;
+    }, true);
+    document.addEventListener("pointercancel", function () {
+      pressedSectionId = null;
     }, true);
     document.addEventListener("click", function (e) {
       if (stepModeEnabled() && pressWasOnPendingCard(e.target)) return;
@@ -6916,6 +6929,17 @@ var ContourForm1Logic = function () {
     var id = sectionIdForNode(target);
     return !!(id && SECTION_BOX_IDS[id] && !sectionUnlocked[id]);
   }
+  /* The card a pointer is held down on right now, when that card is one a
+     click can open. Between pointerdown and click the eval pass still runs —
+     the press has blurred the old card, so focusout schedules one — and that
+     pass used to hand the form over to its own next step. Folding one card
+     and opening another mid-press shifts the page under the pointer, the
+     release lands somewhere the visitor never aimed, and the click event
+     never reaches the header they pressed: a press on Preferred Campuses
+     opened Final Details (Akshay, 31 Aug 2026). While this is set, the
+     hand-over waits for the click's own handler to say where the visitor
+     is going. */
+  var pressedSectionId = null;
   // Focus leaving for nowhere in particular. Two very different things look
   // identical from here — a press on the card's own dead space, which focuses
   // nothing, and tabbing or blurring away — so they are told apart by whether
@@ -6995,6 +7019,13 @@ var ContourForm1Logic = function () {
     if (focusInsideBox(activeSectionId)) return;
     if (attentionSectionId === activeSectionId) return;
     if (attentionAt <= activeOpenedAt) return;
+    // A press in flight toward another card, or one that just landed there:
+    // the click's own handler is about to open it. Handing over to the
+    // form's next step here folds cards under a pointer that is still mid
+    // gesture — the page shifts, the click misses, and the visitor watches
+    // a section they never pressed open instead (Akshay, 31 Aug 2026).
+    if (pressedSectionId && pressedSectionId !== activeSectionId) return;
+    if (attentionSectionId && SECTION_BOX_IDS[attentionSectionId] && Date.now() - attentionAt < ATTENTION_CLICK_MS) return;
     setActiveSection(next);
   }
   // Read off the card attributes the last pass wrote, so the Enter handler
