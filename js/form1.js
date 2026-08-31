@@ -7509,59 +7509,10 @@ var ContourForm1Logic = function () {
       clearError: clearError
     };
   }
-  // A prefill visit exists to add subjects, but the held ones riding along
-  // in hidden inputs (see evaluateInterestedSubjectsOptions) already satisfy
-  // HubSpot's required check before the visitor touches anything — without
-  // this, the form submits with zero new picks (Amrit, 31 Aug 2026). Fails
-  // open when nothing selectable is on offer, matching the other required
-  // checks, so a fully-gated list cannot wedge the form shut.
-  function enforceAdditionalSubjectValidation() {
-    var options = qAll(FIELD_SELECTORS.interestedSubjects);
-    if (options.length === 0) return;
-    var fieldWrap = fieldWrapper(options[0]);
-    if (!fieldWrap) return;
-    function selectableAdditional(opt) {
-      return !isHeldSubjectOption(opt) && !opt.disabled && isElementVisible(optionWrapper(opt) || opt);
-    }
-    function isValid() {
-      if (prefetchedTrialSubjectCodes.length === 0 && prefetchedEnrolledSubjectCodes.length === 0) return true;
-      var current = qAll(FIELD_SELECTORS.interestedSubjects);
-      if (!current.some(selectableAdditional)) return true;
-      return current.some(function (opt) {
-        return opt.checked && !isHeldSubjectOption(opt);
-      });
-    }
-    var errorList = document.createElement("ul");
-    errorList.className = "no-list hs-error-msgs inputs-list contour-additional-subjects-error";
-    errorList.setAttribute("role", "alert");
-    errorList.style.display = "none";
-    var errorItem = document.createElement("li");
-    var errorLabel = document.createElement("label");
-    errorLabel.className = "hs-error-msg hs-main-font-element";
-    errorLabel.textContent = "Please select at least one additional subject.";
-    errorItem.appendChild(errorLabel);
-    errorList.appendChild(errorItem);
-    fieldWrap.appendChild(errorList);
-    function showError() {
-      errorList.style.display = "";
-      reportFieldError(fieldWrap, focusTargetIn(fieldWrap));
-    }
-    function clearError() {
-      errorList.style.display = "none";
-    }
-    options.forEach(function (opt) {
-      opt.addEventListener("change", function () {
-        if (isValid()) clearError();
-      });
-    });
-    registerSubmitValidator({
-      isValid: isValid,
-      showError: showError,
-      anchor: function () {
-        return fieldWrap;
-      }
-    });
-  }
+  // A prefill visit may submit with no new subjects at all (Faraz, 31 Aug
+  // 2026): the held ticks satisfy the required check and the student gets
+  // their campus, school and phone updates through. The additional-subject
+  // gate that briefly lived here was removed on that call.
   // A program backed by a held subject cannot be deselected: the trial or
   // enrolment it stands for keeps existing whatever this form says, and a
   // dropped card would overwrite program_interest into disagreeing with the
@@ -9134,7 +9085,6 @@ var ContourForm1Logic = function () {
     enforceFieldRequiredValidation("programInterest", "Please select a program.", "contour-program-interest-error", anyProgramInterestOptionEligible);
     enforceFieldRequiredValidation("campus", "Please select a campus.", "contour-campus-error", isFieldWrapVisible);
     enforceFieldRequiredValidation("interestedSubjects", "Please select at least one subject.", "contour-subjects-error", isFieldWrapVisible);
-    enforceAdditionalSubjectValidation();
     enforceHeldProgramLock();
     enforceProgramSubjectCoverageValidation();
     enforceFieldRequiredValidation("schoolText", "Please enter your school.", "contour-school-error", isFieldWrapVisible, schoolFieldSatisfied);
