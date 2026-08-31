@@ -6021,8 +6021,10 @@ var ContourForm1Logic = function () {
       box + " { margin: 0 0 20px; border: 1px solid rgba(12, 49, 102, 0.12); border-radius: 16px; background: #FFFFFF; box-shadow: 0 1px 3px rgba(12, 49, 102, 0.06); }" +
       box + "--empty { display: none; }" +
       // The page's nav is sticky, so a card scrolled hard to the top would
-      // sit under it.
-      box + " { scroll-margin-top: 96px; }" +
+      // sit under it. 96px cleared the nav but read as too tight on the live
+      // page — the card wants a strip of daylight under the bar, not to butt
+      // against it (Akshay, 31 Aug 2026).
+      box + " { scroll-margin-top: 116px; }" +
       // The header is a slim band in the person-tabs voice — small caps on a
       // faint navy wash — so it reads as the section's chrome, one tier above
       // the field labels inside, rather than a second bold label.
