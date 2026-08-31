@@ -7555,6 +7555,72 @@ var ContourForm1Logic = function () {
       }
     });
   }
+  // A program backed by a held subject cannot be deselected: the trial or
+  // enrolment it stands for keeps existing whatever this form says, and a
+  // dropped card would overwrite program_interest into disagreeing with the
+  // record (Amrit, 31 Aug 2026). The card snaps back and a note under the
+  // cards says why; removals stay an ops action via the email reply.
+  //
+  // Only a still-eligible program snaps back. evaluateProgramInterestOptions
+  // unchecks programs the location/year/intake pair rules out, and re-ticking
+  // those would fight it forever, so an eligibility uncheck is let stand.
+  function enforceHeldProgramLock() {
+    var options = qAll(FIELD_SELECTORS.programInterest);
+    if (options.length === 0) return;
+    var fieldWrap = fieldWrapper(options[0]);
+    var note = null;
+    var noteTimer = null;
+    function heldStatusFor(programValue) {
+      if (prefetchedTrialSubjectCodes.length === 0 && prefetchedEnrolledSubjectCodes.length === 0) return null;
+      var status = null;
+      qAll(FIELD_SELECTORS.interestedSubjects).forEach(function (opt) {
+        var classification = getClassification(opt);
+        if (classification.program !== programValue || !classification.code) return;
+        if (prefetchedEnrolledSubjectCodes.indexOf(classification.code) !== -1) status = "enrolled in";
+        else if (!status && prefetchedTrialSubjectCodes.indexOf(classification.code) !== -1) status = "trialing";
+      });
+      return status;
+    }
+    function showNote(programValue, status) {
+      if (!fieldWrap) return;
+      if (!note) {
+        note = document.createElement("div");
+        note.className = "contour-program-held-note";
+        note.setAttribute("role", "status");
+        note.style.cssText = "margin: 8px 4px 0; font-size: 13px; font-weight: 600; color: #0C3166;";
+        fieldWrap.appendChild(note);
+      }
+      var name = PROGRAM_DISPLAY_NAMES[programValue] || programValue;
+      note.textContent = "You are already " + status + " a " + name + " subject, so this program stays selected.";
+      note.style.removeProperty("display");
+      if (noteTimer) clearTimeout(noteTimer);
+      noteTimer = setTimeout(function () {
+        note.style.display = "none";
+      }, 6000);
+    }
+    options.forEach(function (opt) {
+      opt.addEventListener("change", function () {
+        if (opt.checked) return;
+        var status = heldStatusFor(opt.value);
+        if (!status) return;
+        var location = getValue(FIELD_SELECTORS.location);
+        var yearLevel = getValue(FIELD_SELECTORS.yearLevel);
+        var intakeYear = getValue(FIELD_SELECTORS.intakeYear);
+        if (!location || !yearLevel || !intakeYear || !isProgramEligibleFromSubjects(opt.value, location, yearLevel, intakeYear)) return;
+        var programValue = opt.value;
+        // HubSpot's own handler for this same click settles after this
+        // listener and would flip the tick straight back off, so the re-tick
+        // waits until the event has fully run its course.
+        setTimeout(function () {
+          var fresh = qAll(FIELD_SELECTORS.programInterest).filter(function (o) {
+            return o.value === programValue;
+          })[0] || opt;
+          if (!fresh.checked) setCheckboxChecked(fresh, true);
+        }, 0);
+        showNote(programValue, status);
+      });
+    });
+  }
   // Every selected program card must be backed by at least one selected
   // subject from that program, otherwise submission is blocked (Amitav,
   // 16 Aug 2026): picking Education + MedPrep but only a UCAT subject used
@@ -9062,6 +9128,7 @@ var ContourForm1Logic = function () {
     enforceFieldRequiredValidation("campus", "Please select a campus.", "contour-campus-error", isFieldWrapVisible);
     enforceFieldRequiredValidation("interestedSubjects", "Please select at least one subject.", "contour-subjects-error", isFieldWrapVisible);
     enforceAdditionalSubjectValidation();
+    enforceHeldProgramLock();
     enforceProgramSubjectCoverageValidation();
     enforceFieldRequiredValidation("schoolText", "Please enter your school.", "contour-school-error", isFieldWrapVisible, schoolFieldSatisfied);
     enforceInternalOnlyFieldValidation();
