@@ -6189,6 +6189,12 @@ var ContourForm1Logic = function () {
       box + "--collapsed .contour-section-box__action { display: inline-flex; }" +
       box + "--collapsed .contour-section-box__header:hover .contour-section-box__action { background: rgba(12, 49, 102, 0.10); }" +
       box + "__action svg { display: block; }" +
+      // The fold hint mirrors the pencil: same disc, same slot, shown only
+      // while the card is open and its header will actually respond.
+      box + "__collapse { flex: 0 0 auto; display: none; align-items: center; justify-content: center; width: 28px; height: 28px; margin-left: auto; border-radius: 50%; color: #0C3166; transition: background-color 0.15s ease; }" +
+      box + ":not(.contour-section-box--collapsed):not(.contour-section-box--locked) .contour-section-box__header--togglable .contour-section-box__collapse { display: inline-flex; }" +
+      box + ":not(.contour-section-box--collapsed):not(.contour-section-box--locked) .contour-section-box__header--togglable:hover .contour-section-box__collapse { background: rgba(12, 49, 102, 0.10); }" +
+      box + "__collapse svg { display: block; }" +
       // 1fr/0fr squeeze instead of display:none: the fields stay "visible" to
       // every walker, and the height animates without measuring it.
       box + "__content { display: grid; grid-template-rows: 1fr; }" +
@@ -6309,6 +6315,8 @@ var ContourForm1Logic = function () {
         // White pencil: the blue disc stays the band's one accent, and the
         // icon sits in the same voice as the title text (Amrit, 22 Aug).
         box + "__action { color: #FFFFFF; }" +
+        box + "__collapse { color: #FFFFFF; }" +
+        box + ":not(.contour-section-box--collapsed):not(.contour-section-box--locked) .contour-section-box__header--togglable:hover .contour-section-box__collapse { background: rgba(255, 255, 255, 0.12); }" +
         box + "--collapsed .contour-section-box__header:hover .contour-section-box__action { background: rgba(255, 255, 255, 0.12); }" +
         ""
         : "") +
@@ -6404,6 +6412,7 @@ var ContourForm1Logic = function () {
       box + "--flagged .contour-section-box__title { color: #FFFFFF; }" +
       box + "--flagged .contour-section-box__summary { color: rgba(255, 255, 255, 0.75); }" +
       box + "--flagged .contour-section-box__action { color: #FFFFFF; }" +
+      box + "--flagged .contour-section-box__collapse { color: #FFFFFF; }" +
       box + "--flagged .contour-section-box__status { display: flex; background: #FFFFFF; border-color: #FFFFFF; color: #8A0C22; }" +
       box + "--flagged .contour-section-box__status svg { display: none; }" +
       box + '--flagged .contour-section-box__status::after { content: "!"; font-size: 13px; font-weight: 800; line-height: 1; }' +
@@ -6466,10 +6475,16 @@ var ContourForm1Logic = function () {
     action.className = "contour-section-box__action";
     // Icon-only affordance; the sr-only text keeps "Edit" announced.
     action.innerHTML = '<svg viewBox="0 0 24 24" width="15" height="15" focusable="false" aria-hidden="true"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="contour-sr-only">Edit</span>';
+    // Open cards hint that the header folds them: a minimise dash in the
+    // slot the pencil takes once the card is folded.
+    var fold = document.createElement("span");
+    fold.className = "contour-section-box__collapse";
+    fold.innerHTML = '<svg viewBox="0 0 24 24" width="15" height="15" focusable="false" aria-hidden="true"><path d="M5 12h14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg><span class="contour-sr-only">Collapse</span>';
     header.appendChild(status);
     header.appendChild(title);
     header.appendChild(summary);
     header.appendChild(action);
+    header.appendChild(fold);
     var content = document.createElement("div");
     content.className = "contour-section-box__content";
     var inner = document.createElement("div");
