@@ -5879,7 +5879,11 @@ var ContourForm1Logic = function () {
     // opens it — nobody should be typing into a folded box.
     formRoot.addEventListener("focusin", function (e) {
       noteSectionInteraction(e.target);
-      noteAttention(e.target);
+      // Focus no longer feeds the attention window: with auto-collapse gone
+      // attention only holds the hand-over out of a click's way, and focus is
+      // the wrong signal for that — the phone widget restores focus to its
+      // proxy on every HubSpot re-render, which kept the window open forever
+      // and the next section shut (Amrit, 1 Sep 2026). Presses feed it.
       expandSectionBoxForWrap(e.target);
     });
     // On the document, not the form: a click that lands outside every card is
@@ -7182,14 +7186,14 @@ var ContourForm1Logic = function () {
     }
     var index = sectionIndexById(activeSectionId);
     if (index !== -1 && !boxedSectionComplete(groups, index)) return;
-    if (focusInsideBox(activeSectionId)) return;
-    if (attentionSectionId === activeSectionId) return;
-    if (attentionAt <= activeOpenedAt) return;
+    // Handing over used to fold the finished card, so it waited for focus and
+    // attention to leave it first. It only ever opens the next card now — the
+    // finished one keeps its place — so the moment the answers are in, the
+    // next section unfolds, mid-typing included (Amrit, 1 Sep 2026).
     // A press in flight toward another card, or one that just landed there:
-    // the click's own handler is about to open it. Handing over to the
-    // form's next step here folds cards under a pointer that is still mid
-    // gesture — the page shifts, the click misses, and the visitor watches
-    // a section they never pressed open instead (Akshay, 31 Aug 2026).
+    // the click's own handler is about to open it. Opening a card above a
+    // pointer that is still mid-gesture shifts the page and the click misses,
+    // so the hand-over waits the press out (Akshay, 31 Aug 2026).
     if (pressedSectionId && pressedSectionId !== activeSectionId) return;
     if (attentionSectionId && SECTION_BOX_IDS[attentionSectionId] && Date.now() - attentionAt < ATTENTION_CLICK_MS) return;
     setActiveSection(next);
