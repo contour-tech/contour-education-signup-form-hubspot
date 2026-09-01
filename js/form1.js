@@ -5777,30 +5777,6 @@ var ContourForm1Logic = function () {
         playReveal(node, delay);
       });
     });
-    if (revealedNow.length === 1) scrollSectionIntoView(revealedNow[0]);
-  }
-  // Only nudges the page when the new section is genuinely off screen, and
-  // never while someone is typing — being scrolled away from a half-finished
-  // answer is worse than not being shown the next question straight away.
-  function scrollSectionIntoView(entry, force) {
-    if (prefersReducedMotion()) return;
-    if (lastInteractionWasMultiSelect && !force) return;
-    var active = document.activeElement;
-    if (active && (active.tagName === "TEXTAREA" || active.tagName === "INPUT" && active.type !== "checkbox" && active.type !== "radio" && active.type !== "submit")) return;
-    var target = entry.header || entry.nodes[0];
-    if (!target || !target.getBoundingClientRect) return;
-    var viewport = window.innerHeight || 0;
-    if (!viewport) return;
-    // Off screen in either direction counts: a fold above the new section
-    // can leave it stranded past the top of the viewport, not just below
-    // the bottom.
-    var top = target.getBoundingClientRect().top;
-    if (top >= 0 && top < viewport - 48) return;
-    noteIntentionalScroll();
-    target.scrollIntoView({
-      behavior: "smooth",
-      block: "nearest"
-    });
   }
   // pinOpen keeps the cards open against the automatic rule, for the one case
   // where the whole form arrives at once: a pre-fill link. The visitor did not
@@ -6011,15 +5987,7 @@ var ContourForm1Logic = function () {
     // Kept for scroll anchoring: the thing they just touched is the thing
     // that must not move under them when a card folds.
     if (target.getBoundingClientRect) lastInteractedEl = target;
-    // Ticking one subject is not "finished with subjects": the list is a
-    // multi-select and most people take two or three. Moving the page to the
-    // next section on the first tick reads as the form snatching the list
-    // away mid-choice, so a reveal triggered by one of these stays put and
-    // the visitor scrolls when they are done (Amrit, 23 Aug).
-    var name = target.getAttribute ? target.getAttribute("name") : null;
-    lastInteractionWasMultiSelect = name === "web_form__interested_subject" || name === "web_form__preferred_campuses" || name === "program_interest";
   }
-  var lastInteractionWasMultiSelect = false;
   var lastInteractedEl = null;
   /* Folding a card above the viewport takes its height out of the page, and
      everything below jumps up — the tile under the cursor is suddenly a
