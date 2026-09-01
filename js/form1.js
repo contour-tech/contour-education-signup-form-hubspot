@@ -7327,19 +7327,6 @@ var ContourForm1Logic = function () {
     });
     return heightChanged;
   }
-  function scrollStepIntoView(id) {
-    var box = sectionBoxes[id];
-    if (!box) return;
-    // force: the multi-select guard exists to stop the page moving on the
-    // first tick of a list. By the time a step hands over, that list is
-    // answered and folded — the card being opened is the thing to look at.
-    // The box, not its header: scroll-margin for the sticky nav lives on the
-    // box, and a scrolled bare header ends up sitting flush under the nav.
-    scrollSectionIntoView({
-      header: box.el,
-      nodes: [box.el]
-    }, true);
-  }
   function updateSectionBoxStates(groups) {
     if (!sectionBoxesEnabled()) return;
     if (stepModeEnabled()) {
@@ -7360,19 +7347,6 @@ var ContourForm1Logic = function () {
       withScrollAnchor(function () {
         return applyStepSectionStates(groups);
       }, pressed || autoAnchor);
-      // Not after a press: that scroll is for a hand-over the form decided on
-      // — a press-opened card runs its own glide from toggleSectionBox, since
-      // the toggle changes activeSectionId before this pass ever starts and
-      // openBefore can never tell a press-open apart from no change at all.
-      // Deferred past the fold: fired straight away it computes its endpoint
-      // against a layout the collapse is still moving, and lands wherever
-      // the page was mid-animation rather than at the new section.
-      if (!pressed && activeSectionId && activeSectionId !== openBefore) {
-        var stepScrollTo = activeSectionId;
-        setTimeout(function () {
-          if (activeSectionId === stepScrollTo) scrollStepIntoView(stepScrollTo);
-        }, COLLAPSE_ANIM_MS + 60);
-      }
       updateSubmitReveal(groups);
       return;
     }
