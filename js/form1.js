@@ -7573,6 +7573,29 @@ var ContourForm1Logic = function () {
       if (reached) sectionUnlocked[def.id] = true;
       if (stepNeedsAttention(groups, index, def)) reached = false;
     });
+    // Programs is not actually waiting on all of Academic Details — the
+    // subject matrix needs location, intake year and year level, and nothing
+    // in it cares about the school field. So the card unlocks (and the
+    // eligibility edge above opens it) the moment those three are in, while
+    // the school question stays open right above it. Campus stays on the
+    // ordinary chain: it waits for a program AND the subjects that cover it,
+    // a bare program pick is not enough (Amrit, 1 Sep 2026).
+    if (!sectionUnlocked.programs && sectionUnlocked.study && matrixInputsAnswered()) sectionUnlocked.programs = true;
+    // Campus comes out of PENDING on the first ticked subject (Amrit, 1 Sep
+    // 2026) — a bare program pick is not enough, and the rest of Programs
+    // (or the school field above) finishing is not required.
+    if (!sectionUnlocked.campus && sectionUnlocked.programs && anySubjectTicked()) sectionUnlocked.campus = true;
+  }
+  function anySubjectTicked() {
+    return qAll(FIELD_SELECTORS.interestedSubjects).some(function (input) {
+      return input.checked;
+    });
+  }
+  function matrixInputsAnswered() {
+    var loc = q(FIELD_SELECTORS.location);
+    var intake = q(FIELD_SELECTORS.intakeYear);
+    var level = q(FIELD_SELECTORS.yearLevel);
+    return !!(loc && loc.value && intake && intake.value && level && level.value);
   }
   // Anything that hands over the whole form — a submit attempt, a pre-fill
   // link, staff mode — has to take the locks off with it. Nobody can fix an
