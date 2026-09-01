@@ -3702,10 +3702,24 @@ var ContourForm1Logic = function () {
   function pushProxyThrough(group) {
     var parts = phoneGroupParts(group);
     if (!parts.real || !parts.proxy) return;
+    // A pasted full international number wins over the current select: its
+    // country moves onto the dropdown and only the national digits stay in
+    // the box, rather than composing a second dial code in front of it.
+    var pasted = (parts.proxy.value || "").trim();
+    if (pasted.charAt(0) === "+" && parts.select) {
+      var pastedParts = splitE164(pasted);
+      if (pastedParts && selectPhoneCountryOption(parts.select, pastedParts)) {
+        parts.proxy.value = pastedParts.national;
+        fireInputEvents(parts.select);
+      }
+    }
     var dial = parts.select ? dialCodeForIso(parts.select.value) : null;
     // Read as a national number even if something put a dial code in our box:
     // whatever seeds it, only one code goes into the composed value.
     var typed = phoneNationalDigits((parts.proxy.value || "").trim());
+    // Leading zeros are trunk prefixes (0412… in AU, 07… in the UK) and are
+    // never part of the international number the real box carries.
+    if (dial) typed = typed.replace(/^0+/, "");
     // Empty stays empty: a box holding nothing but a dial code is what made
     // "+91" read as an answered phone number in the first place.
     var next = typed === "" ? "" : (dial ? "+" + dial + " " : "") + typed;
