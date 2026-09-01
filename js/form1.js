@@ -3728,8 +3728,13 @@ var ContourForm1Logic = function () {
     parts.real.dispatchEvent(new Event("input", { bubbles: true }));
     parts.real.dispatchEvent(new Event("change", { bubbles: true }));
   }
-  // The other way, for values this file did not type: a restored draft, a
-  // pre-fill link, HubSpot seeding the box on a country change.
+  // The other way — but only once, when the proxy is first built, to seed it
+  // from whatever was already there: HubSpot's geo seed, a value HubSpot kept
+  // across its own re-render, a draft restored before the proxy existed.
+  // Never on later passes: HubSpot recomposes its own box on country switches
+  // and re-renders, sometimes with the dial code doubled ("+880 880…"), and
+  // pulling that back into view is what kept painting the country code into
+  // the visible field on every subject click (Amrit, 1 Sep 2026).
   function pullProxyFromReal(group) {
     var parts = phoneGroupParts(group);
     if (!parts.real || !parts.proxy) return;
@@ -3766,7 +3771,9 @@ var ContourForm1Logic = function () {
       if (!real.classList.contains("contour-phone-real")) real.classList.add("contour-phone-real");
       if (real.getAttribute("tabindex") !== "-1") real.setAttribute("tabindex", "-1");
       if (real.getAttribute("aria-hidden") !== "true") real.setAttribute("aria-hidden", "true");
+      var created = false;
       if (!proxy) {
+        created = true;
         proxy = document.createElement("input");
         proxy.type = "tel";
         /* Deliberately NOT carrying contour-intl-phone__number. That class is
@@ -3805,7 +3812,17 @@ var ContourForm1Logic = function () {
           }, 0);
         });
       }
-      pullProxyFromReal(group);
+      if (created) {
+        pullProxyFromReal(group);
+      } else if ((proxy.value || "").trim() !== "") {
+        // One-way from here on: the proxy is the only box the visitor types
+        // in, so every later pass re-asserts its compose over the real box —
+        // undoing whatever HubSpot's re-render seeded there — instead of
+        // pulling the widget's own recompositions back into view. An empty
+        // proxy leaves the real box alone mid-session (the geo seed stays
+        // readable); the submit sweep settles that case at the door.
+        pushProxyThrough(group);
+      }
     });
   }
   function refreshDerivedFieldState() {
