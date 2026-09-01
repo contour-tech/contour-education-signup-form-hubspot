@@ -7751,9 +7751,33 @@ var ContourForm1Logic = function () {
     // the click's own handler is about to open it. Opening a card above a
     // pointer that is still mid-gesture shifts the page and the click misses,
     // so the hand-over waits the press out (Akshay, 31 Aug 2026).
-    if (pressedSectionId && pressedSectionId !== activeSectionId) return;
-    if (attentionSectionId && SECTION_BOX_IDS[attentionSectionId] && Date.now() - attentionAt < ATTENTION_CLICK_MS) return;
+    // Held is postponed, not dropped: passes only run when something in the
+    // form changes, and the passes a click triggers all land inside its own
+    // attention window. Without a retry the last pass of the burst is a held
+    // one and the hand-over simply never happens — ticking campuses left
+    // Final Details PENDING until some unrelated click ran another pass
+    // (Amrit, 1 Sep 2026).
+    if (pressedSectionId && pressedSectionId !== activeSectionId) {
+      scheduleStepRetry();
+      return;
+    }
+    if (attentionSectionId && SECTION_BOX_IDS[attentionSectionId] && Date.now() - attentionAt < ATTENTION_CLICK_MS) {
+      scheduleStepRetry();
+      return;
+    }
     setActiveSection(next);
+  }
+  // Single-flight: a burst of held passes buys one retry, timed to land just
+  // after the attention window shuts. If the visitor is still mid-gesture
+  // then, that pass is held again and buys the next retry.
+  var stepRetryQueued = false;
+  function scheduleStepRetry() {
+    if (stepRetryQueued) return;
+    stepRetryQueued = true;
+    setTimeout(function () {
+      stepRetryQueued = false;
+      scheduleSectionEval();
+    }, ATTENTION_CLICK_MS + 30);
   }
   // Read off the card attributes the last pass wrote, so the Enter handler
   // does not recompute the groups on every keystroke.
