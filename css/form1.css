@@ -657,7 +657,7 @@ form.hsForm {
 
    Pairs with enhanceInterestedSubjectsCategories() in
    form1_custom_logic.js, which groups subjects under a heading
-   (Science, Mathematics, English, Selective Entry, Medical Entry,
+   (Science, Mathematics, English, Selective Entry, Med School Entry,
    Other) — static labels only, no click/expand behaviour, so no
    interactive affordance (cursor, hover, chevron) here either.
 ========================================================= */
