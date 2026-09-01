@@ -5925,15 +5925,6 @@ var ContourForm1Logic = function () {
       // A locked card's header does nothing when the click arrives, so a
       // press on one is not a press the hand-over needs to wait for.
       pressedSectionId = pressId && SECTION_BOX_IDS[pressId] && sectionUnlocked[pressId] ? pressId : null;
-      // A press while the page is still gliding to an opened card freezes
-      // the glide where it is — the visitor is aiming at something, and a
-      // page that keeps moving under the pointer lands the click somewhere
-      // they never meant. Re-issuing the current position is how a native
-      // smooth scroll is cancelled.
-      if (pressScrollUntil && Date.now() < pressScrollUntil) {
-        pressScrollUntil = 0;
-        window.scrollTo(window.pageXOffset, window.pageYOffset);
-      }
     }, true);
     // Released is released even when no click follows — a drag off the
     // header, a cancelled touch. The attention window covers the sliver
@@ -6596,14 +6587,6 @@ var ContourForm1Logic = function () {
         // header and the anchor pin then drags it back, a visible jerk on
         // every jump between sections. Holding position is the pin's job.
         focusQuietly(box.header);
-        // Once the fold has settled, glide the chosen card to the top of the
-        // view. From here rather than the pass: the toggle has already made
-        // this card active, so the pass's openBefore comparison cannot see a
-        // press-open happened at all (Akshay, 31 Aug 2026).
-        var pressOpenedId = id;
-        setTimeout(function () {
-          if (activeSectionId === pressOpenedId) scrollPressedSectionIntoView(pressOpenedId);
-        }, COLLAPSE_ANIM_MS + 120);
       }
       scheduleSectionEval();
       return;
@@ -7356,28 +7339,6 @@ var ContourForm1Logic = function () {
       header: box.el,
       nodes: [box.el]
     }, true);
-  }
-  /* A card opened by a press scrolls to the top of the view, always — the
-     off-screen-only nudge above is for answers landing while someone works,
-     where an unasked-for scroll steals the page. A press is asked-for: the
-     visitor chose that card, and leaving it wherever on the screen they
-     happened to catch its header buries a tall card's questions below the
-     fold (Akshay, 31 Aug 2026). The box, not the header, for the same
-     scroll-margin reason as scrollStepIntoView. */
-  var pressScrollUntil = 0;
-  function scrollPressedSectionIntoView(id) {
-    var box = sectionBoxes[id];
-    if (!box || !box.el.getBoundingClientRect) return;
-    // The pin holding the pressed header still has done its job by now;
-    // this is the visitor's own move, so the pin stands down.
-    noteIntentionalScroll();
-    var smooth = !prefersReducedMotion();
-    // While the glide runs, a new press freezes the page (see pointerdown).
-    pressScrollUntil = smooth ? Date.now() + 700 : 0;
-    box.el.scrollIntoView({
-      behavior: smooth ? "smooth" : "auto",
-      block: "start"
-    });
   }
   function updateSectionBoxStates(groups) {
     if (!sectionBoxesEnabled()) return;
