@@ -6590,16 +6590,10 @@ var ContourForm1Logic = function () {
       setSectionBoxCollapsed(id, false);
       return;
     }
-    // Collapsing by hand only works on a finished section — a half-answered
-    // one stays open so the missing answer stays on screen. The click still
-    // pins the card open: reaching the header at all means the person wants
-    // it where it is, and without the pin a click that raced a transient
-    // auto-open would fold the card right back (the "flicker" Amrit hit).
-    if (box.el.getAttribute("data-contour-complete") !== "1") {
-      sectionBoxManualOpen[id] = true;
-      delete sectionBoxManualCollapsed[id];
-      return;
-    }
+    // A deliberate fold works on any card now, half-answered included — the
+    // header is the only thing that collapses a card, so it must always
+    // respond; the missing answers stay reachable behind one more click
+    // (Amrit, 1 Sep 2026).
     sectionBoxManualCollapsed[id] = true;
     delete sectionBoxManualOpen[id];
     setSectionBoxCollapsed(id, true);
@@ -7387,31 +7381,23 @@ var ContourForm1Logic = function () {
       var complete = groupComplete(nodes);
       var completeAttr = complete ? "1" : "0";
       if (box.el.getAttribute("data-contour-complete") !== completeAttr) box.el.setAttribute("data-contour-complete", completeAttr);
-      box.header.classList.toggle("contour-section-box__header--togglable", complete);
+      box.header.classList.toggle("contour-section-box__header--togglable", true);
       if (!complete) {
-        delete sectionBoxManualCollapsed[def.id];
-        if (setSectionBoxCollapsed(def.id, false)) heightChanged = true;
+        // A half-answered card stays open by default, but a deliberate fold
+        // is the visitor's and holds (Amrit, 1 Sep 2026).
+        if (setSectionBoxCollapsed(def.id, !!sectionBoxManualCollapsed[def.id])) heightChanged = true;
         return;
       }
       var summaryText = sectionBoxSummary(def);
       if (box.summary.textContent !== summaryText) box.summary.textContent = summaryText;
-      var laterStarted = startedFlags.some(function (started, j) {
-        return started && j > index;
-      });
       var collapsed;
       if (sectionBoxManualCollapsed[def.id]) collapsed = true;
       else if (sectionBoxManualOpen[def.id]) collapsed = false;
-      else if (def.id === "finish")
-        // Nothing comes after Finishing Up, so "moved on" can't be the cue —
-        // it folds the moment its last answer lands (Amrit, 22 Aug), leaving
-        // the submit button on its own.
-        collapsed = true;
-      // The working-here guard needs both signals: last interaction alone
-      // would pin a section open after an auto-selected program marks the
-      // next one started (the person has already typed on, focus elsewhere),
-      // and focus alone misses clicks that land on body. Together they hold
-      // a card open only while someone is genuinely still in it.
-      else collapsed = laterStarted && !(lastInteractedSectionId === def.id && box.el.contains(document.activeElement));
+      // Auto-collapse removed (Amrit, 1 Sep 2026): a finished card holds its
+      // place — moving to the next section, clicking outside the form, even
+      // Finishing Up completing — until the visitor folds it from the header
+      // themselves.
+      else collapsed = false;
       if (setSectionBoxCollapsed(def.id, collapsed)) heightChanged = true;
     });
     return heightChanged;
