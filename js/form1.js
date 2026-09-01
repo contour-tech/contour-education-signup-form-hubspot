@@ -81,8 +81,9 @@ var ContourForm1Logic = function () {
     // filters the list down per student).
     subjectTiles: true,
     // Wraps the Study / Programs / Campus / Finish sections in card
-    // containers, and auto-collapses a completed section to a one-line
-    // summary with an Edit affordance once a later section has opened.
+    // containers with one-line answer summaries. Nothing folds a card
+    // automatically any more: a card collapses only when the visitor presses
+    // its header, and pressing again reopens it (Amrit, 1 Sep 2026).
     // Contact fields keep their existing personGroups box; the Student /
     // Guardian question stays bare as the form's opening line.
     sectionBoxes: true,
@@ -6516,45 +6517,40 @@ var ContourForm1Logic = function () {
         scheduleDraftSave();
       }
       // Whichever way this click goes, the visitor has just chosen where they
-      // want to be — the pre-fill pin has had its say, and so has the window
-      // where the form gets to pick the open card for itself.
+      // want this card — the pre-fill pin has had its say, and so has the
+      // window where the form gets to pick open cards for itself.
       stepPinnedId = null;
       stepUserActed = true;
-      if (id === activeSectionId) {
-        // The card being worked in does not fold — an unanswered question
-        // must not be hideable. A finished one folds back to its summary and
-        // the form returns to whatever it still needs, which is what the next
-        // pass works out.
-        if (box.el.getAttribute("data-contour-complete") !== "1") return;
-        setActiveSection(null);
-      } else {
+      if (box.el.classList.contains("contour-section-box--collapsed")) {
         sectionVisited[id] = true;
-        // Pinned, not just held. Until now a hand-opened card stayed open
-        // because several conditions happened to agree — the card is
-        // unfinished, or the caret is in it, or nothing has been pressed since
-        // it opened. Any one of those failing on a browser or a timing this
-        // was not tested against, and the form takes the card back and opens
-        // its own next step instead, which is a press on one section opening
-        // another. A press is a decision; it outranks the step until the
-        // visitor makes another one (Angad, 24 Aug 2026).
-        stepPinnedId = id;
+        // Manual state is authoritative both ways: a hand-opened card is out
+        // of the automatic rule's reach entirely, not just favoured by it.
+        sectionBoxManualOpen[id] = true;
+        delete sectionBoxManualCollapsed[id];
+        stepEverOpened[id] = true;
+        setActiveSection(id);
+        // The click is an interaction with the section too: it keeps the card
+        // open through the pass that follows.
+        lastInteractedSectionId = id;
         stepPressAnchor = box.header.getBoundingClientRect ? {
           el: box.header,
           top: box.header.getBoundingClientRect().top
         } : null;
-        setActiveSection(id);
-        // The click is an interaction with the section too: it keeps the card
-        // open through the pass that follows, rather than the form deciding
-        // mid-click that a finished card should hand over again.
-        lastInteractedSectionId = id;
         setSectionBoxCollapsed(id, false);
-        // Focus is what holds a finished card open, and Safari does not focus
-        // a button on click — without this the pencil would open the card and
-        // the very next pass would hand straight back to the form's own step.
-        // Quietly: the browser's own focus scroll teleports the page to the
-        // header and the anchor pin then drags it back, a visible jerk on
-        // every jump between sections. Holding position is the pin's job.
+        // Safari does not focus a button on click. Quietly: the browser's own
+        // focus scroll would teleport the page and the anchor pin would drag
+        // it back, a visible jerk. Holding position is the pin's job.
         focusQuietly(box.header);
+      } else {
+        // A deliberate press on an open card's header folds it, finished or
+        // not — the header is now the only thing that folds a card, so the
+        // press must always work; the PENDING summary keeps an unfinished
+        // state visible, and clicking again reopens it (Amrit, 1 Sep 2026).
+        sectionBoxManualCollapsed[id] = true;
+        delete sectionBoxManualOpen[id];
+        delete stepEverOpened[id];
+        if (activeSectionId === id) setActiveSection(null);
+        setSectionBoxCollapsed(id, true);
       }
       scheduleSectionEval();
       return;
@@ -6627,6 +6623,10 @@ var ContourForm1Logic = function () {
       // the locks off already.
       sectionUnlocked[id] = true;
       sectionVisited[id] = true;
+      // Sent-to cards join the open set the same way a turn does, and a
+      // manual fold gives way — an error link must land somewhere visible.
+      stepEverOpened[id] = true;
+      delete sectionBoxManualCollapsed[id];
       setActiveSection(id);
       lastInteractedSectionId = id;
       // Opened here and now rather than on the queued pass: the field being
@@ -6877,6 +6877,13 @@ var ContourForm1Logic = function () {
   }
   function flagStepSections(wraps) {
     setStepFlags(wraps);
+    // An error must be on screen to be fixable: the submit attempt unfolds
+    // every card it flagged, manual folds included — a deliberate collapse
+    // does not outrank "you cannot fix an error you cannot see".
+    Object.keys(sectionFlagged).forEach(function (id) {
+      delete sectionBoxManualCollapsed[id];
+      stepEverOpened[id] = true;
+    });
     // Applied here rather than left to the queued pass: this is the answer to
     // a button the visitor has just pressed, and a beat of nothing happening
     // reads as the press not having landed.
@@ -6910,7 +6917,9 @@ var ContourForm1Logic = function () {
     var pending = [];
     wraps.forEach(function (wrap) {
       if (!wrap.getAttribute || wrap.getAttribute(STEP_NUDGED_ATTR) === "1") return;
-      if (sectionIdForNode(wrap) !== activeSectionId) return;
+      var wrapSectionId = sectionIdForNode(wrap);
+      var wrapSectionBox = wrapSectionId ? sectionBoxes[wrapSectionId] : null;
+      if (!wrapSectionBox || wrapSectionBox.el.classList.contains("contour-section-box--collapsed")) return;
       // Once per field: the nudge dispatches focusout, which runs the section
       // pass, which would arrive back here and nudge it again.
       wrap.setAttribute(STEP_NUDGED_ATTR, "1");
@@ -7122,6 +7131,13 @@ var ContourForm1Logic = function () {
   // be open, and the link exists to add subjects. The pin holds that card
   // open until the visitor moves somewhere else themselves.
   var stepPinnedId = null;
+  // Cards the step has opened. Auto-collapse is gone: this set only grows
+  // (manual folds live in sectionBoxManualCollapsed and are authoritative),
+  // so every card that has had its turn stays on screen. It is rebuilt from
+  // scratch each pass until the visitor's first deliberate act, which is how
+  // a restored draft or a pre-fill lands with completed sections folded to
+  // their summaries and only the cards still needing answers open.
+  var stepEverOpened = {};
   // When the open card last changed. A card that arrives already complete —
   // the waitlist one, or a section whose only field turned out not to apply —
   // would otherwise be handed over from in the same breath it opened, and
@@ -7226,6 +7242,14 @@ var ContourForm1Logic = function () {
        Final Details sat there saying PENDING with nothing standing in their
        way (Angad, 24 Aug 2026). */
     if (activeSectionId) sectionVisited[activeSectionId] = true;
+    // The pass below only ever opens cards now: the card whose turn it is
+    // joins the open set and stays there — moving on, clicking outside the
+    // form, blurring, none of it folds anything. Until the visitor has done
+    // something deliberate the set is rebuilt each pass, so a restored draft
+    // or a pre-fill lands with completed sections folded to their summaries
+    // and the cards still needing answers open (Amrit, 1 Sep 2026).
+    if (!stepUserActed) stepEverOpened = {};
+    if (activeSectionId && !sectionBoxManualCollapsed[activeSectionId]) stepEverOpened[activeSectionId] = true;
     refreshSectionUnlocks(groups);
     refreshStepReport();
     SECTION_DEFS.forEach(function (def, index) {
@@ -7264,7 +7288,7 @@ var ContourForm1Logic = function () {
       // The mark comes off the moment the card is put right, without waiting
       // for another submit attempt to tell it so.
       if (complete) delete sectionFlagged[def.id];
-      var open = !locked && def.id === activeSectionId;
+      var open = !locked && !sectionBoxManualCollapsed[def.id] && !!(sectionBoxManualOpen[def.id] || stepEverOpened[def.id]);
       // Two ways a card earns the band. A submit attempt naming fields inside
       // it, which is the report's doing; or — at any time, submit or no — the
       // card folding away with a message already on screen inside it. The
@@ -7275,10 +7299,9 @@ var ContourForm1Logic = function () {
       // and reddening the band someone is working under says nothing new.
       var flagged = !!sectionFlagged[def.id] || !open && !locked && groupHasVisibleError(nodes);
       box.el.classList.toggle(STEP_FLAGGED_CLASS, flagged);
-      // A locked card has nothing to show and the open one will not fold
-      // while it is unanswered, so the pointer only changes over a card that
-      // will actually respond to the click.
-      box.header.classList.toggle("contour-section-box__header--togglable", !locked && (!open || complete));
+      // Any unlocked card answers its header now — fold or reopen — so the
+      // pointer changes over all of them; only locked cards stay inert.
+      box.header.classList.toggle("contour-section-box__header--togglable", !locked);
       // A pending card has no answers to summarise, so the slot carries its
       // state instead — a bare title on a bare band read as broken rather
       // than as waiting (Angad, 23 Aug).
