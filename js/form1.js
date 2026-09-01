@@ -1480,6 +1480,19 @@ var ContourForm1Logic = function () {
       // The bands are edges, not rows: the static headers hold one short line,
       // so they take tighter padding than the tab strip's touch targets.
       ".hs-form .contour-person-tabs--static { padding: 10px 24px; }" +
+      // Highlighter lime behind the segment names so they stand out from the
+      // field labels below them (Amrit, 1 Sep 2026); navy on lime holds
+      // ~10:1 where lime text on white was 1.2:1. A marker stroke rather
+      // than a printed chip (Amrit's second pass, 1 Sep): a shorter band
+      // riding the lower half of the letters, faded overall, tapering out
+      // at both ends, faint diagonal streaks for ink texture, and a tiny
+      // tilt so it reads as drawn on. z-index: 0 pins a stacking context so
+      // the stroke's -1 stays inside the label, above the band's paint.
+      ".hs-form .contour-person-tabs--static .contour-person-tabs__label { position: relative; z-index: 0; color: #0C3166; padding: 2px 10px; }" +
+      '.hs-form .contour-person-tabs--static .contour-person-tabs__label::before { content: ""; position: absolute; z-index: -1; left: 0; right: 0; top: 54%; height: 12px; transform: translateY(-50%) rotate(-1.2deg); border-radius: 6px 3px 7px 2px; background: repeating-linear-gradient(115deg, rgba(255, 255, 255, 0.16) 0 3px, rgba(255, 255, 255, 0) 3px 7px), linear-gradient(90deg, rgba(215, 252, 61, 0) 0, rgba(215, 252, 61, 0.5) 7%, rgba(215, 252, 61, 0.82) 22%, rgba(215, 252, 61, 0.82) 78%, rgba(215, 252, 61, 0.5) 93%, rgba(215, 252, 61, 0) 100%); }' +
+      // The negative margin puts the text back on the grid line while the
+      // stroke's taper bleeds into the gutter.
+      ".hs-form .contour-person-tabs--static.contour-person-tabs--label-left .contour-person-tabs__label { margin-left: -10px; }" +
       // "You" leads the segment belonging to whoever is filling the form in,
       // as a navy badge with the highlighter lime knocked out of it — the one
       // legible way to put the lime on this white band (10.9:1, where lime as
@@ -6276,7 +6289,10 @@ var ContourForm1Logic = function () {
       // in the corner, so it carries a heading's weight (Amrit, 25 Aug 2026).
       box + " .contour-person-tabs__heading { font-size: 13px; font-weight: 800; }" +
       box + " .contour-person-tabs--static .contour-person-tabs__heading { position: relative; }" +
-      box + " .contour-person-tabs--static .contour-person-tabs__label { position: relative; background: #FFFFFF; padding-left: 10px; }" +
+      // The lime marker stroke behind the label comes from the base person
+      // group styles — the white mask that used to live here is gone with
+      // it (the label-left rule below starts the separator past the label,
+      // so nothing needs masking).
       box + " .contour-person-tabs--static .contour-person-tabs__you { position: relative; }" +
       // A band carrying the pill starts its rule past the pill instead of
       // running underneath it — the gradient's fade-in becomes the taper.
@@ -6288,7 +6304,6 @@ var ContourForm1Logic = function () {
       // turns round — short coming up out of the label, long going away at the
       // far edge. Last of the three, so it wins the tie on source order over
       // the two above, which it deliberately shares specificity with.
-      box + " .contour-person-tabs--static.contour-person-tabs--label-left .contour-person-tabs__label { padding-left: 0; padding-right: 0; }" +
       // The solid run is the brand navy rather than the 0.14 wash it was — on
       // trial, so the number to put back is 0.14 in all six stops if it reads
       // too heavy (Amrit, 25 Aug 2026).
