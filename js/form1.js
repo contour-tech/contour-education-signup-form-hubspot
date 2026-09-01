@@ -7667,6 +7667,15 @@ var ContourForm1Logic = function () {
   // a restored draft or a pre-fill lands with completed sections folded to
   // their summaries and only the cards still needing answers open.
   var stepEverOpened = {};
+  // Eligibility edge per card: a section joins the open set the moment it
+  // first becomes reachable (unlocked with something to show), answered or
+  // not. Keyed to the transition rather than the state so a later manual
+  // fold is not fought, and gated on stepUserActed so a restoring draft or a
+  // pre-fill still lands with its completed sections folded. Without this a
+  // card that arrives already complete never took a turn as the open step and
+  // landed folded while its neighbours opened — MedPrep pre-ticks Online on
+  // the campus card, which is exactly that (Amitav, 1 Sep 2026).
+  var stepWasEligible = {};
   // When the open card last changed. A card that arrives already complete —
   // the waitlist one, or a section whose only field turned out not to apply —
   // would otherwise be handed over from in the same breath it opened, and
@@ -7787,6 +7796,10 @@ var ContourForm1Logic = function () {
       var nodes = groups[index];
       var locked = !sectionUnlocked[def.id];
       var empty = !groupHasVisibleField(nodes);
+      if (!locked && !empty && !stepWasEligible[def.id]) {
+        stepWasEligible[def.id] = true;
+        if (stepUserActed && !sectionBoxManualCollapsed[def.id]) stepEverOpened[def.id] = true;
+      }
       // A locked card is a header and nothing else, so it can stand before
       // HubSpot has anything visible inside it — Preferred Campuses holds no
       // visible option until a program with campuses is picked, and hiding it
