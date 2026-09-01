@@ -113,6 +113,12 @@ var ContourForm1Logic = function () {
     // is locked — only where the record actually supplied one, and only until
     // the form itself clears it. See PREFILLED FIELD LOCK (Amrit, 22 Aug 2026).
     lockPrefilledStudyFields: true,
+    // Hovering a campus card on desktop opens a small Google Maps popover
+    // pinned to that campus's street address (Maps Embed API — no-cost tier,
+    // key locked to this site's domains). Options with no bracketed address,
+    // "Coming Soon" placeholders and the Online option never get one
+    // (Amrit, 1 Sep 2026).
+    campusMapHover: true,
     // Checks the addresses this submission would create a contact for against
     // HubSpot before letting the form go. Parked with the DUPLICATE EMAIL
     // GUARD block — deduplication is moving to the backend, and this comes
@@ -550,6 +556,468 @@ var ContourForm1Logic = function () {
       addressSpan.className = "contour-campus-address";
       addressSpan.textContent = addressText;
       span.appendChild(addressSpan);
+    });
+  }
+  /* =========================================================================
+     CAMPUS MAP HOVER PREVIEW
+     -------------------------------------------------------------------------
+     Hovering a campus card on desktop opens a floating popover with an
+     interactive Google Map (Maps Embed API, place mode) pinned to that
+     campus's street address. Google geocodes the query itself and drops a
+     clickable pin — clicking it opens the place card with photos/reviews and
+     a link out to full Google Maps, and the embed pans/zooms natively.
+
+     Which options qualify is decided from the label, so campus changes in the
+     HubSpot form editor need no code here: a bracketed address means a map,
+     "(Coming Soon)" / "(Live & Recorded)" and bracketless labels (Adelaide)
+     mean none, and the ONLINE structured code is excluded outright. An
+     address containing " or " (Glen Waverley runs two premises) renders one
+     tab per address, labelled Campus 1 / Campus 2.
+
+     Nothing loads until the first hover — no Google request ever leaves the
+     page for visitors who never hover a campus. Loaded iframes stay in the
+     popover (display-toggled, never reparented — reparenting reloads an
+     iframe) so a repeat hover is instant. The iframe is cross-origin, so the
+     only failure signal available is the load event never firing; when that
+     happens the popover closes itself and the campus code is parked in
+     localStorage for 24 hours so the visitor isn't shown a spinner that
+     never resolves on every pass of the grid (Amrit, 1 Sep 2026).
+  ========================================================================= */
+  // Browser key, restricted to the Maps Embed API and this site's referrers
+  // (www/apex contoureducation.com.au + contour-staging.webflow.io) in GCP
+  // project hubspot-signup-form. Shipping it in page JS is the intended use;
+  // the referrer lock is the protection.
+  var CAMPUS_MAP_EMBED_KEY = "AIzaSyB5EGt7mRhhl_-4S3Iu-Cua5tps6Tbb6So";
+  var CAMPUS_MAP_NON_ADDRESS = /coming\s+soon|live\s*&\s*recorded/i;
+  // The popover opens as good as immediately — the tiny delay only filters
+  // out a cursor passing straight through a card on its way elsewhere. The
+  // map's own loading state lives inside the popover (spinner over the body),
+  // so there is nothing to wait for before showing it (Amrit, 2 Sep 2026).
+  var CAMPUS_MAP_OPEN_DELAY_MS = 100;
+  var CAMPUS_MAP_CLOSE_DELAY_MS = 150;
+  var CAMPUS_MAP_LOAD_TIMEOUT_MS = 8000;
+  var CAMPUS_MAP_SUPPRESS_KEY = "contour_form1_campus_map_unavailable";
+  var CAMPUS_MAP_SUPPRESS_TTL_MS = 24 * 60 * 60 * 1000;
+  // Structured campus values carry a country code; the geocode query wants a
+  // country name. Unknown codes pass through as-is rather than guessing.
+  var CAMPUS_MAP_COUNTRY_NAMES = {
+    AU: "Australia",
+    NZ: "New Zealand",
+    UK: "United Kingdom",
+    GB: "United Kingdom"
+  };
+  var campusMapPopover = null;
+  var campusMapTitleEl = null;
+  var campusMapTabsEl = null;
+  var campusMapFrameHost = null;
+  var campusMapSpinnerEl = null;
+  var campusMapFrames = {};
+  var campusMapActiveWrap = null;
+  var campusMapActiveInfo = null;
+  var campusMapActiveKey = null;
+  var campusMapPendingWrap = null;
+  var campusMapOpenTimer = null;
+  var campusMapCloseTimer = null;
+  var campusMapLoadTimer = null;
+  // Where the cursor entered the card — the popover corners itself here.
+  var campusMapPointerX = 0;
+  var campusMapPointerY = 0;
+  // Popover offset from its card at open time, so scrolling keeps them glued.
+  var campusMapAnchorDX = 0;
+  var campusMapAnchorDY = 0;
+  function campusMapOnDesktop() {
+    return !!(window.matchMedia && window.matchMedia("(hover: hover) and (pointer: fine)").matches && window.matchMedia("(min-width: 768px)").matches);
+  }
+  // Same private-mode trap as draftStorage(): accessing localStorage can
+  // throw, so probe inside try/catch rather than feature-sniffing.
+  function campusMapStorage() {
+    try {
+      var store = window.localStorage;
+      var probe = CAMPUS_MAP_SUPPRESS_KEY + "__probe";
+      store.setItem(probe, "1");
+      store.removeItem(probe);
+      return store;
+    } catch (err) {
+      return null;
+    }
+  }
+  function readCampusMapSuppressions(store) {
+    try {
+      var parsed = JSON.parse(store.getItem(CAMPUS_MAP_SUPPRESS_KEY));
+      return parsed && typeof parsed === "object" ? parsed : {};
+    } catch (err) {
+      return {};
+    }
+  }
+  function campusMapSuppressed(code) {
+    if (!code) return false;
+    var store = campusMapStorage();
+    if (!store) return false;
+    var until = readCampusMapSuppressions(store)[code];
+    return typeof until === "number" && until > Date.now();
+  }
+  function suppressCampusMap(code) {
+    if (!code) return;
+    var store = campusMapStorage();
+    if (!store) return;
+    var map = readCampusMapSuppressions(store);
+    var now = Date.now();
+    Object.keys(map).forEach(function (key) {
+      if (typeof map[key] !== "number" || map[key] <= now) delete map[key];
+    });
+    map[code] = now + CAMPUS_MAP_SUPPRESS_TTL_MS;
+    try {
+      store.setItem(CAMPUS_MAP_SUPPRESS_KEY, JSON.stringify(map));
+    } catch (err) {
+      /* quota — the in-page close already happened, the flag is best-effort */
+    }
+  }
+  // Decides whether an option gets a map and extracts what the map needs.
+  // Reads the spans enhanceCampusLabels() produced (the raw label loses its
+  // brackets in that split), falling back to the unenhanced "Name (Address)"
+  // text so this doesn't depend on call order after a HubSpot re-render.
+  function campusMapInfo(inputEl) {
+    var wrap = optionWrapper(inputEl);
+    if (!wrap) return null;
+    var name = null;
+    var addressText = null;
+    var nameSpan = wrap.querySelector(".contour-campus-name");
+    var addressSpan = wrap.querySelector(".contour-campus-address");
+    if (nameSpan && addressSpan) {
+      name = nameSpan.textContent.trim();
+      addressText = addressSpan.textContent.trim();
+    } else {
+      var match = optionLabelText(inputEl).match(/^(.*?)\s*\(([^)]+)\)\s*$/);
+      if (!match) return null;
+      name = match[1].trim();
+      addressText = match[2].trim();
+    }
+    if (!name || !addressText || CAMPUS_MAP_NON_ADDRESS.test(addressText)) return null;
+    var classification = getCampusClassification(inputEl);
+    if (!classification || classification.code === "ONLINE") return null;
+    // "Level 1/75-77 Railway Parade or Level 1/6-10 Kingsway" — two premises
+    // share one campus; each address gets its own tab in the popover.
+    var addresses = addressText.split(/\s+or\s+/i).map(function (part) {
+      return part.trim();
+    }).filter(Boolean);
+    if (!addresses.length) return null;
+    return {
+      code: classification.code || name,
+      name: name,
+      addresses: addresses,
+      country: classification.country
+    };
+  }
+  function buildCampusMapSrc(info, index) {
+    // "Contour Education" first so Google resolves our own place listing
+    // (pin click then shows the business card, not a bare street address).
+    var parts = ["Contour Education", info.name, info.addresses[index]];
+    if (info.country && info.country !== "ALL") {
+      parts.push(CAMPUS_MAP_COUNTRY_NAMES[info.country] || info.country);
+    }
+    return "https://www.google.com/maps/embed/v1/place?key=" + CAMPUS_MAP_EMBED_KEY + "&q=" + encodeURIComponent(parts.join(", ")) + "&zoom=17";
+  }
+  function injectCampusMapStyles() {
+    if (document.getElementById("contour-campus-map-styles")) return;
+    var style = document.createElement("style");
+    style.id = "contour-campus-map-styles";
+    style.textContent =
+      // Sized off the viewport with 480x380 as the ceiling: narrower or
+      // shorter windows get a proportionally smaller popover instead of one
+      // that crowds the form; under 768px wide it doesn't render at all.
+      ".contour-campus-map-popover { position: fixed; z-index: 2147483000; width: min(480px, 44vw); background: #fff; border: 1px solid rgba(12, 49, 102, 0.10); border-radius: 14px; box-shadow: 0 16px 40px rgba(12, 49, 102, 0.18), 0 2px 8px rgba(12, 49, 102, 0.10); overflow: hidden; opacity: 0; visibility: hidden; transform: translateY(4px); pointer-events: none; transition: opacity 0.18s ease, transform 0.18s ease, visibility 0s linear 0.18s; }" +
+      ".contour-campus-map-popover--open { opacity: 1; visibility: visible; transform: none; pointer-events: auto; transition-delay: 0s; }" +
+      // Header wears the section-header navy — tried the selected-card
+      // #005FCC and went back; the navy is the form's header theme
+      // (Amrit, 2 Sep 2026).
+      ".contour-campus-map-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; background: #0C3166; }" +
+      ".contour-campus-map-title { font-weight: 700; font-size: 15px; color: #FFFFFF; }" +
+      ".contour-campus-map-tabs { display: flex; gap: 6px; }" +
+      ".contour-campus-map-tab { font: inherit; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; padding: 4px 12px; border-radius: 999px; border: 0; background: #FFFFFF; color: #0C3166; cursor: pointer; }" +
+      // Selected premise pill takes the brand lime (submit-button pair).
+      ".contour-campus-map-tab--active { background: #D7FC3D; color: #0C3166; }" +
+      ".contour-campus-map-body { position: relative; height: clamp(220px, 45vh, 380px); background: #f5f5f3; }" +
+      ".contour-campus-map-body iframe { display: none; width: 100%; height: 100%; border: 0; }" +
+      ".contour-campus-map-body iframe.contour-campus-map-frame--active { display: block; }" +
+      ".contour-campus-map-loader { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; background: #f5f5f3; font-size: 13px; color: rgba(26, 29, 33, 0.65); }" +
+      ".contour-campus-map-loader[hidden] { display: none; }" +
+      ".contour-campus-map-loader::before { content: \"\"; width: 26px; height: 26px; border-radius: 50%; border: 3px solid rgba(0, 95, 204, 0.2); border-top-color: #005FCC; animation: contour-campus-map-spin 0.8s linear infinite; }" +
+      "@keyframes contour-campus-map-spin { to { transform: rotate(360deg); } }" +
+      "@media (prefers-reduced-motion: reduce) { .contour-campus-map-loader::before { animation: none; } }" +
+      // Belt and braces alongside the matchMedia gate: never on touch/narrow.
+      "@media (hover: none), (pointer: coarse), (max-width: 767px) { .contour-campus-map-popover { display: none !important; } }";
+    document.head.appendChild(style);
+  }
+  function ensureCampusMapPopover() {
+    if (campusMapPopover) return campusMapPopover;
+    injectCampusMapStyles();
+    var pop = document.createElement("div");
+    pop.className = "contour-campus-map-popover";
+    // Purely a visual companion — the address is already in the option label,
+    // so assistive tech loses nothing by never hearing about the popover.
+    pop.setAttribute("aria-hidden", "true");
+    var header = document.createElement("div");
+    header.className = "contour-campus-map-header";
+    campusMapTitleEl = document.createElement("span");
+    campusMapTitleEl.className = "contour-campus-map-title";
+    header.appendChild(campusMapTitleEl);
+    campusMapTabsEl = document.createElement("div");
+    campusMapTabsEl.className = "contour-campus-map-tabs";
+    header.appendChild(campusMapTabsEl);
+    pop.appendChild(header);
+    var body = document.createElement("div");
+    body.className = "contour-campus-map-body";
+    campusMapFrameHost = body;
+    campusMapSpinnerEl = document.createElement("div");
+    campusMapSpinnerEl.className = "contour-campus-map-loader";
+    campusMapSpinnerEl.textContent = "Loading map…";
+    campusMapSpinnerEl.hidden = true;
+    body.appendChild(campusMapSpinnerEl);
+    pop.appendChild(body);
+    // The grace gap between card and popover is walkable: entering the
+    // popover cancels the pending close so the map can be zoomed and panned.
+    pop.addEventListener("mouseenter", function () {
+      if (campusMapCloseTimer) {
+        clearTimeout(campusMapCloseTimer);
+        campusMapCloseTimer = null;
+      }
+    });
+    pop.addEventListener("mouseleave", scheduleCampusMapClose);
+    document.body.appendChild(pop);
+    campusMapPopover = pop;
+    return pop;
+  }
+  function positionCampusMapPopover() {
+    if (!campusMapPopover || !campusMapActiveWrap) return;
+    if (!document.body.contains(campusMapActiveWrap)) {
+      // HubSpot re-rendered the field out from under the open popover.
+      closeCampusMap();
+      return;
+    }
+    var rect = campusMapActiveWrap.getBoundingClientRect();
+    var vw = window.innerWidth;
+    var vh = window.innerHeight;
+    var popW = campusMapPopover.offsetWidth;
+    var popH = campusMapPopover.offsetHeight;
+    var gap = 14;
+    // The popover corners itself at the point the cursor entered the card,
+    // growing into whichever quadrant of the viewport has the room: cursor
+    // on the left half grows rightward, bottom half grows upward, and so on.
+    // The clamps pull it back on screen at the viewport edges.
+    var x = campusMapPointerX;
+    var y = campusMapPointerY;
+    var left = x <= vw / 2 ? x + gap : x - gap - popW;
+    left = Math.max(8, Math.min(left, vw - popW - 8));
+    var top = y <= vh / 2 ? y + gap : y - gap - popH;
+    top = Math.max(8, Math.min(top, vh - popH - 8));
+    campusMapPopover.style.left = Math.round(left) + "px";
+    campusMapPopover.style.top = Math.round(top) + "px";
+    campusMapAnchorDX = left - rect.left;
+    campusMapAnchorDY = top - rect.top;
+  }
+  // The popover is position: fixed but belongs to its card — when the page
+  // scrolls under it, re-derive left/top from the card's fresh rect and the
+  // offset captured at open so the two travel together.
+  function followCampusMapAnchor() {
+    if (!campusMapPopover || !campusMapActiveWrap) return;
+    if (!document.body.contains(campusMapActiveWrap)) {
+      closeCampusMap();
+      return;
+    }
+    var rect = campusMapActiveWrap.getBoundingClientRect();
+    campusMapPopover.style.left = Math.round(rect.left + campusMapAnchorDX) + "px";
+    campusMapPopover.style.top = Math.round(rect.top + campusMapAnchorDY) + "px";
+  }
+  function showCampusMapSpinner(show) {
+    if (campusMapSpinnerEl) campusMapSpinnerEl.hidden = !show;
+  }
+  function clearCampusMapLoadTimer() {
+    if (campusMapLoadTimer) {
+      clearTimeout(campusMapLoadTimer);
+      campusMapLoadTimer = null;
+    }
+  }
+  function selectCampusMapTab(index) {
+    var info = campusMapActiveInfo;
+    if (!info) return;
+    var key = info.code + ":" + index;
+    campusMapActiveKey = key;
+    var frames = campusMapFrameHost.querySelectorAll("iframe");
+    for (var i = 0; i < frames.length; i++) {
+      frames[i].classList.remove("contour-campus-map-frame--active");
+    }
+    var tabs = campusMapTabsEl.children;
+    for (var t = 0; t < tabs.length; t++) {
+      tabs[t].classList.toggle("contour-campus-map-tab--active", t === index);
+    }
+    var entry = campusMapFrames[key];
+    if (!entry) {
+      var iframe = document.createElement("iframe");
+      iframe.setAttribute("title", "Map of Contour Education " + info.name);
+      iframe.setAttribute("allowfullscreen", "");
+      iframe.src = buildCampusMapSrc(info, index);
+      entry = campusMapFrames[key] = {
+        iframe: iframe,
+        loaded: false
+      };
+      iframe.addEventListener("load", function () {
+        entry.loaded = true;
+        if (campusMapActiveKey === key) {
+          clearCampusMapLoadTimer();
+          showCampusMapSpinner(false);
+        }
+      });
+      campusMapFrameHost.appendChild(iframe);
+    }
+    entry.iframe.classList.add("contour-campus-map-frame--active");
+    clearCampusMapLoadTimer();
+    showCampusMapSpinner(!entry.loaded);
+    if (!entry.loaded) {
+      campusMapLoadTimer = setTimeout(function () {
+        campusMapLoadTimer = null;
+        if (entry.loaded || campusMapActiveKey !== key) return;
+        // The embed never announced itself — treat the campus as unmappable
+        // for a day and stop showing a spinner that won't resolve. The dead
+        // iframe goes too so the next attempt after the flag lapses is fresh.
+        suppressCampusMap(info.code);
+        delete campusMapFrames[key];
+        if (entry.iframe.parentNode) entry.iframe.parentNode.removeChild(entry.iframe);
+        closeCampusMap();
+      }, CAMPUS_MAP_LOAD_TIMEOUT_MS);
+    }
+  }
+  function renderCampusMapTabs(info) {
+    campusMapTabsEl.textContent = "";
+    if (info.addresses.length < 2) {
+      campusMapTabsEl.style.display = "none";
+      return;
+    }
+    campusMapTabsEl.style.removeProperty("display");
+    info.addresses.forEach(function (_, index) {
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "contour-campus-map-tab";
+      btn.textContent = "Campus " + (index + 1);
+      btn.addEventListener("click", function () {
+        selectCampusMapTab(index);
+      });
+      campusMapTabsEl.appendChild(btn);
+    });
+  }
+  function openCampusMap(wrap, info) {
+    ensureCampusMapPopover();
+    // A close queued by leaving the previous card must not fire after this
+    // popover re-opens for the new one — the swap already did the closing.
+    if (campusMapCloseTimer) {
+      clearTimeout(campusMapCloseTimer);
+      campusMapCloseTimer = null;
+    }
+    clearCampusMapLoadTimer();
+    campusMapActiveWrap = wrap;
+    campusMapActiveInfo = info;
+    // "Glen Waverley Campus", not the bare suburb — unless a future option
+    // is already named with it.
+    campusMapTitleEl.textContent = /campus\s*$/i.test(info.name) ? info.name : info.name + " Campus";
+    renderCampusMapTabs(info);
+    selectCampusMapTab(0);
+    campusMapPopover.classList.add("contour-campus-map-popover--open");
+    positionCampusMapPopover();
+  }
+  function cancelCampusMapPending() {
+    if (campusMapOpenTimer) {
+      clearTimeout(campusMapOpenTimer);
+      campusMapOpenTimer = null;
+    }
+    campusMapPendingWrap = null;
+  }
+  // Closes the open popover and nothing else. A pending open for another
+  // card must survive this — the close timer from leaving card A fires while
+  // card B's open is queued, and cancelling B's timer here is exactly the
+  // "hover stops registering when I move between campuses" bug.
+  function closeCampusMap() {
+    if (campusMapCloseTimer) {
+      clearTimeout(campusMapCloseTimer);
+      campusMapCloseTimer = null;
+    }
+    clearCampusMapLoadTimer();
+    campusMapActiveWrap = null;
+    campusMapActiveInfo = null;
+    campusMapActiveKey = null;
+    if (campusMapPopover) {
+      campusMapPopover.classList.remove("contour-campus-map-popover--open");
+      showCampusMapSpinner(false);
+    }
+  }
+  function scheduleCampusMapClose() {
+    if (campusMapCloseTimer) clearTimeout(campusMapCloseTimer);
+    campusMapCloseTimer = setTimeout(closeCampusMap, CAMPUS_MAP_CLOSE_DELAY_MS);
+  }
+  function initCampusMapHover() {
+    if (!featureEnabled("campusMapHover")) return;
+    if (!window.matchMedia || !document.body) return;
+    // Delegated on the form root (mouseover bubbles, mouseenter doesn't) so
+    // the wiring survives HubSpot re-rendering the campus field's DOM.
+    formRoot.addEventListener("mouseover", function (e) {
+      if (!campusMapOnDesktop()) return;
+      var target = e.target;
+      if (!target || !target.closest) return;
+      var wrap = target.closest("li");
+      if (!wrap) return;
+      var input = wrap.querySelector(FIELD_SELECTORS.campus);
+      if (!input) return;
+      if (wrap === campusMapActiveWrap) {
+        if (campusMapCloseTimer) {
+          clearTimeout(campusMapCloseTimer);
+          campusMapCloseTimer = null;
+        }
+        return;
+      }
+      if (campusMapPendingWrap === wrap) return;
+      var info = campusMapInfo(input);
+      if (!info || campusMapSuppressed(info.code)) return;
+      cancelCampusMapPending();
+      campusMapPendingWrap = wrap;
+      campusMapPointerX = e.clientX;
+      campusMapPointerY = e.clientY;
+      campusMapOpenTimer = setTimeout(function () {
+        campusMapOpenTimer = null;
+        campusMapPendingWrap = null;
+        openCampusMap(wrap, info);
+      }, CAMPUS_MAP_OPEN_DELAY_MS);
+    });
+    formRoot.addEventListener("mouseout", function (e) {
+      var target = e.target;
+      if (!target || !target.closest) return;
+      var wrap = target.closest("li");
+      if (!wrap) return;
+      var to = e.relatedTarget;
+      if (to && wrap.contains(to)) return;
+      if (campusMapPendingWrap === wrap) cancelCampusMapPending();
+      if (campusMapActiveWrap === wrap) {
+        if (to && campusMapPopover && campusMapPopover.contains(to)) return;
+        scheduleCampusMapClose();
+      }
+    });
+    document.addEventListener("keydown", function (e) {
+      if (e.key !== "Escape") return;
+      if (campusMapActiveWrap || campusMapPendingWrap) {
+        cancelCampusMapPending();
+        closeCampusMap();
+      }
+    });
+    // Fixed positioning drifts off its card when the page scrolls under an
+    // open popover; capture phase also catches scrolling inner containers.
+    window.addEventListener("scroll", function () {
+      if (campusMapActiveWrap) followCampusMapAnchor();
+    }, true);
+    window.addEventListener("resize", function () {
+      if (!campusMapActiveWrap) return;
+      if (campusMapOnDesktop()) {
+        followCampusMapAnchor();
+      } else {
+        cancelCampusMapPending();
+        closeCampusMap();
+      }
     });
   }
   function injectProgramCardAccentStyles() {
@@ -9177,6 +9645,7 @@ var ContourForm1Logic = function () {
     enhanceRegionField();
     watchRegionField();
     enhanceCampusLabels();
+    initCampusMapHover();
     ensureIntakeYearNote();
     ensureDividerBefore(q(FIELD_SELECTORS.programInterest), "contour-divider-program-interest");
     // Sits between the "Your Subjects" summary box and Preferred Campuses —
