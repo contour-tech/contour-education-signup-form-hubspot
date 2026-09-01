@@ -3825,6 +3825,33 @@ var ContourForm1Logic = function () {
       }
     });
   }
+  // SUBMIT-TIME SWEEP — the last word on what the phone fields carry out the
+  // door. Mid-session HubSpot's widget may re-seed or recompose its own box
+  // behind the proxy; nothing the visitor can see, and nothing worth fighting
+  // over turn by turn. What must never happen is that state leaving with the
+  // submission: recompose every group from its proxy, trim, and write the
+  // result onto the real box and HubSpot's hidden mirror alike. An empty
+  // proxy leaves an empty field — never a bare "+61 " — so a dial-only value
+  // cannot land in the CRM and HubSpot's own required check keeps its voice.
+  function normalizePhoneValuesForSubmit() {
+    if (!formRoot) return;
+    Array.prototype.forEach.call(formRoot.querySelectorAll("." + PHONE_PROXY_CLASS), function (proxy) {
+      var group = proxy.parentElement;
+      var parts = group ? phoneGroupParts(group) : null;
+      if (!parts || !parts.real || !parts.proxy) return;
+      pushProxyThrough(group);
+      var composed = (parts.real.value || "").trim();
+      if (parts.real.value !== composed) {
+        parts.real.value = composed;
+        fireInputEvents(parts.real);
+      }
+      var mirror = group.querySelector('input[type="hidden"]');
+      if (mirror && mirror.value !== composed) {
+        mirror.value = composed;
+        fireInputEvents(mirror);
+      }
+    });
+  }
   function refreshDerivedFieldState() {
     labelPhoneCountryOptions();
     enhancePhoneBoxes();
@@ -5116,6 +5143,10 @@ var ContourForm1Logic = function () {
     // actually leaves with the submission, and it must match the answers as
     // they stand at this moment.
     updateCanAddMoreSubjects();
+    // Before any validator looks: the phone values are recomposed from the
+    // visible boxes and trimmed, so both the checks below and the submission
+    // itself see the settled value, never HubSpot's mid-session reseeding.
+    normalizePhoneValuesForSubmit();
     // Enter in a text box reaches the gate before progressive disclosure has
     // opened every section. Nobody should be told to fix a field they cannot
     // see, so any submit attempt opens the whole form first.
