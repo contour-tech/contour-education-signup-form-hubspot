@@ -886,10 +886,12 @@ var ContourForm1Logic = function () {
      Rendered as one "Contact Information" container on BOTH flows. Two
      renderings share the container and its pill-labelled top edge,
      selected via personGroupsVariant in window.ContourForm1Config:
-     - "stacked" (default): both people visible at once — a "Student"
-       segment header, the four student fields, a "Guardian" segment
-       header, the four guardian fields, one continuous box. The team
-       preferred seeing both over switching (Angad, 21 Aug 2026).
+     - "stacked" (default): both people visible at once — a "Guardian"
+       segment header, the four guardian fields, a "Student" segment
+       header, the four student fields, one continuous box. The team
+       preferred seeing both over switching (Angad, 21 Aug 2026);
+       guardian-first so the visitor leads with their own details
+       (Amrit, 1 Sep 2026).
      - "tabs": the same box with a Student / Guardian tab strip, one
        person visible at a time. Parked for possible reuse, not deleted
        (Amrit, 21 Aug 2026). Tabs hide required fields, so the error
@@ -1046,11 +1048,12 @@ var ContourForm1Logic = function () {
      PERSON GROUP STACKED SEGMENTS — the "stacked" variant
      -----------------------------------------------------------
      The same Contact Information container as the tabs, with both people
-     visible at once: a static "Student" segment pill on the box's top
-     edge (with the corner label), the student fields, a "Guardian"
-     segment header partway down, the guardian fields, one continuous
-     box. No fields are ever hidden, so none of the tab error machinery
-     is needed — it gates itself on the tab strip existing.
+     visible at once: a static "Guardian" segment header on the box's top
+     edge, the guardian fields, a "Student" segment header partway down,
+     the student fields, one continuous box (guardian first — the visitor
+     leads with their own details; Amrit, 1 Sep 2026). No fields are ever
+     hidden, so none of the tab error machinery is needed — it gates
+     itself on the tab strip existing.
      ========================================================= */
   function ensurePersonStaticHeader(id, anchorRow, withCorner, isVisitor) {
     var existing = formRoot.querySelector('[data-contour-person-static="' + id + '"]');
@@ -1061,7 +1064,7 @@ var ContourForm1Logic = function () {
     if (!existing) {
       existing = document.createElement("div");
       existing.setAttribute("data-contour-person-static", id);
-      existing.className = "contour-person-tabs contour-person-tabs--static" + (withCorner ? "" : " contour-person-tabs--mid");
+      existing.className = "contour-person-tabs contour-person-tabs--static";
       // Plain small-caps headers, no pills — "Student Contact Information" /
       // "Guardian Contact Information" say everything the pill plus corner
       // label used to (Amrit's review, 21 Aug 2026).
@@ -1075,6 +1078,10 @@ var ContourForm1Logic = function () {
       title.appendChild(label);
       existing.appendChild(title);
     }
+    // Which band leads the box swaps with the flow (the guardian's own
+    // segment heads the Guardian flow), so the mid-box treatment is a
+    // per-pass toggle rather than a fact fixed at creation.
+    existing.classList.toggle("contour-person-tabs--mid", !withCorner);
     // "You" leads the segment belonging to whoever is filling the form in —
     // the guardian on the Guardian flow, the student on their own. The student
     // header serves both flows (their own fields on one, the child's on the
@@ -1138,8 +1145,41 @@ var ContourForm1Logic = function () {
     var besideQuestion = !!(prev && prev.classList && prev.classList.contains("hs_web_form_contact_type"));
     existing.classList.toggle("contour-person-tabs--beside-question", besideQuestion);
   }
+  // The Guardian-first order is a DOM move, not paint: the two guardian
+  // fieldsets step inside the dependent host, between the contact-type
+  // question and the student rows, and step back out to their native
+  // top-level spot when the Student flow needs them to be the visitor's own
+  // rows again (guardian details lead, Amrit, 1 Sep 2026). Idempotent —
+  // every pass checks the order before touching the tree, or the childList
+  // observer that re-runs updatePersonGroups would loop on its own moves.
+  function positionGuardianSegment(guardian, studentRows, guardianRows) {
+    if (guardianRows.length === 0) return;
+    if (guardian) {
+      var anchor = studentRows[0];
+      var ordered = guardianRows.every(function (fs) {
+        return fs.parentElement === anchor.parentElement && !!(fs.compareDocumentPosition(anchor) & Node.DOCUMENT_POSITION_FOLLOWING);
+      });
+      if (ordered) return;
+      guardianRows.forEach(function (fs) {
+        anchor.parentNode.insertBefore(fs, anchor);
+      });
+      return;
+    }
+    var contact = q(FIELD_SELECTORS.contactType);
+    var wrap = contact ? fieldWrapper(contact) : null;
+    var host = wrap ? wrap.parentElement : null;
+    var outer = host && host.classList.contains("hs-dependent-field") ? host.parentElement : null;
+    if (!outer || !outer.parentNode || !outer.contains(guardianRows[0])) return;
+    var ref = outer.nextSibling;
+    guardianRows.forEach(function (fs) {
+      outer.parentNode.insertBefore(fs, ref);
+    });
+  }
   function teardownPersonStacked() {
     var headers = qAll("[data-contour-person-static]");
+    // The move outlives the bands, so it is unwound whether or not any
+    // band is still standing.
+    positionGuardianSegment(false, [], personGroupRows(PERSON_GROUPS[1]));
     if (headers.length === 0) return;
     headers.forEach(function (node) {
       if (node.parentNode) node.parentNode.removeChild(node);
@@ -1152,22 +1192,27 @@ var ContourForm1Logic = function () {
     // Mid-render (the dependent group joins the DOM a beat after the radio
     // changes): leave everything as is, the MutationObserver re-runs this.
     if (guardianRows.length === 0 || guardian && studentRows.length === 0) return;
-    // The Student segment heads the box on both flows — over the student
-    // fields on the Guardian flow, over the visitor's own fields otherwise.
-    ensurePersonStaticHeader("student", guardian ? studentRows[0] : guardianRows[0], true, !guardian);
-    ensurePersonStaticHeader("guardian", guardian ? guardianRows[0] : null, false, true);
+    positionGuardianSegment(guardian, studentRows, guardianRows);
+    // The Guardian segment heads the box on the Guardian flow — the visitor's
+    // own details lead, the student's follow (Amrit, 1 Sep 2026). On the
+    // Student flow the visitor's fields are the only segment, and the
+    // Student band keeps the top edge over them.
+    ensurePersonStaticHeader("guardian", guardian ? guardianRows[0] : null, true, true);
+    ensurePersonStaticHeader("student", guardian ? studentRows[0] : guardianRows[0], !guardian, !guardian);
     clearPersonGroupHost();
     if (guardian) {
-      // bottomCount 0: the box does not close after the student rows — the
-      // Guardian segment continues it.
-      applyPersonGroupRowClasses(PERSON_GROUPS[0], studentRows, 0);
+      // The student rows close the box now that they sit under the guardian
+      // segment, so they keep their native bottomCount.
+      applyPersonGroupRowClasses(PERSON_GROUPS[0], studentRows);
       if (studentRows[0].parentElement && studentRows[0].parentElement.classList.contains("hs-dependent-field")) {
         studentRows[0].parentElement.classList.add("contour-person-group-host");
       }
     } else {
       clearPersonGroupClasses(PERSON_GROUPS[0]);
     }
-    applyPersonGroupRowClasses(PERSON_GROUPS[1], guardianRows);
+    // bottomCount 0 on the Guardian flow: the box does not close after the
+    // guardian rows — the Student segment continues it.
+    applyPersonGroupRowClasses(PERSON_GROUPS[1], guardianRows, guardian ? 0 : undefined);
     setPersonTabBridge(guardian);
     if (guardian) {
       PERSON_GROUPS[0].fields.forEach(function (config) {
@@ -1468,6 +1513,10 @@ var ContourForm1Logic = function () {
       // margins) gave the Guardian tab different gutters and bottom padding
       // than the Student tab.
       ".hs-form fieldset.contour-person-card__row--guardian { display: flex; flex-wrap: wrap; box-sizing: border-box; background: transparent; border-left: 1px solid " + line + "; border-right: 1px solid " + line + "; margin: 0 !important; max-width: none; padding: 0; }" +
+      // On the Guardian flow the fieldsets live inside the dependent host
+      // (guardian segment first), where the host's flex layout would size
+      // them like the 50% student tiles — each fieldset is a full row.
+      ".hs-form .contour-person-group-host > fieldset.contour-person-card__row--guardian { flex: 0 0 100%; width: 100%; max-width: 100%; }" +
       ".hs-form fieldset.contour-person-card__row--guardian > .hs-form-field { float: none !important; flex: 0 0 50%; width: 50% !important; box-sizing: border-box; margin: 0 !important; padding: 12px 12px 20px 24px; }" +
       ".hs-form fieldset.contour-person-card__row--guardian > .hs-form-field + .hs-form-field { padding: 12px 24px 20px 12px; }" +
       ".hs-form fieldset.contour-person-card__row--guardian .hs-input:not([type=\"checkbox\"]):not([type=\"radio\"]):not(.contour-intl-phone__country):not(.contour-intl-phone__number) { width: 100% !important; }" +
@@ -5704,7 +5753,7 @@ var ContourForm1Logic = function () {
       if (!empty && !groupComplete(nodes)) open = false;
     });
     updateSectionBoxStates(groups);
-    updateGuardianSegmentCascade();
+    updateStudentSegmentCascade();
     if (initial || revealedNow.length === 0) return;
     revealedNow.forEach(function (entry, i) {
       // Several sections open at once only on a prefilled return, where a
@@ -5758,10 +5807,10 @@ var ContourForm1Logic = function () {
       sectionBoxManualOpen[def.id] = true;
     });
     // Anything asking for the whole form (submit attempt, staff mode,
-    // prefill) needs the collapsed cards open too, guardian segment and
+    // prefill) needs the collapsed cards open too, student segment and
     // submit button included — an Enter-key submit attempt must never end
     // with the form open but its button missing.
-    guardianSegmentRevealed = true;
+    studentSegmentRevealed = true;
     submitRevealed = true;
     expandAllSectionBoxes(pinOpen);
     evaluateSections({
@@ -6186,7 +6235,7 @@ var ContourForm1Logic = function () {
       // inputs; selection still fills navy over it. Selector mirrors the page
       // stylesheet's radio-card rule — anything lighter loses on specificity.
       ".hs-form .contour-section-box .hs-fieldtype-radio .input > ul.inputs-list > li.hs-form-radio label.hs-form-radio-display:not(:has(input:checked)):not(:hover) { background-color: #FFF9F1 !important; }" +
-      ".hs-form .contour-guardian-seg-hidden { display: none !important; }" +
+      ".hs-form .contour-student-seg-hidden { display: none !important; }" +
       // Inside a card the person "box" (per-row borders + band headers)
       // flattens: fields sit directly on the card, and each segment is
       // announced by a hairline header — "You"-pill + label over a rule —
@@ -6721,24 +6770,24 @@ var ContourForm1Logic = function () {
     }
     return "";
   }
-  /* On the Guardian flow the card opens on the Student segment alone; the
-     Guardian band and fieldsets slide in once the student rows are answered
-     — the same cascade the sections play, one level down. Reveal-once, like
-     sections: emptying a student field later never yanks filled guardian
-     rows off the screen. */
-  var guardianSegmentRevealed = false;
-  var GUARDIAN_SEG_HIDDEN_CLASS = "contour-guardian-seg-hidden";
-  function guardianSegmentNodes() {
-    var nodes = qAll('[data-contour-person-static="guardian"]');
-    return nodes.concat(qAll("fieldset.contour-person-card__row--guardian"));
+  /* On the Guardian flow the card opens on the Guardian segment alone — the
+     visitor leads with their own details — and the Student band and rows
+     slide in once the guardian rows are answered — the same cascade the
+     sections play, one level down (order flipped with the segments, Amrit,
+     1 Sep 2026). Reveal-once, like sections: emptying a guardian field
+     later never yanks filled student rows off the screen. */
+  var studentSegmentRevealed = false;
+  var STUDENT_SEG_HIDDEN_CLASS = "contour-student-seg-hidden";
+  function studentSegmentNodes() {
+    var nodes = qAll('[data-contour-person-static="student"]');
+    return nodes.concat(personGroupRows(PERSON_GROUPS[0]));
   }
-  // Data on screen outranks the cascade: switching Student -> Guardian
-  // mid-fill carries whatever was typed into the visitor's own rows over to
-  // the Guardian segment, and hiding rows that already hold an answer looks
-  // like the form ate them (Amrit, 22 Aug). An untouched switch still plays
-  // the cascade, student rows first.
-  function guardianSegmentHasAnswer() {
-    var fields = PERSON_GROUPS[1].fields;
+  // Data on screen outranks the cascade: a prefill link or restored draft
+  // that already holds the student's details must never hide them behind
+  // the reveal — rows that already hold an answer disappearing looks like
+  // the form ate them (Amrit, 22 Aug).
+  function studentSegmentHasAnswer() {
+    var fields = PERSON_GROUPS[0].fields;
     for (var i = 0; i < fields.length; i++) {
       var el = q(fields[i].selector);
       var wrap = el ? fieldWrapper(el) : null;
@@ -6746,13 +6795,14 @@ var ContourForm1Logic = function () {
     }
     return false;
   }
-  function studentSegmentComplete() {
-    var fields = PERSON_GROUPS[0].fields;
+  function guardianSegmentComplete() {
+    var fields = PERSON_GROUPS[1].fields;
     for (var i = 0; i < fields.length; i++) {
-      // The phone never gates the reveal: a guardian who can't produce the
-      // student's number would face a card that refuses to grow, with their
-      // own fields stuck behind it. It stays required for submission.
-      if (fields[i].selector === FIELD_SELECTORS.studentPhone) continue;
+      // The phone never gates the reveal: the intl widget's validity is the
+      // flakiest thing on the card, and a guardian midway through their own
+      // number would face a card that refuses to grow. It stays required
+      // for submission.
+      if (fields[i].selector === FIELD_SELECTORS.guardianPhone) continue;
       var el = q(fields[i].selector);
       var wrap = el ? fieldWrapper(el) : null;
       if (!wrap) continue;
@@ -6762,34 +6812,35 @@ var ContourForm1Logic = function () {
     }
     return true;
   }
-  function updateGuardianSegmentCascade() {
-    var nodes = guardianSegmentNodes();
+  function updateStudentSegmentCascade() {
+    var nodes = studentSegmentNodes();
     if (nodes.length === 0) return;
-    // Off the Guardian flow these same nodes ARE the visitor's own fields, so
-    // the cascade has to hand them back on the way out: switching Guardian ->
-    // Student used to return early and leave the hidden class on, blanking
-    // the contact card (Amrit, 22 Aug). Reveal-once still holds per flow, so
-    // Student -> Guardian doesn't replay the slide-in for rows already seen.
+    // Off the Guardian flow the Student band heads the visitor's own fields,
+    // so the cascade has to hand it back on the way out rather than return
+    // early and leave the hidden class on (the Guardian-era version of this
+    // blanked the contact card that way; Amrit, 22 Aug). Reveal-once still
+    // holds per flow, so Student -> Guardian -> Student doesn't replay the
+    // slide-in for rows already seen.
     if (!isGuardianContactType()) {
       nodes.forEach(function (node) {
-        node.classList.remove(GUARDIAN_SEG_HIDDEN_CLASS);
+        node.classList.remove(STUDENT_SEG_HIDDEN_CLASS);
       });
       return;
     }
     // Everything shows at once when disclosure is off, for staff, and after
     // anything that reveals the whole form (submit attempt, prefill).
-    var show = guardianSegmentRevealed || !sectionFlowActive() || isInternalMode() || guardianSegmentHasAnswer() || studentSegmentComplete();
+    var show = studentSegmentRevealed || !sectionFlowActive() || isInternalMode() || studentSegmentHasAnswer() || guardianSegmentComplete();
     nodes.forEach(function (node) {
       if (!show) {
-        node.classList.add(GUARDIAN_SEG_HIDDEN_CLASS);
+        node.classList.add(STUDENT_SEG_HIDDEN_CLASS);
         return;
       }
-      if (!node.classList.contains(GUARDIAN_SEG_HIDDEN_CLASS)) return;
-      node.classList.remove(GUARDIAN_SEG_HIDDEN_CLASS);
-      if (guardianSegmentRevealed) return;
+      if (!node.classList.contains(STUDENT_SEG_HIDDEN_CLASS)) return;
+      node.classList.remove(STUDENT_SEG_HIDDEN_CLASS);
+      if (studentSegmentRevealed) return;
       playReveal(node);
     });
-    if (show) guardianSegmentRevealed = true;
+    if (show) studentSegmentRevealed = true;
   }
   // "Started" = any visible field in the group holds an answer. Auto-collapse
   // waits for a later section to be started, not merely revealed — revealing
