@@ -2795,44 +2795,54 @@ var ContourForm1Logic = function () {
       }));
     });
   }
+  // Both phone selects answer to this: the student widget's options carry the
+  // bare ISO while HubSpot's own have worn several shapes ("au", "AU_61"), so
+  // the match tries every one rather than betting on today's format.
+  function selectPhoneCountryOption(select, parts) {
+    var matched = false;
+    Array.prototype.forEach.call(select.options, function (opt) {
+      if (matched) return;
+      var v = (opt.value || "").toLowerCase();
+      if (v === parts.iso || v === parts.dial || v === "+" + parts.dial || v.indexOf(parts.iso + "_") === 0 || v.indexOf("_" + parts.dial) !== -1) {
+        select.value = opt.value;
+        matched = true;
+      }
+    });
+    return matched;
+  }
   function setPhoneValue(selector, value) {
+    if (!value) return;
+    value = String(value).trim();
     if (!value) return;
     var el = q(selector);
     if (!el) return;
+    // A prefill can land before the widgets exist (the student control is
+    // built from an observer callback); both builders are idempotent, so
+    // raising them here lets the write below reach every box in one pass
+    // instead of leaning on a later sync to carry it over.
+    enhanceStudentPhoneField();
+    enhancePhoneBoxes();
     var wrap = fieldWrapper(el) || el.parentElement;
     var select = wrap ? wrap.querySelector("select") : null;
     var parts = splitE164(value);
-    if (select && parts) {
-      var matched = false;
-      Array.prototype.forEach.call(select.options, function (opt) {
-        if (matched) return;
-        var v = (opt.value || "").toLowerCase();
-        if (v === parts.iso || v === parts.dial || v === "+" + parts.dial || v.indexOf(parts.iso + "_") === 0 || v.indexOf("_" + parts.dial) !== -1) {
-          select.value = opt.value;
-          matched = true;
+    if (select && parts && selectPhoneCountryOption(select, parts)) {
+      fireInputEvents(select);
+      Array.prototype.forEach.call(wrap.querySelectorAll("input"), function (inp) {
+        // HubSpot's own widget: the hidden input carries the full E.164 value
+        // for submission. The visible proxy shows the national number alone —
+        // never a dial code, that lives on the select — and its input event
+        // recomposes "+dial national" onto the real box, so the direct write
+        // to the real box is the same value the sync settles on.
+        if (inp.type === "hidden") {
+          inp.value = value;
+        } else if (inp.classList.contains(PHONE_PROXY_CLASS)) {
+          inp.value = parts.national;
+        } else {
+          inp.value = "+" + parts.dial + " " + parts.national;
         }
+        fireInputEvents(inp);
       });
-      if (matched) {
-        fireInputEvents(select);
-        var inputs = Array.prototype.slice.call(wrap.querySelectorAll("input"));
-        var hasHidden = inputs.some(function (inp) {
-          return inp.type === "hidden";
-        });
-        inputs.forEach(function (inp) {
-          // HubSpot's own widget: hidden input carries the full E.164 value
-          // for submission and the visible one only holds the national number.
-          // Our injected widget (see enhanceStudentPhoneField) has no hidden
-          // input — the visible input IS the submitted value, so it keeps the
-          // dial code.
-          if (inp.type === "hidden") {
-            inp.value = value;
-          } else {
-            inp.value = hasHidden ? parts.national : "+" + parts.dial + " " + parts.national;
-          }
-          fireInputEvents(inp);
-        });
-        return;
-      }
+      return;
     }
     el.value = value;
     fireInputEvents(el);
