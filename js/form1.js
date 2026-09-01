@@ -3468,12 +3468,11 @@ var ContourForm1Logic = function () {
     if (entry) restoreSectionBoxState(entry.boxes);
   }
   function restoreSectionBoxState(boxes) {
-    // Step mode works out which card is open from the answers themselves, so
-    // a remembered open/folded map has nothing to add and plenty to fight:
-    // a card stored open is one the rule would fold, and the two would take
-    // turns. The refresh lands on the first unanswered card, which is where
-    // the visitor left off anyway.
-    if (stepModeEnabled()) return;
+    // Both modes honour the hand-set states now: with auto-collapse gone the
+    // manual maps are the record of every deliberate fold and reopen, and a
+    // refresh puts the cards back the way the visitor left them. Everything
+    // else stays derived — completed sections fold to their summaries, the
+    // cards still needing answers open (Amrit, 1 Sep 2026).
     if (!boxes) return;
     (boxes.open || []).forEach(function (id) {
       if (SECTION_BOX_IDS[id]) sectionBoxManualOpen[id] = true;
