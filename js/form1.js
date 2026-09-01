@@ -177,8 +177,8 @@ var ContourForm1Logic = function () {
     accentContrast: "#0C3166"
   }, {
     match: /test\s*prep|selective/i,
-    title: "Selective Entry & Scholarship",
-    description: "Prep for the Victorian selective entry & scholarship exams",
+    title: "Selective & Scholarship School Entry",
+    description: "Prep for the victorian selective entry & scholarship exams",
     logoUrl: "https://cdn.prod.website-files.com/696ed06d2e62378f0a51f2d4/6a0bbed5fdbd2c829b5e4e7c_Final%20TESTPREP%20Charcoal%20horizontal%20logo.svg",
     logoTintRight: "41.8%",
     accent: "#3478F7",
@@ -186,7 +186,7 @@ var ContourForm1Logic = function () {
     accentContrast: "#0C3166"
   }, {
     match: /med\s*prep|ucat/i,
-    title: "Medical Entry",
+    title: "Med School Entry",
     description: "UCAT tutoring & interview prep for entry into medical/dental school",
     logoUrl: "https://cdn.prod.website-files.com/696ed06d2e62378f0a51f2d4/6a0bbed5058c7ec65b1a454e_Final%20MEDPREP%20Charcoal%20horizontal%20logo.svg",
     logoTintRight: "39.9%",
@@ -238,8 +238,8 @@ var ContourForm1Logic = function () {
   var WC_OPEN_SOON_NOTE = "Welcome Consultation bookings open soon. You can still submit this form now. We'll be in touch once bookings open.";
   var CATEGORY_DISPLAY_ORDER = ["Mathematics", "Science", "English", "TestPrep", "MedPrep", "Other"];
   var CATEGORY_DISPLAY_NAMES = {
-    TestPrep: "Selective Entry & Scholarship",
-    MedPrep: "Medical Entry"
+    TestPrep: "Selective & Scholarship School Entry",
+    MedPrep: "Med School Entry"
   };
   function matrixLocationKey(location) {
     if (location === "United Kingdom") return "UK";
@@ -2134,7 +2134,7 @@ var ContourForm1Logic = function () {
         return entry.li;
       });
     });
-    // Medical Entry list order is UCAT, then Medical & Dental Interviews,
+    // Med School Entry list order is UCAT, then Medical & Dental Interviews,
     // then GAMSAT (Nick's request) — HubSpot serves them roughly reversed.
     // Rank sort keeps unknown future codes between Interviews and GAMSAT.
     if (buckets.MedPrep) {
@@ -2576,17 +2576,17 @@ var ContourForm1Logic = function () {
     var divider = formRoot.querySelector("#contour-divider-campus");
     if (divider) divider.style.display = shouldShow ? "" : "none";
   }
-  /* Medical Entry runs online and nowhere else, so Online is not a campus
+  /* Med School Entry runs online and nowhere else, so Online is not a campus
      choice for it — it is a consequence of picking the program. It was only
      being forced when MedPrep was the *only* program picked, and that case
-     hides the campus question outright; pick Medical Entry alongside High
+     hides the campus question outright; pick Med School Entry alongside High
      School Tutoring and the question appeared with Online free to be unticked,
      which is what Angad hit (23 Aug 2026).
 
      Forced and explained, rather than forced quietly: a tick nobody made is
      worth a line saying who made it. */
   var CAMPUS_NOTE_CLASS = "contour-campus-note";
-  var CAMPUS_NOTE_TEXT = "Online is selected for you because Medical Entry (UCAT) is delivered online. You can still add campuses for your other programs.";
+  var CAMPUS_NOTE_TEXT = "Online is selected for you because Contour MedPrep is delivered online. You can still add campuses for your other programs.";
   function renderCampusOnlineNote(show) {
     var field = q(FIELD_SELECTORS.campus);
     var wrap = field ? fieldWrapper(field) : null;
@@ -2619,6 +2619,47 @@ var ContourForm1Logic = function () {
     // note explaining a tick belongs under the ticks, not under the error.
     if (note !== wrap.lastElementChild) wrap.appendChild(note);
   }
+  /* The note says the tick was made for them; this is what makes that true.
+     Forcing Online on every pass only held until the next pass — untick it
+     and it stayed unticked until a program changed, so the note sat above a
+     campus list that no longer matched it. While MedPrep is in the basket
+     Online is not a choice, so the tile refuses to come off (Amrit, 1 Sep
+     2026). The lock lifts with the same condition that set it. */
+  var CAMPUS_LOCK_ATTR = "data-contour-campus-locked";
+  var CAMPUS_LOCK_CLASS = "contour-campus-option--locked";
+  var CAMPUS_LOCK_BOUND_ATTR = "data-contour-campus-lock-bound";
+  function setCampusOptionLocked(opt, locked) {
+    if (!opt) return;
+    if (locked) {
+      opt.setAttribute(CAMPUS_LOCK_ATTR, "true");
+      // Not `disabled`: a disabled box is left out of the submission, and the
+      // whole point of the lock is that Online reaches HubSpot.
+      opt.setAttribute("aria-disabled", "true");
+    } else {
+      opt.removeAttribute(CAMPUS_LOCK_ATTR);
+      opt.removeAttribute("aria-disabled");
+    }
+    var wrap = optionWrapper(opt);
+    if (wrap) wrap.classList.toggle(CAMPUS_LOCK_CLASS, locked);
+  }
+  function guardLockedCampusOptions() {
+    if (!formRoot || formRoot.hasAttribute(CAMPUS_LOCK_BOUND_ATTR)) return;
+    formRoot.setAttribute(CAMPUS_LOCK_BOUND_ATTR, "true");
+    /* Capture on the form rather than the input: HubSpot re-renders replace
+       the option nodes, and the card click-area fix re-issues the press as a
+       click on the input itself — this sees both, and sees them before
+       HubSpot's own handlers. */
+    formRoot.addEventListener("click", function (e) {
+      var input = e.target;
+      if (!input || input.tagName !== "INPUT" || input.type !== "checkbox") return;
+      if (!input.hasAttribute(CAMPUS_LOCK_ATTR)) return;
+      // The form's own re-ticks go through setCheckboxChecked, which clicks
+      // the box for real — those must still land.
+      if (isProgrammaticEdit()) return;
+      e.preventDefault();
+      e.stopPropagation();
+    }, true);
+  }
   function evaluateCampusOptions() {
     var location = getValue(FIELD_SELECTORS.location);
     var selectedPrograms = getCheckedValues(FIELD_SELECTORS.programInterest);
@@ -2628,6 +2669,8 @@ var ContourForm1Logic = function () {
       options.forEach(function (opt) {
         var isOnline = getCampusClassification(opt).code === "ONLINE";
         setCheckboxChecked(opt, isOnline);
+        // The question is off screen, so there is nothing to lock against.
+        setCampusOptionLocked(opt, false);
       });
       toggleFieldWrapper(q(FIELD_SELECTORS.campus), false);
       toggleCampusDivider(false);
@@ -2644,7 +2687,9 @@ var ContourForm1Logic = function () {
       var classification = getCampusClassification(opt);
       var shouldShow = fieldShouldShow && subjectMatchesLocation(classification.state, location);
       shouldShow ? showOption(opt) : hideOption(opt);
-      if (medPrepWithOthers && classification.code === "ONLINE" && shouldShow && !opt.checked) setCheckboxChecked(opt, true);
+      var forcedOnline = medPrepWithOthers && classification.code === "ONLINE" && shouldShow;
+      if (forcedOnline && !opt.checked) setCheckboxChecked(opt, true);
+      setCampusOptionLocked(opt, forcedOnline);
     });
     renderCampusOnlineNote(fieldShouldShow && medPrepWithOthers);
     toggleFieldWrapper(q(FIELD_SELECTORS.campus), fieldShouldShow);
@@ -4102,7 +4147,7 @@ var ContourForm1Logic = function () {
     // both can be on screen at once when the two are selected together.
     var audiences = [];
     if (ucat && UCAT_ENROLMENTS_OPEN) audiences.push("UCAT");
-    if (testprep) audiences.push("Selective Entry & Scholarship");
+    if (testprep) audiences.push("Selective & Scholarship");
     var showScheduler = audiences.length > 0 && WC_BOOKINGS_OPEN;
     var showOpenSoonNote = audiences.length > 0 && !WC_BOOKINGS_OPEN;
     var noteEl = ensureWcOpenSoonNote();
@@ -6367,6 +6412,10 @@ var ContourForm1Logic = function () {
       box + '[data-contour-section="campus"] .hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display:not(:has(input:checked)) { background-color: #FFF9F1 !important; }' +
       box + '[data-contour-section="campus"] .hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display:has(input:checked) { background-color: #005FCC !important; border-color: #005FCC !important; }' +
       box + '[data-contour-section="campus"] .hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display:has(input:checked) span, ' + box + '[data-contour-section="campus"] .hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display:has(input:checked) .contour-campus-name, ' + box + '[data-contour-section="campus"] .hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display:has(input:checked) .contour-campus-address { color: #FFFFFF !important; }' +
+      /* The forced Online tile keeps the picked colour — it is picked — but
+         drops the pointer cursor, so the one tile that will not answer a
+         press stops inviting one. The note underneath says why. */
+      box + '[data-contour-section="campus"] .hs_web_form__preferred_campuses li.hs-form-checkbox.contour-campus-option--locked label.hs-form-checkbox-display { cursor: default; }' +
       // Why Online is ticked when nobody ticked it.
       // 500 rather than the hint's 600: two lines of bold amber is a raised
       // voice for a sentence that is explaining a convenience.
@@ -7653,8 +7702,8 @@ var ContourForm1Logic = function () {
   // to submit with an empty Education signup.
   var PROGRAM_DISPLAY_NAMES = {
     Education: "High School Tutoring",
-    TestPrep: "Selective Entry & Scholarship",
-    MedPrep: "Medical Entry"
+    TestPrep: "Selective & Scholarship School Entry",
+    MedPrep: "Med School Entry"
   };
   function enforceProgramSubjectCoverageValidation() {
     var subjectOptions = qAll(FIELD_SELECTORS.interestedSubjects);
@@ -9136,6 +9185,7 @@ var ContourForm1Logic = function () {
     ensureDividerBefore(q(FIELD_SELECTORS.campus), "contour-divider-campus");
     ensureDividerBefore(q(FIELD_SELECTORS.referral), "contour-divider-referral");
     fixRadioCardClickArea();
+    guardLockedCampusOptions();
     fixCheckboxCardClickArea();
     fixProgramCardClickArea();
     enforceContactTypeLayoutIfPresent();
