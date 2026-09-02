@@ -1,0 +1,68 @@
+name: Promote to production
+
+# The production Webflow embed loads js/prod/form1.js from GitHub Pages, so
+# production only moves when this workflow copies a released js/form1.js into
+# that path. Pushes to main change js/form1.js — the staging path — alone.
+#
+# Fires on a version tag, so cutting a release ships it. Can also be run by
+# hand against any tag or commit, which is how a rollback is done: dispatch it
+# with the previous tag.
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Tag or commit to promote (e.g. v1.1.1)"
+        required: true
+
+permissions:
+  contents: write
+
+# Two promotions racing would fight over the same file on main.
+concurrency:
+  group: promote-to-production
+  cancel-in-progress: false
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out main with every tag
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Copy the released form1.js into the production path
+        run: |
+          REF="${{ github.event.inputs.ref || github.ref_name }}"
+          echo "Promoting ${REF} to js/prod/form1.js"
+          mkdir -p js/prod
+          git show "${REF}:js/form1.js" > js/prod/form1.js
+          if git diff --quiet -- js/prod/form1.js; then
+            echo "Production is already serving ${REF} — nothing to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add js/prod/form1.js
+          git commit -m "Promote ${REF} to production"
+          git push origin main
+
+      - name: Wait for Pages to serve the promoted file
+        run: |
+          URL="https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}/js/prod/form1.js"
+          echo "Verifying ${URL}"
+          for i in $(seq 1 20); do
+            if curl -fsS "$URL" -o /tmp/live.js && cmp -s /tmp/live.js js/prod/form1.js; then
+              echo "Production path is live and byte-identical."
+              exit 0
+            fi
+            echo "Not ready yet (attempt $i/20), retrying in 15s..."
+            sleep 15
+          done
+          echo "Pages did not serve the promoted file within 5 minutes." >&2
+          exit 1

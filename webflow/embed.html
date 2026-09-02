@@ -5,9 +5,10 @@
 
   JS is served by GitHub Pages — rebuilds on every push to main (~30-60s),
   browser cache max 10 minutes. No tags or cache purging needed. That makes
-  this the staging embed: it always carries the tip of main.
-  Production uses webflow/production-embed.html, which pins an immutable
-  jsDelivr tag instead so a push to main cannot reach live users.
+  this the staging embed: js/form1.js always carries the tip of main.
+  Production uses webflow/production-embed.html, which loads js/prod/form1.js
+  from the same Pages site — a separate copy that only a release moves, so a
+  push to main cannot reach live users.
 
   CSS stays in the Webflow page header code — unchanged.
   The Cal.com booking widget script on the page is separate — do not touch.

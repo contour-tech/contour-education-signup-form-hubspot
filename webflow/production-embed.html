@@ -3,21 +3,29 @@
   Paste this into the contact-form_embed Code Embed on the *production*
   Free Trial page (contoureducation.com.au/free-trial-hubspot).
 
-  The only difference from embed.html is the form1.js src: this one is
-  pinned to an immutable jsDelivr tag, so production is frozen at a
-  known version and a push to main can no longer change it.
+  The only difference from embed.html is the form1.js src: this one loads
+  js/prod/form1.js, a second copy on the same GitHub Pages site that a push
+  to main never touches. Only the "Promote to production" workflow writes it,
+  and only from a version tag — so production moves when a release is cut,
+  not when someone pushes.
 
-  Staging (webflow/embed.html) keeps the GitHub Pages URL and still
-  auto-updates on every push to main — that is the place to test.
+  Staging (webflow/embed.html) keeps js/form1.js and still auto-updates on
+  every push to main — that is the place to test.
 
-  Pinned version: v1.1.1 (repo commit 831c4af)
+  Because the URL is stable, this page never needs republishing again: a
+  release updates what the URL serves (~30-60s, browser cache max 10 min).
 
-  To promote a new version to production:
+  To ship a version to production:
     1. Verify on staging.
     2. git tag vX.Y.Z && git push origin vX.Y.Z
-    3. The release-jsdelivr workflow verifies jsDelivr serves the tag
-       byte-identical and publishes a Release with the pasteable URL.
-    4. Bump the version in the src below, republish this page.
+    3. Two workflows run: release-jsdelivr records the immutable tag URL,
+       promote-to-production copies that tag's form1.js to js/prod/form1.js.
+    4. Nothing to do here.
+
+  To roll back: run the "Promote to production" workflow by hand with the
+  previous tag. The pinned jsDelivr tag URLs stay available as an emergency
+  fallback if Pages itself is the problem:
+    https://cdn.jsdelivr.net/gh/contour-tech/contour-education-signup-form-hubspot@v1.1.1/js/form1.js
 
   CSS stays in the Webflow page header code — unchanged.
   The Cal.com booking widget script on the page is separate — do not touch.
@@ -25,7 +33,7 @@
 
 <!--
   Optional. Overrides the defaults in FEATURE_DEFAULTS at the top of form1.js
-  without needing a new tag. As shipped in v1.1.1: stepSections and
+  without needing a release. As shipped in v1.1.1: stepSections and
   personGroups on, progressiveSections and sectionHeaders off.
 
   <script>
@@ -40,7 +48,7 @@
 
 <script charset="utf-8" type="text/javascript" src="https://js-ap1.hsforms.net/forms/embed/v2.js"></script>
 
-<script src="https://cdn.jsdelivr.net/gh/contour-tech/contour-education-signup-form-hubspot@v1.1.1/js/form1.js"></script>
+<script src="https://contour-tech.github.io/contour-education-signup-form-hubspot/js/prod/form1.js"></script>
 
 <script>
   hbspt.forms.create({
