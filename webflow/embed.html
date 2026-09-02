@@ -4,10 +4,10 @@
   replacing the current ~50k-char inline version.
 
   JS is served by GitHub Pages — rebuilds on every push to main (~30-60s),
-  browser cache max 10 minutes. No tags or cache purging needed.
-  For the production cutover, optionally switch to a pinned jsDelivr tag URL
-  (https://cdn.jsdelivr.net/gh/contour-tech/contour-education-signup-form-hubspot@v1.0.0/js/form1.js)
-  for a frozen, immutable version.
+  browser cache max 10 minutes. No tags or cache purging needed. That makes
+  this the staging embed: it always carries the tip of main.
+  Production uses webflow/production-embed.html, which pins an immutable
+  jsDelivr tag instead so a push to main cannot reach live users.
 
   CSS stays in the Webflow page header code — unchanged.
   The Cal.com booking widget script on the page is separate — do not touch.

@@ -1,0 +1,57 @@
+<!--
+  Contour Form 1 — PRODUCTION Webflow Code Embed.
+  Paste this into the contact-form_embed Code Embed on the *production*
+  Free Trial page (contoureducation.com.au/free-trial-hubspot).
+
+  The only difference from embed.html is the form1.js src: this one is
+  pinned to an immutable jsDelivr tag, so production is frozen at a
+  known version and a push to main can no longer change it.
+
+  Staging (webflow/embed.html) keeps the GitHub Pages URL and still
+  auto-updates on every push to main — that is the place to test.
+
+  Pinned version: v1.0.0 (repo commit f3deadc)
+
+  To promote a new version to production:
+    1. Verify on staging.
+    2. git tag vX.Y.Z && git push origin vX.Y.Z
+    3. The release-jsdelivr workflow verifies jsDelivr serves the tag
+       byte-identical and publishes a Release with the pasteable URL.
+    4. Bump the version in the src below, republish this page.
+
+  CSS stays in the Webflow page header code — unchanged.
+  The Cal.com booking widget script on the page is separate — do not touch.
+-->
+
+<!--
+  Optional. Overrides the defaults in FEATURE_DEFAULTS at the top of form1.js
+  without needing a new tag. As shipped in v1.0.0: stepSections and
+  personGroups on, progressiveSections and sectionHeaders off.
+
+  <script>
+    window.ContourForm1Config = {
+      progressiveSections: false,  // open the form one section at a time
+      sectionHeaders: false        // headings above each section
+    };
+  </script>
+-->
+
+<div id="contour-form1"></div>
+
+<script charset="utf-8" type="text/javascript" src="https://js-ap1.hsforms.net/forms/embed/v2.js"></script>
+
+<script src="https://cdn.jsdelivr.net/gh/contour-tech/contour-education-signup-form-hubspot@v1.0.0/js/form1.js"></script>
+
+<script>
+  hbspt.forms.create({
+    portalId: "441696810",
+    formId: "b9c413c9-b520-4d4a-85d8-78934dc948bb",
+    region: "ap1",
+    target: "#contour-form1",
+    onFormReady: function ($form) {
+      if (window.ContourForm1Logic) {
+        ContourForm1Logic.init($form[0]);
+      }
+    }
+  });
+</script>
