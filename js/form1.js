@@ -2310,6 +2310,38 @@ var ContourForm1Logic = function () {
   }
   var subjectClassificationCache = new WeakMap;
   var updateSchoolRequiredMark = createRequiredMarkUpdater("schoolText", "contour-school-required");
+  /* HubSpot marks school_text required in the form definition, and its own
+     validator judges that on the value alone — a wrapper this file has set to
+     display:none is still a required field it will not let past. So from
+     United Kingdom, New Zealand and Overseas, where the question is never
+     asked, the form could not be submitted at all: HubSpot answered every
+     attempt with "Please complete all required fields." over a field nobody
+     could see, and our own summary stayed quiet because the gate reads a
+     hidden field as absent, so there was nothing to click and nothing naming
+     the problem (Luke, 2 Sep 2026).
+
+     Stripping the `required` attribute and detaching the input were both
+     tried against the live form first: HubSpot validates from its own field
+     metadata and blocks either way. A value is the only thing it accepts, so
+     the submit sweep writes a placeholder into the box.
+
+     Written at submit rather than when the field is hidden, so it never
+     reaches the draft, the completeness tests or the summary — it exists only
+     in the payload — and cleared again the moment the question comes back. */
+  var SCHOOL_NOT_ASKED_VALUE = "Not Applicable";
+  function schoolFieldIsAsked() {
+    var input = q(FIELD_SELECTORS.schoolText);
+    var wrap = input ? fieldWrapper(input) : null;
+    return !!wrap && wrap.style.display !== "none";
+  }
+  function fillUnaskedSchoolForSubmit() {
+    var input = q(FIELD_SELECTORS.schoolText);
+    if (!input || schoolFieldIsAsked()) return;
+    if ((input.value || "").trim() !== "") return;
+    asProgrammaticEdit(function () {
+      setHiddenValue(FIELD_SELECTORS.schoolText, SCHOOL_NOT_ASKED_VALUE);
+    });
+  }
   function evaluateSchoolFieldVisibility() {
     var input = q(FIELD_SELECTORS.schoolText);
     if (!input) return;
@@ -2324,6 +2356,13 @@ var ContourForm1Logic = function () {
       if (input.value) setHiddenValue(FIELD_SELECTORS.schoolText, "");
       if (codeInput && codeInput.value) setHiddenValue(FIELD_SELECTORS.schoolCode, "");
       if (acaraInput && acaraInput.value) setHiddenValue(FIELD_SELECTORS.acaraId, "");
+    } else if (input.value === SCHOOL_NOT_ASKED_VALUE) {
+      // The placeholder only ever stood in for a question that was not asked.
+      // A blocked submit followed by a move back to an Australian state must
+      // not leave it sitting in a box the student is now being asked to fill.
+      asProgrammaticEdit(function () {
+        setHiddenValue(FIELD_SELECTORS.schoolText, "");
+      });
     }
   }
   function setFieldLabelText(fieldSelectorKey, text) {
@@ -5722,6 +5761,10 @@ var ContourForm1Logic = function () {
     // visible boxes and trimmed, so both the checks below and the submission
     // itself see the settled value, never HubSpot's mid-session reseeding.
     normalizePhoneValuesForSubmit();
+    // Same round, same reason: HubSpot will not pass a required field it can
+    // still see in its own definition, so a school question that was never
+    // asked has to leave with a value.
+    fillUnaskedSchoolForSubmit();
     // Enter in a text box reaches the gate before progressive disclosure has
     // opened every section. Nobody should be told to fix a field they cannot
     // see, so any submit attempt opens the whole form first.
