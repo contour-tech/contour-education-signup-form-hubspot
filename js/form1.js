@@ -119,6 +119,13 @@ var ContourForm1Logic = function () {
     // "Coming Soon" placeholders and the Online option never get one
     // (Amrit, 1 Sep 2026).
     campusMapHover: true,
+    // Which voice the header bands speak in: the card titles, the section
+    // pills, the Student / Guardian segment names and the subject summary's
+    // column headings. Off by default — title case, natural letter shapes,
+    // and "and" written as an ampersand, so the Programs card reads
+    // "Programs & Subjects" (Amrit, 3 Sep 2026). On restores the caps look
+    // the form shipped with, tracking and all.
+    capsHeaders: false,
     // Checks the addresses this submission would create a contact for against
     // HubSpot before letting the form go. Parked with the DUPLICATE EMAIL
     // GUARD block — deduplication is moving to the backend, and this comes
@@ -129,6 +136,50 @@ var ContourForm1Logic = function () {
     var overrides = window.ContourForm1Config;
     if (overrides && Object.prototype.hasOwnProperty.call(overrides, name)) return !!overrides[name];
     return !!FEATURE_DEFAULTS[name];
+  }
+  /* =========================================================
+     HEADER CASE
+     -----------------------------------------------------------
+     No header is authored in caps: every one of them is written in title
+     case and put into caps by `text-transform`. So the capsHeaders flag has
+     two jobs — swap the transform off in each rule that carries it, and fix
+     up the wording that only the caps setting made read well.
+     ========================================================= */
+  // Caps read a size larger than they measure: every letter stands at cap
+  // height, where title case spends most of its width down at x-height. So
+  // the title-case setting takes size back — the band keeps the presence the
+  // caps had (Amrit, 3 Sep 2026). A point is enough for the small print; the
+  // two headings that name things a visitor navigates by — the card band and
+  // the Student / Guardian segment — say their own figure and take more.
+  function headerFontSize(capsFontSize, titleCaseFontSize) {
+    if (featureEnabled("capsHeaders")) return capsFontSize + "px";
+    return (titleCaseFontSize === undefined ? capsFontSize + 1 : titleCaseFontSize) + "px";
+  }
+  // Weight comes back with the size. Caps carry themselves at 700 on the
+  // strength of the letterforms; the same 700 in title case reads as body
+  // copy sitting in a header's slot, and the collapsed cards — navy at 66%
+  // — lose it altogether. Inter is variable here, so 800 and 900 are real
+  // steps rather than the same face twice.
+  function headerFontWeight(capsWeight, titleCaseWeight) {
+    return featureEnabled("capsHeaders") ? capsWeight : titleCaseWeight;
+  }
+  // The caps look also leans on tracking to stay legible; title case does
+  // not, and wears the same tracking as a gap after every letter. Size,
+  // tracking and transform all turn over together, so a rule hands in the
+  // figures it used under caps and takes back the whole set.
+  function headerCapsCss(capsFontSize, letterSpacing, titleCaseFontSize) {
+    var caps = featureEnabled("capsHeaders");
+    return "font-size: " + headerFontSize(capsFontSize, titleCaseFontSize) + "; letter-spacing: " + (caps ? letterSpacing : "0.01em") + "; text-transform: " + (caps ? "uppercase" : "none") + ";";
+  }
+  // Only the first letter of each word is touched. The labels are already
+  // authored in title case, so lowercasing the rest of a word would buy
+  // nothing and would flatten an acronym ("UCAT", "MedPrep") on the day one
+  // reaches a header.
+  function headerLabel(text) {
+    if (featureEnabled("capsHeaders")) return text;
+    return String(text == null ? "" : text).replace(/(^|\s)and(?=\s)/gi, "$1&").replace(/(^|[\s(\/-])([a-z])/g, function (all, before, letter) {
+      return before + letter.toUpperCase();
+    });
   }
   var VALID_LOCATIONS = ["VIC", "NSW", "QLD", "SA", "ACT", "TAS", "WA", "NT", "United Kingdom", "New Zealand", "Overseas"];
   // "Your Region" (the HubSpot `state` property) is a single-line text field
@@ -1607,7 +1658,7 @@ var ContourForm1Logic = function () {
       // separator rule can paint behind the band and mask out under the text.
       var label = document.createElement("span");
       label.className = "contour-person-tabs__label";
-      label.textContent = (id === "student" ? "Student" : "Guardian") + " Details";
+      label.textContent = headerLabel((id === "student" ? "Student" : "Guardian") + " Details");
       title.appendChild(label);
       existing.appendChild(title);
     }
@@ -1874,7 +1925,7 @@ var ContourForm1Logic = function () {
     // The corner label names the tab being looked at, so it reads as the
     // container's heading: "Student Contact Information".
     var titleEl = strip.querySelector(".contour-person-tabs__title");
-    var titleText = (activePersonTab === "guardian" ? "Guardian" : "Student") + " Details";
+    var titleText = headerLabel((activePersonTab === "guardian" ? "Guardian" : "Student") + " Details");
     if (titleEl && titleEl.textContent !== titleText) titleEl.textContent = titleText;
     if (strip.nextSibling !== anchorRow) anchorRow.parentNode.insertBefore(strip, anchorRow);
   }
@@ -1996,7 +2047,7 @@ var ContourForm1Logic = function () {
       // the active tab shows its errors inline, so it stays as it is.
       ".hs-form button.contour-person-tab.is-errored:not(.is-active) { border-color: rgba(200, 16, 46, 0.30); background: rgba(200, 16, 46, 0.05); color: #8A0C22; }" +
       ".hs-form button.contour-person-tab.is-errored:not(.is-active):hover { background: rgba(200, 16, 46, 0.10); }" +
-      ".hs-form .contour-person-tabs__title { margin-left: auto; font-size: 11.5px; font-weight: 700; letter-spacing: 0.10em; text-transform: uppercase; color: rgba(12, 49, 102, 0.55); }" +
+      ".hs-form .contour-person-tabs__title { margin-left: auto; font-weight: " + headerFontWeight(700, 800) + "; " + headerCapsCss(11.5, "0.10em", 12.5) + " color: rgba(12, 49, 102, 0.55); }" +
       // Static segment headings (stacked rendering): right-aligned in the
       // form's theme navy rather than the corner label's muted tint (Amrit's
       // review, 21 Aug 2026 — a per-segment left rail was also considered and
@@ -2009,7 +2060,7 @@ var ContourForm1Logic = function () {
       // min-height is the badge's own height, so a band carrying the badge and
       // a band carrying only text come out the same depth — otherwise the two
       // segment bands on the Guardian flow differ by 5px.
-      ".hs-form .contour-person-tabs__heading { display: inline-flex; align-items: center; gap: 8px; min-height: 18px; font-size: 11.5px; font-weight: 700; letter-spacing: 0.10em; text-transform: uppercase; color: #0C3166; }" +
+      ".hs-form .contour-person-tabs__heading { display: inline-flex; align-items: center; gap: 8px; min-height: 18px; font-weight: " + headerFontWeight(700, 800) + "; " + headerCapsCss(11.5, "0.10em", 13) + " color: #0C3166; }" +
       // The bands are edges, not rows: the static headers hold one short line,
       // so they take tighter padding than the tab strip's touch targets.
       ".hs-form .contour-person-tabs--static { padding: 10px 24px; }" +
@@ -2577,7 +2628,7 @@ var ContourForm1Logic = function () {
     if (document.getElementById("contour-disabled-field-styles")) return;
     var style = document.createElement("style");
     style.id = "contour-disabled-field-styles";
-    style.textContent = ".hs-form select:disabled, .hs-form input:disabled, .hs-form input.contour-prefill-locked[readonly] { opacity: 0.55; background-color: #f1f0ec; cursor: not-allowed; }" + ".hs-form select.contour-prefill-locked { opacity: 0.55; background-color: #f1f0ec; cursor: not-allowed; pointer-events: none; }" + ".contour-prefill-banner { display: flex; align-items: flex-start; gap: 14px; margin: 0 0 24px; padding: 18px 22px; border: 1px solid rgba(12, 49, 102, 0.12); border-radius: 16px; background: #FFFFFF; box-shadow: 0 1px 3px rgba(12, 49, 102, 0.06); }" + ".contour-prefill-banner__badge { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; box-sizing: border-box; border: 2px solid #0C3166; border-radius: 50%; background: #007AFF; color: #FFFFFF; font-size: 15px; font-weight: 700; }" + ".contour-prefill-banner__content { flex: 1; min-width: 0; }" + ".contour-prefill-banner__title { margin: 0 0 2px; font-size: 15px; font-weight: 700; color: #0C3166; }" + ".contour-prefill-banner__text { margin: 0 0 8px; font-size: 13.5px; line-height: 1.45; color: #6b7280; }" + ".contour-prefill-banner__reset { display: inline-block; font-size: 13px; font-weight: 600; color: #0C3166; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }" + ".contour-prefill-banner__reset:hover { color: #0540F2; }" + ".contour-subject-summary { margin: 24px 0; padding: 20px 22px; border: 1px solid rgba(12, 49, 102, 0.12); border-radius: 16px; background: #FFF9F1; box-shadow: 0 1px 3px rgba(12, 49, 102, 0.06); }" + ".contour-subject-summary__heading { font-size: 15px; font-weight: 700; color: #0C3166; margin-bottom: 14px; }" + ".contour-subject-summary__grid { display: flex; flex-wrap: wrap; gap: 24px; }" + ".contour-subject-summary__col { flex: 1 1 180px; min-width: 160px; }" + ".contour-subject-summary__col-title { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #6b7280; margin-bottom: 8px; }" + ".contour-subject-summary__chips { display: flex; flex-wrap: wrap; gap: 6px; }" + ".contour-subject-chip { display: inline-block; padding: 5px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 600; line-height: 1.3; }" + ".contour-subject-chip--navy { background: #092749; color: #FFFFFF; }" + ".contour-subject-chip--lime { background: #D7FC3D; color: #0C3166; }" + ".contour-subject-chip--blue { background: #007AFF; color: #FFFFFF; }" + ".contour-ucat-intake-note { margin: 24px 0; }" + ".contour-welcome-consultation__waitlist-note { margin: 0; padding: 14px 18px; border: 1px solid #f0d9a6; border-radius: 12px; background: #FFF3D6; color: #8a5a00; font-size: 14px; line-height: 1.5; font-weight: 600; }" + ".contour-form-loader { display: flex; flex-direction: column; align-items: center; padding: 60px 0; }" + ".contour-form-loader__spinner { width: 36px; height: 36px; border: 4px solid #e3e0d8; border-top-color: #1a1a2e; border-radius: 50%; animation: contour-spin 0.8s linear infinite; }" + "@keyframes contour-spin { to { transform: rotate(360deg); } }" + ".contour-form-loader__text { margin-top: 12px; font-size: 14px; }";
+    style.textContent = ".hs-form select:disabled, .hs-form input:disabled, .hs-form input.contour-prefill-locked[readonly] { opacity: 0.55; background-color: #f1f0ec; cursor: not-allowed; }" + ".hs-form select.contour-prefill-locked { opacity: 0.55; background-color: #f1f0ec; cursor: not-allowed; pointer-events: none; }" + ".contour-prefill-banner { display: flex; align-items: flex-start; gap: 14px; margin: 0 0 24px; padding: 18px 22px; border: 1px solid rgba(12, 49, 102, 0.12); border-radius: 16px; background: #FFFFFF; box-shadow: 0 1px 3px rgba(12, 49, 102, 0.06); }" + ".contour-prefill-banner__badge { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; box-sizing: border-box; border: 2px solid #0C3166; border-radius: 50%; background: #007AFF; color: #FFFFFF; font-size: 15px; font-weight: 700; }" + ".contour-prefill-banner__content { flex: 1; min-width: 0; }" + ".contour-prefill-banner__title { margin: 0 0 2px; font-size: 15px; font-weight: 700; color: #0C3166; }" + ".contour-prefill-banner__text { margin: 0 0 8px; font-size: 13.5px; line-height: 1.45; color: #6b7280; }" + ".contour-prefill-banner__reset { display: inline-block; font-size: 13px; font-weight: 600; color: #0C3166; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }" + ".contour-prefill-banner__reset:hover { color: #0540F2; }" + ".contour-subject-summary { margin: 24px 0; padding: 20px 22px; border: 1px solid rgba(12, 49, 102, 0.12); border-radius: 16px; background: #FFF9F1; box-shadow: 0 1px 3px rgba(12, 49, 102, 0.06); }" + ".contour-subject-summary__heading { font-size: 15px; font-weight: 700; color: #0C3166; margin-bottom: 14px; }" + ".contour-subject-summary__grid { display: flex; flex-wrap: wrap; gap: 24px; }" + ".contour-subject-summary__col { flex: 1 1 180px; min-width: 160px; }" + ".contour-subject-summary__col-title { font-weight: 700; " + headerCapsCss(11, "0.08em") + " color: #6b7280; margin-bottom: 8px; }" + ".contour-subject-summary__chips { display: flex; flex-wrap: wrap; gap: 6px; }" + ".contour-subject-chip { display: inline-block; padding: 5px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 600; line-height: 1.3; }" + ".contour-subject-chip--navy { background: #092749; color: #FFFFFF; }" + ".contour-subject-chip--lime { background: #D7FC3D; color: #0C3166; }" + ".contour-subject-chip--blue { background: #007AFF; color: #FFFFFF; }" + ".contour-ucat-intake-note { margin: 24px 0; }" + ".contour-welcome-consultation__waitlist-note { margin: 0; padding: 14px 18px; border: 1px solid #f0d9a6; border-radius: 12px; background: #FFF3D6; color: #8a5a00; font-size: 14px; line-height: 1.5; font-weight: 600; }" + ".contour-form-loader { display: flex; flex-direction: column; align-items: center; padding: 60px 0; }" + ".contour-form-loader__spinner { width: 36px; height: 36px; border: 4px solid #e3e0d8; border-top-color: #1a1a2e; border-radius: 50%; animation: contour-spin 0.8s linear infinite; }" + "@keyframes contour-spin { to { transform: rotate(360deg); } }" + ".contour-form-loader__text { margin-top: 12px; font-size: 14px; }";
     document.head.appendChild(style);
   }
   function getClassification(inputEl) {
@@ -4877,7 +4928,7 @@ var ContourForm1Logic = function () {
       if (visibleColumns.length > 1) {
         var title = document.createElement("div");
         title.className = "contour-subject-summary__col-title";
-        title.textContent = col.title;
+        title.textContent = headerLabel(col.title);
         colEl.appendChild(title);
       }
       var chips = document.createElement("div");
@@ -6088,7 +6139,7 @@ var ContourForm1Logic = function () {
       // space to its left — the line IS the section divider, so the header
       // carries no border of its own and the hr dividers below stand down
       // whenever headers are on (Amrit, 21 Aug 2026).
-      ".hs-form .contour-section-header { display: flex; align-items: center; justify-content: flex-end; gap: 14px; box-sizing: border-box; width: 100%; flex: 0 0 100%; grid-column: 1 / -1; margin: 34px 0 20px; }" + ".hs-form .contour-section-header:first-child { margin-top: 0; }" + '.hs-form .contour-section-header::before { content: ""; flex: 1 1 auto; height: 1px; background: linear-gradient(90deg, rgba(12, 49, 102, 0), rgba(12, 49, 102, 0.18)); }' + ".hs-form .contour-section-header__title { flex: 0 0 auto; font-size: 12px; font-weight: 700; letter-spacing: 0.10em; text-transform: uppercase; color: #0C3166; padding: 6px 14px; border: 1px solid rgba(12, 49, 102, 0.16); border-radius: 999px; background: #FFFFFF; }" +
+      ".hs-form .contour-section-header { display: flex; align-items: center; justify-content: flex-end; gap: 14px; box-sizing: border-box; width: 100%; flex: 0 0 100%; grid-column: 1 / -1; margin: 34px 0 20px; }" + ".hs-form .contour-section-header:first-child { margin-top: 0; }" + '.hs-form .contour-section-header::before { content: ""; flex: 1 1 auto; height: 1px; background: linear-gradient(90deg, rgba(12, 49, 102, 0), rgba(12, 49, 102, 0.18)); }' + ".hs-form .contour-section-header__title { flex: 0 0 auto; font-weight: " + headerFontWeight(700, 800) + "; " + headerCapsCss(12, "0.10em", 14) + " color: #0C3166; padding: 6px 14px; border: 1px solid rgba(12, 49, 102, 0.16); border-radius: 999px; background: #FFFFFF; }" +
       // The three rules predate the headers and would double up with them.
       ".hs-form.contour-section-headers-on hr.contour-section-divider { display: none !important; }" +
       // --- helper note under a field that is waiting on an earlier answer -----
@@ -6288,7 +6339,7 @@ var ContourForm1Logic = function () {
   function sectionTitle(def) {
     // The person-tabs band inside the card carries the Student/Guardian
     // split; the card header stays constant.
-    return def.title;
+    return headerLabel(def.title);
   }
   function ensureSectionHeader(def, firstNode) {
     var title = featureEnabled("sectionHeaders") ? sectionTitle(def) : null;
@@ -6826,7 +6877,7 @@ var ContourForm1Logic = function () {
       box + '__status { flex: 0 0 auto; display: none; align-items: center; justify-content: center; width: 24px; height: 24px; box-sizing: border-box; border-radius: 50%; border: 2px solid #FFFFFF; background: #007AFF; color: #FFFFFF; }' +
       box + "__status svg { display: block; }" +
       box + "--collapsed .contour-section-box__status { display: flex; }" +
-      box + "__title { flex: 0 0 auto; font-size: 12.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #0C3166; }" +
+      box + "__title { flex: 0 0 auto; font-weight: " + headerFontWeight(700, 800) + "; " + headerCapsCss(12.5, "0.08em", 15) + " color: #0C3166; }" +
       box + "__summary { flex: 1 1 auto; min-width: 0; display: none; font-size: 13.5px; font-weight: 500; color: #6b7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }" +
       box + "--collapsed .contour-section-box__summary { display: block; }" +
       box + "__action { flex: 0 0 auto; display: none; align-items: center; justify-content: center; width: 28px; height: 28px; margin-left: auto; border-radius: 50%; color: #0C3166; transition: background-color 0.15s ease; }" +
@@ -6912,7 +6963,7 @@ var ContourForm1Logic = function () {
       // Level with the card's own band rather than a step under it: left-
       // aligned, this label now leads the rows beneath it instead of sitting
       // in the corner, so it carries a heading's weight (Amrit, 25 Aug 2026).
-      box + " .contour-person-tabs__heading { font-size: 13px; font-weight: 800; }" +
+      box + " .contour-person-tabs__heading { font-size: " + headerFontSize(13, 15) + "; font-weight: " + headerFontWeight(800, 900) + "; }" +
       box + " .contour-person-tabs--static .contour-person-tabs__heading { position: relative; }" +
       // The lime marker stroke behind the label comes from the base person
       // group styles — the white mask that used to live here is gone with
@@ -7071,7 +7122,7 @@ var ContourForm1Logic = function () {
       box + "--locked .contour-section-box__status svg { display: none; }" +
       // The state word, wherever it is used: set small against the far edge of
       // the band so it never reads as one of the answers.
-      box + '--collapsed[data-contour-pending="1"] .contour-section-box__summary { display: block; text-align: right; font-size: 11px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; }' +
+      box + '--collapsed[data-contour-pending="1"] .contour-section-box__summary { display: block; text-align: right; font-weight: 700; ' + headerCapsCss(11, "0.09em") + ' }' +
       box + '--locked[data-contour-pending="1"] .contour-section-box__summary { color: rgba(12, 49, 102, 0.4); }' +
       // No pencil on a card there is no way into.
       box + "--locked .contour-section-box__action { display: none; }" +
