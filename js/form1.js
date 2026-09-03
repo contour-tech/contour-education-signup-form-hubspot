@@ -6929,6 +6929,18 @@ var ContourForm1Logic = function () {
       "@media screen and (max-width: 767px) {" +
       " " + box + " .contour-person-tabs--static { padding: 6px 2px 8px !important; }" +
       " " + box + " .contour-person-group-host > .contour-person-card__row { border: 0 !important; padding: 10px 0 14px !important; }" +
+      // The two-column gutter above is set per field — `.hs_student_last_name`
+      // and `.hs_student_phone_number` carry the 12px padding-left, the other
+      // two the mirrored padding-right — so a reset written against the shared
+      // `.contour-person-card__row` class alone is one class short of them and
+      // loses the tie on specificity, !important on both sides or not. Media
+      // queries buy no specificity. The rows then stack full width but keep
+      // the gutter, and the second field of each pair sits 12px in from the
+      // first while the first is 12px short on the right — the misalignment
+      // reported on a phone (Amrit, 3 Sep 2026). Repeating the four chains is
+      // the same shape as the guardian reset on the line below, which is why
+      // that variant was never affected.
+      " " + box + " .contour-person-group-host > .hs_student_first_name.contour-person-card__row, " + box + " .contour-person-group-host > .hs_student_last_name.contour-person-card__row, " + box + " .contour-person-group-host > .hs_student_email.contour-person-card__row, " + box + " .contour-person-group-host > .hs_student_phone_number.contour-person-card__row { padding: 10px 0 14px !important; }" +
       " " + box + " fieldset.contour-person-card__row--guardian > .hs-form-field, " + box + " fieldset.contour-person-card__row--guardian > .hs-form-field + .hs-form-field { padding: 10px 0 14px !important; }" +
       "}" +
       // "Preferred Campuses" under the "Preferred Campus" band and "Program
