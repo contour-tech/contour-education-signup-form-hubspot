@@ -1198,12 +1198,28 @@ var ContourForm1Logic = function () {
       attributeFilter: ["class"]
     });
   }
+  // The two illustrated cards stay side by side at every width (Amrit, 3 Sep):
+  // stacked full-width tiles pushed "Student Details" a screen and a half down
+  // the phone, so the first question ate the whole viewport. The row itself is
+  // set here rather than in CSS because the page stylesheet stacks this list
+  // with `flex-direction: column !important` under 767px, and an inline
+  // important declaration is the one thing that outranks it whatever the
+  // page CSS says. The card's inside (image size, padding, type) shrinks in
+  // injectContactTypeCardStyles().
   function enforceContactTypeLayout(ul) {
     var mq = window.matchMedia("(max-width: 767px)");
     function apply() {
+      // Guarded, and not for tidiness: this runs from a MutationObserver
+      // watching `class`, and classList.add() writes the attribute even when
+      // the token is already on it. An unguarded add re-fires the observer,
+      // which calls apply() again — an unbounded callback loop that thrashes
+      // layout and leaves the form wedged mid-resize. Reading first means the
+      // attribute is only written when HubSpot has actually stripped it.
+      if (!ul.classList.contains(CONTACT_TYPE_LIST_CLASS)) ul.classList.add(CONTACT_TYPE_LIST_CLASS);
       ul.style.display = "flex";
-      ul.style.flexDirection = mq.matches ? "column" : "row";
-      ul.style.gap = mq.matches ? "0.75rem" : "1.25rem";
+      ul.style.setProperty("flex-direction", "row", "important");
+      ul.style.setProperty("flex-wrap", "nowrap", "important");
+      ul.style.setProperty("gap", mq.matches ? "10px" : "1.25rem", "important");
     }
     apply();
     mq.addEventListener("change", apply);
@@ -1215,7 +1231,55 @@ var ContourForm1Logic = function () {
   }
   function enforceContactTypeLayoutIfPresent() {
     var contactTypeUl = formRoot.querySelector(".hs-fieldtype-radio .input > ul.inputs-list");
-    if (contactTypeUl) enforceContactTypeLayout(contactTypeUl);
+    if (!contactTypeUl) return;
+    injectContactTypeCardStyles();
+    enforceContactTypeLayout(contactTypeUl);
+  }
+  /* Phone sizing for the Student / Guardian cards.
+     Everything here is inside a max-width: 767px query, so the desktop card
+     — 64px illustration, 1.25rem padding, 1rem label — is untouched.
+     On a phone the pair shares one row, so each card is about half the form
+     width. The illustration keeps its full 64px there: a half-width card at
+     390px is 153px across, which leaves 133px inside the padding, so the art
+     never had to shrink to fit — the room comes out of the padding and the
+     label instead (Amrit, 3 Sep: the first cut dropped it to 44px and the
+     line art visibly degraded). It holds 64px on every phone width, down to
+     the 320px handsets where the card is 119px across. The card sizes to its
+     content rather than holding a min-height, and at ~123px tall it clears
+     the 44px tap target several times over.
+     Selectors repeat the page stylesheet's own chain plus the list class
+     added in enforceContactTypeLayout(), so these outrank the page rules
+     (which are themselves !important) rather than tying with them. Scoping
+     to that class keeps any future radio field on the form stacking the way
+     it does today. */
+  var CONTACT_TYPE_LIST_CLASS = "contour-contact-type-list";
+  function injectContactTypeCardStyles() {
+    if (document.getElementById("contour-contact-type-card-styles")) return;
+    var style = document.createElement("style");
+    style.id = "contour-contact-type-card-styles";
+    var list = ".hs-form .hs-fieldtype-radio .input > ul.inputs-list." + CONTACT_TYPE_LIST_CLASS;
+    var item = list + " > li.hs-form-radio";
+    var card = item + " label.hs-form-radio-display.contour-contact-type-has-illustration";
+    style.textContent = "" +
+      "@media screen and (max-width: 767px) {" +
+      " " + list + " { flex-direction: row !important; flex-wrap: nowrap !important; gap: 10px !important; }" +
+      // flex-basis 0 with min-width 0 keeps the halves equal whatever the
+      // label text is — "Guardian" is the wider word.
+      " " + item + " { flex: 1 1 0% !important; min-width: 0 !important; }" +
+      " " + card + " { min-height: 0 !important; padding: 16px 10px 14px !important; gap: 8px !important; border-radius: 14px !important; font-size: 15px !important; }" +
+      // The illustration holds its desktop size; only the chrome around it
+      // gives way. width/height are declared on the img itself so the box is
+      // reserved before the AVIF decodes and the pair can't jump.
+      " " + card + " .contour-contact-type-illustration { width: 64px !important; height: 64px !important; flex: 0 0 auto; }" +
+      "}" +
+      // Narrowest handsets (320px): the card is 119px across, so 64px of art
+      // plus 6px of side padding still fits — the gutters and the label give
+      // way instead, and the illustration never changes size on any phone.
+      "@media screen and (max-width: 360px) {" +
+      " " + list + " { gap: 8px !important; }" +
+      " " + card + " { padding: 14px 6px 12px !important; gap: 6px !important; font-size: 14px !important; }" +
+      "}";
+    document.head.appendChild(style);
   }
   var CONTACT_TYPE_ILLUSTRATIONS = [{
     match: /student/i,
