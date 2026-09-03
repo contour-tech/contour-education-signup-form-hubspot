@@ -6821,7 +6821,19 @@ var ContourForm1Logic = function () {
       // overflow stays visible while open: the school suggestion list drops
       // out of its box. The collapsed class clips, which the 0fr squeeze
       // needs anyway.
-      box + "__content-inner { min-height: 0; padding: 16px 22px 20px; }" +
+      // min-width belongs with min-height here, and it is load-bearing on
+      // phones. As a grid item this div takes min-width: auto, which is its
+      // min-content width — and in WebKit a fieldset's min-content never
+      // drops below the widest field it holds, so the box sat at a fixed
+      // 352px however narrow the screen was. Under about 370px that pushed
+      // the document wider than the viewport: Safari then lets the page pan
+      // and pinch out, which reads as the whole form shrinking and sliding
+      // left with a dead gutter down the right. Blink shrinks the fieldset
+      // on its own, which is why this never showed up in Chrome. Both halves
+      // are needed — the grid item has to stop reserving min-content, and
+      // the fieldset inside it has to be allowed to shrink (3 Sep 2026).
+      box + "__content-inner { min-height: 0; min-width: 0; padding: 16px 22px 20px; }" +
+      ".hs-form fieldset { min-width: 0 !important; }" +
       box + "--collapsed .contour-section-box__content { grid-template-rows: 0fr; }" +
       // visibility keeps collapsed fields out of the tab order; expansion
       // hooks (header, focusin, error links) bring them back first.
