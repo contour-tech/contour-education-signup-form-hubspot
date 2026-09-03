@@ -6761,15 +6761,39 @@ var ContourForm1Logic = function () {
   // in a half-width tile. 880px gives the tiles the ~50px each they were
   // short of, and stays well inside the page's own 1296px content width. Only
   // the cap moves, so every narrower screen is untouched (Amrit, 23 Aug).
+  var FORM_WIDTH_CAP = 880;
   function injectFormWidthStyles() {
     if (!featureEnabled("widerForm")) return;
-    if (document.getElementById("contour-form-width-styles")) return;
-    var style = document.createElement("style");
-    style.id = "contour-form-width-styles";
-    style.textContent =
-      ".container-form { max-width: 880px; }" +
-      ".hs-form { max-width: 880px; }";
-    document.head.appendChild(style);
+    if (!document.getElementById("contour-form-width-styles")) {
+      var style = document.createElement("style");
+      style.id = "contour-form-width-styles";
+      style.textContent =
+        ".container-form { max-width: " + FORM_WIDTH_CAP + "px; }" +
+        ".hs-form { max-width: " + FORM_WIDTH_CAP + "px; }" +
+        ".contour-form-width-host { max-width: " + FORM_WIDTH_CAP + "px !important; }";
+      document.head.appendChild(style);
+    }
+    liftFormWidthCaps();
+  }
+  // Staging wraps the form in .container-form, production in .container-small
+  // — both 48rem in the Webflow stylesheet, but only the first is named in the
+  // rule above, so the addresses started wrapping again once production got
+  // its own page. Rather than chase class names, walk the form's own ancestors
+  // and lift whichever ones are actually holding it under 880px. Only caps
+  // below the target move, so a full-width section stays full width, and
+  // width: 100% still keeps every narrower screen where it was
+  // (Amrit, 3 Sep 2026).
+  function liftFormWidthCaps() {
+    if (!formRoot || !window.getComputedStyle) return;
+    var node = formRoot.parentElement;
+    while (node && node !== document.body) {
+      // Only pixel caps count: "none" is no cap at all, and a percentage is
+      // measured against a parent this loop is about to visit anyway.
+      var maxWidth = window.getComputedStyle(node).maxWidth || "";
+      var cap = /px$/.test(maxWidth) ? parseFloat(maxWidth) : NaN;
+      if (cap > 0 && cap < FORM_WIDTH_CAP) node.classList.add("contour-form-width-host");
+      node = node.parentElement;
+    }
   }
   function injectSectionBoxStyles() {
     if (document.getElementById("contour-section-box-styles")) return;
