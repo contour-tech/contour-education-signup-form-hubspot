@@ -79,11 +79,16 @@ var ContourForm1Logic = function () {
     //   personLabelOutline — the name inside a thin navy outline pill, the
     //     shape the site's own buttons wear. On by default (team feedback
     //     via Amrit, 4 Sep 2026).
+    //   personLabelFill — the same pill filled solid navy with the name
+    //     knocked out white, the section-header-theme2 treatment, and the
+    //     separator rule beside it goes solid navy to match (Amrit, 4 Sep
+    //     2026). Implies the pill, so it stands alone or on top of outline.
     //   personLabelMarker — a lime highlighter stroke drawn behind the
     //     letters (Amrit, 1 Sep 2026). Off by default since the pill arrived.
-    // With both on the outline wins; with both off the name is plain text
-    // on the field labels' grid line.
+    // Fill beats outline beats marker; with all three off the name is plain
+    // text on the field labels' grid line.
     personLabelOutline: true,
+    personLabelFill: false,
     personLabelMarker: false,
     // Renders the Interested Subjects checkboxes as selectable tiles in the
     // program-card language — navy fill and a blue tick when picked. Off
@@ -2136,19 +2141,22 @@ var ContourForm1Logic = function () {
       // The segment names are set off from the field labels below them in
       // one of two ways, or neither — see personLabelOutline and
       // personLabelMarker in FEATURE_DEFAULTS.
-      (featureEnabled("personLabelOutline") ?
-        // Outline pill: the name inside a thin navy ring, the shape the
-        // site's own buttons wear (team feedback via Amrit, 4 Sep 2026).
-        // 18px line box + 3px padding + 1px ring = 26px, inside the 30px
-        // band the section boxes pin, and centred on the separator rule by
-        // the band's own align-items: center.
+      (featureEnabled("personLabelOutline") || featureEnabled("personLabelFill") ?
+        // Pill: the name inside a thin navy ring, the shape the site's own
+        // buttons wear (team feedback via Amrit, 4 Sep 2026). 18px line box
+        // + 3px padding + 1px ring = 26px, inside the 30px band the section
+        // boxes pin, and centred on the separator rule by the band's own
+        // align-items: center.
         ".hs-form .contour-person-tabs--static .contour-person-tabs__label { display: inline-block; color: #0C3166; padding: 3px 12px; border: 1px solid #0C3166; border-radius: 999px; line-height: 18px; }" +
         // The text, not the ring, sits on the field labels' grid line, so
         // the pill's left half bleeds into the gutter the way the marker
         // stroke did — with the ring on the grid line the name read as
         // indented against the labels under it (Amrit, 4 Sep 2026). The
         // 13px is the padding plus the ring.
-        ".hs-form .contour-person-tabs--static.contour-person-tabs--label-left .contour-person-tabs__label { margin-left: -13px; }"
+        ".hs-form .contour-person-tabs--static.contour-person-tabs--label-left .contour-person-tabs__label { margin-left: -13px; }" +
+        // Filled: solid navy with the name knocked out white, the same
+        // treatment as the section card headers (sectionHeaderTheme2).
+        (featureEnabled("personLabelFill") ? ".hs-form .contour-person-tabs--static .contour-person-tabs__label { background: #0C3166; color: #FFFFFF; }" : "")
       : featureEnabled("personLabelMarker") ?
         // Highlighter lime behind the segment names so they stand out from
         // the field labels below them (Amrit, 1 Sep 2026); navy on lime
@@ -7117,6 +7125,10 @@ var ContourForm1Logic = function () {
       // out — a taper needs enough run to be seen as a taper, and enough clear
       // space after it that the eye is not looking for more (Amrit, 25 Aug).
       box + ' .contour-person-tabs--static.contour-person-tabs--label-left::before { left: var(--contour-seg-rule-start, 130px); background: linear-gradient(to right, rgba(12, 49, 102, 0.85), rgba(12, 49, 102, 0.85) calc(100% - 260px), rgba(12, 49, 102, 0) calc(100% - 60px), rgba(12, 49, 102, 0)); }' +
+      // Beside a filled navy pill the 0.85 wash reads as a different, greyer
+      // blue leaving the pill; the rule takes the pill's own solid navy and
+      // keeps the same taper (Amrit, 4 Sep 2026).
+      (featureEnabled("personLabelFill") ? box + ' .contour-person-tabs--static.contour-person-tabs--label-left::before { background: linear-gradient(to right, #0C3166, #0C3166 calc(100% - 260px), rgba(12, 49, 102, 0) calc(100% - 60px), rgba(12, 49, 102, 0)); }' : "") +
       box + " .contour-person-tabs--mid { margin-top: 26px; border-top: 0; }" +
       box + " .contour-person-group-host { margin-bottom: 0 !important; }" +
       box + " .contour-person-group-host > .contour-person-card__row { border: 0 !important; border-radius: 0 !important; }" +
