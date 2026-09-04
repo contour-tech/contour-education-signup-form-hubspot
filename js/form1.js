@@ -7098,6 +7098,11 @@ var ContourForm1Logic = function () {
       // aligned, this label now leads the rows beneath it instead of sitting
       // in the corner, so it carries a heading's weight (Amrit, 25 Aug 2026).
       box + " .contour-person-tabs__heading { font-size: " + headerFontSize(13, 15) + "; font-weight: " + headerFontWeight(800, 650) + "; }" +
+      // White on navy reads a size larger than navy on white, so inside the
+      // filled pill 15px looked oversized against the labels beneath it. It
+      // takes the collapsed section card headers' 13.5px/600 (12.5/700
+      // under caps) — the navy bands then speak in one voice (Amrit, 4 Sep).
+      (featureEnabled("personLabelFill") ? box + " .contour-person-tabs__heading { font-size: " + headerFontSize(12.5, 13.5) + "; font-weight: " + headerFontWeight(700, 600) + "; }" : "") +
       box + " .contour-person-tabs--static .contour-person-tabs__heading { position: relative; }" +
       // The lime marker stroke behind the label comes from the base person
       // group styles — the white mask that used to live here is gone with
