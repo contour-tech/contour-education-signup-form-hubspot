@@ -148,11 +148,15 @@ var ContourForm1Logic = function () {
   // Caps read a size larger than they measure: every letter stands at cap
   // height, where title case spends most of its width down at x-height. So
   // the title-case setting takes a point back and the header keeps the
-  // presence the caps had. A point is the whole of it — 15px and 16px were
-  // tried and read as headings borrowed from another form (Amrit,
-  // 3 Sep 2026).
-  function headerFontSize(capsFontSize) {
-    return (featureEnabled("capsHeaders") ? capsFontSize : capsFontSize + 1) + "px";
+  // presence the caps had. Two points for the two headings a visitor
+  // navigates by — the section card band and the Student / Guardian segment
+  // — because one left them level with the field labels underneath, and a
+  // header that measures the same as a label is not read as a header. Three
+  // was tried and overshot: at 15px and 16px they read as headings borrowed
+  // from another form (Amrit, 3 Sep 2026).
+  function headerFontSize(capsFontSize, titleCaseFontSize) {
+    if (featureEnabled("capsHeaders")) return capsFontSize + "px";
+    return (titleCaseFontSize === undefined ? capsFontSize + 1 : titleCaseFontSize) + "px";
   }
   // Weight goes the other way from size. Caps need 700 because each letter
   // is doing the work alone at cap height; title case already has ascenders
@@ -167,9 +171,9 @@ var ContourForm1Logic = function () {
   // not, and wears the same tracking as a gap after every letter. Size,
   // tracking and transform all turn over together, so a rule hands in the
   // figures it used under caps and takes back the whole set.
-  function headerCapsCss(capsFontSize, letterSpacing) {
+  function headerCapsCss(capsFontSize, letterSpacing, titleCaseFontSize) {
     var caps = featureEnabled("capsHeaders");
-    return "font-size: " + headerFontSize(capsFontSize) + "; letter-spacing: " + (caps ? letterSpacing : "0.01em") + "; text-transform: " + (caps ? "uppercase" : "none") + ";";
+    return "font-size: " + headerFontSize(capsFontSize, titleCaseFontSize) + "; letter-spacing: " + (caps ? letterSpacing : "0.01em") + "; text-transform: " + (caps ? "uppercase" : "none") + ";";
   }
   // Only the first letter of each word is touched. The labels are already
   // authored in title case, so lowercasing the rest of a word would buy
@@ -6914,7 +6918,7 @@ var ContourForm1Logic = function () {
       box + '__status { flex: 0 0 auto; display: none; align-items: center; justify-content: center; width: 24px; height: 24px; box-sizing: border-box; border-radius: 50%; border: 2px solid #FFFFFF; background: #007AFF; color: #FFFFFF; }' +
       box + "__status svg { display: block; }" +
       box + "--collapsed .contour-section-box__status { display: flex; }" +
-      box + "__title { flex: 0 0 auto; font-weight: " + headerFontWeight(700, 600) + "; " + headerCapsCss(12.5, "0.08em") + " color: #0C3166; }" +
+      box + "__title { flex: 0 0 auto; font-weight: " + headerFontWeight(700, 600) + "; " + headerCapsCss(12.5, "0.08em", 14.5) + " color: #0C3166; }" +
       box + "__summary { flex: 1 1 auto; min-width: 0; display: none; font-size: 13.5px; font-weight: 500; color: #6b7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }" +
       box + "--collapsed .contour-section-box__summary { display: block; }" +
       box + "__action { flex: 0 0 auto; display: none; align-items: center; justify-content: center; width: 28px; height: 28px; margin-left: auto; border-radius: 50%; color: #0C3166; transition: background-color 0.15s ease; }" +
@@ -7000,7 +7004,7 @@ var ContourForm1Logic = function () {
       // Level with the card's own band rather than a step under it: left-
       // aligned, this label now leads the rows beneath it instead of sitting
       // in the corner, so it carries a heading's weight (Amrit, 25 Aug 2026).
-      box + " .contour-person-tabs__heading { font-size: " + headerFontSize(13) + "; font-weight: " + headerFontWeight(800, 650) + "; }" +
+      box + " .contour-person-tabs__heading { font-size: " + headerFontSize(13, 15) + "; font-weight: " + headerFontWeight(800, 650) + "; }" +
       box + " .contour-person-tabs--static .contour-person-tabs__heading { position: relative; }" +
       // The lime marker stroke behind the label comes from the base person
       // group styles — the white mask that used to live here is gone with
