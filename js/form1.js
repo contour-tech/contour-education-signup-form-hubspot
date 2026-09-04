@@ -5796,7 +5796,10 @@ var ContourForm1Logic = function () {
      message under the terms tick could therefore never be stood down: it sat
      beside HubSpot's own copy of the same sentence on a blocked submit, and
      stayed on its own after the box was ticked, with the code reading it as
-     hidden the whole time (Amrit, 4 Sep 2026). */
+     hidden the whole time (Amrit, 4 Sep 2026).
+
+     Every error list this file shows or hides goes through the pair below, so
+     a page rule on one field can never again strand a message on screen. */
   var ERROR_HIDDEN_CLASS = "contour-error-hidden";
   function injectErrorVisibilityStyles() {
     if (document.getElementById("contour-error-visibility-styles")) return;
@@ -8358,7 +8361,7 @@ var ContourForm1Logic = function () {
     var errorList = document.createElement("ul");
     errorList.className = "no-list hs-error-msgs inputs-list " + errorClass;
     errorList.setAttribute("role", "alert");
-    errorList.style.display = "none";
+    hideErrorList(errorList);
     var errorItem = document.createElement("li");
     var errorLabel = document.createElement("label");
     errorLabel.className = "hs-error-msg hs-main-font-element";
@@ -8367,11 +8370,11 @@ var ContourForm1Logic = function () {
     errorList.appendChild(errorItem);
     fieldWrap.appendChild(errorList);
     function showError() {
-      errorList.style.display = "";
+      showErrorList(errorList);
       reportFieldError(fieldWrap, focusTargetIn(fieldWrap));
     }
     function clearError() {
-      errorList.style.display = "none";
+      hideErrorList(errorList);
     }
     options.forEach(function (opt) {
       opt.addEventListener("change", function () {
@@ -8500,7 +8503,7 @@ var ContourForm1Logic = function () {
     var errorList = document.createElement("ul");
     errorList.className = "no-list hs-error-msgs inputs-list contour-program-coverage-error";
     errorList.setAttribute("role", "alert");
-    errorList.style.display = "none";
+    hideErrorList(errorList);
     var errorItem = document.createElement("li");
     var errorLabel = document.createElement("label");
     errorLabel.className = "hs-error-msg hs-main-font-element";
@@ -8512,11 +8515,11 @@ var ContourForm1Logic = function () {
         return PROGRAM_DISPLAY_NAMES[programValue] || programValue;
       });
       errorLabel.textContent = "Please select a " + names.join(" and ") + " subject, or deselect the program.";
-      errorList.style.display = "";
+      showErrorList(errorList);
       reportFieldError(fieldWrap, focusTargetIn(fieldWrap));
     }
     function clearError() {
-      errorList.style.display = "none";
+      hideErrorList(errorList);
     }
     qAll(FIELD_SELECTORS.interestedSubjects).concat(qAll(FIELD_SELECTORS.programInterest)).forEach(function (opt) {
       opt.addEventListener("change", function () {
@@ -8642,7 +8645,7 @@ var ContourForm1Logic = function () {
     var errorList = document.createElement("ul");
     errorList.className = "no-list hs-error-msgs inputs-list " + errorClass;
     errorList.setAttribute("role", "alert");
-    errorList.style.display = "none";
+    hideErrorList(errorList);
     var errorItem = document.createElement("li");
     var errorLabel = document.createElement("label");
     errorLabel.className = "hs-error-msg hs-main-font-element";
@@ -8655,11 +8658,11 @@ var ContourForm1Logic = function () {
   function showContourError(input, errorClass) {
     input.classList.add("invalid", "error");
     var list = contourErrorList(input, errorClass);
-    if (list) list.style.display = "";
+    showErrorList(list);
   }
   function clearContourError(input, errorClass) {
     var list = contourErrorList(input, errorClass);
-    if (list) list.style.display = "none";
+    hideErrorList(list);
     // Student Email carries two checks (format, and not the guardian's), and
     // HubSpot adds its own, so the red state only comes off the box once none
     // of them is showing.
@@ -9532,7 +9535,7 @@ var ContourForm1Logic = function () {
     var errorList = document.createElement("ul");
     errorList.className = "no-list hs-error-msgs inputs-list contour-student-phone-error";
     errorList.setAttribute("role", "alert");
-    errorList.style.display = "none";
+    hideErrorList(errorList);
     var errorItem = document.createElement("li");
     var errorLabel = document.createElement("label");
     errorLabel.className = "hs-error-msg hs-main-font-element";
@@ -9548,7 +9551,7 @@ var ContourForm1Logic = function () {
     var state = studentPhoneState();
     if (state === "ok" || state === "empty") {
       input.classList.remove("invalid", "error");
-      errorList.style.display = "none";
+      hideErrorList(errorList);
       return;
     }
     if (!showWhenInvalid) return;
@@ -9557,7 +9560,7 @@ var ContourForm1Logic = function () {
       errorLabel.textContent = state === "incomplete" ? "Please complete this required field." : "Please enter a valid phone number.";
     }
     input.classList.add("invalid", "error");
-    errorList.style.display = "";
+    showErrorList(errorList);
   }
   function enforceStudentPhoneValidation() {
     if (!formRoot) return;
