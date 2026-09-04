@@ -5783,6 +5783,40 @@ var ContourForm1Logic = function () {
          behaviour of HubSpot's message arriving on the next submit. */
     }
   }
+  /* Hiding an error list takes a class, not just an inline style.
+
+     The page header carries, to keep the two single-checkbox lists out of the
+     two-column grid the other checkbox fields use:
+
+       .hs_join_no_program_waitlist ul.inputs-list,
+       .hs_tos_privacy_consent ul.inputs-list { display: block !important; }
+
+     An error list inside the consent field is a ul.inputs-list too, so that
+     !important beat every `style.display = "none"` written here. The standby
+     message under the terms tick could therefore never be stood down: it sat
+     beside HubSpot's own copy of the same sentence on a blocked submit, and
+     stayed on its own after the box was ticked, with the code reading it as
+     hidden the whole time (Amrit, 4 Sep 2026). */
+  var ERROR_HIDDEN_CLASS = "contour-error-hidden";
+  function injectErrorVisibilityStyles() {
+    if (document.getElementById("contour-error-visibility-styles")) return;
+    var style = document.createElement("style");
+    style.id = "contour-error-visibility-styles";
+    // Two class names and a tag against the page rule's one class and one tag,
+    // so this wins on specificity where both sides are !important.
+    style.textContent = ".hs-form ul.hs-error-msgs." + ERROR_HIDDEN_CLASS + ", .hs-form ." + ERROR_HIDDEN_CLASS + " { display: none !important; }";
+    document.head.appendChild(style);
+  }
+  function hideErrorList(list) {
+    if (!list) return;
+    list.style.display = "none";
+    if (list.classList) list.classList.add(ERROR_HIDDEN_CLASS);
+  }
+  function showErrorList(list) {
+    if (!list) return;
+    list.style.removeProperty("display");
+    if (list.classList) list.classList.remove(ERROR_HIDDEN_CLASS);
+  }
   var NATIVE_FALLBACK_CLASS = "contour-required-fallback";
   // HubSpot draws its own message from a blur handler for most field types,
   // but not for the consent checkbox, which it only validates during a submit
@@ -5795,7 +5829,7 @@ var ContourForm1Logic = function () {
     });
     var own = wrap.querySelector("." + NATIVE_FALLBACK_CLASS);
     if (hubspotSpoke) {
-      if (own) own.style.display = "none";
+      if (own) hideErrorList(own);
       return;
     }
     if (!own) {
@@ -5810,7 +5844,7 @@ var ContourForm1Logic = function () {
       own.appendChild(item);
       wrap.appendChild(own);
     }
-    own.style.removeProperty("display");
+    showErrorList(own);
   }
   // At most one message per field, and never the same sentence twice.
   //
@@ -5839,7 +5873,7 @@ var ContourForm1Logic = function () {
       // Anything else on the field makes it redundant, whatever it says.
       if (real.length > 0) {
         visible.forEach(function (list) {
-          if (list.classList.contains(NATIVE_FALLBACK_CLASS)) list.style.display = "none";
+          if (list.classList.contains(NATIVE_FALLBACK_CLASS)) hideErrorList(list);
         });
       }
       // Beyond that, only collapse messages that read identically — two checks
@@ -5849,7 +5883,7 @@ var ContourForm1Logic = function () {
         var text = (list.textContent || "").replace(/\s+/g, " ").trim().toLowerCase();
         if (!text) return;
         if (seen[text]) {
-          list.style.display = "none";
+          hideErrorList(list);
           return;
         }
         seen[text] = true;
@@ -5860,7 +5894,7 @@ var ContourForm1Logic = function () {
     if (!formRoot) return;
     Array.prototype.forEach.call(formRoot.querySelectorAll("." + NATIVE_FALLBACK_CLASS), function (el) {
       var wrap = el.closest("." + FIELD_WRAPPER_CLASS);
-      if (wrap && fieldWrapperAnswered(wrap)) el.style.display = "none";
+      if (wrap && fieldWrapperAnswered(wrap)) hideErrorList(el);
     });
   }
   function documentOrder(a, b) {
@@ -9902,6 +9936,7 @@ var ContourForm1Logic = function () {
     injectFormWidthStyles();
     injectSubjectTileStyles();
     injectDisabledFieldStyles();
+    injectErrorVisibilityStyles();
     injectErrorRollupStyles();
     injectMotionStyles();
     watchErrorRollup();
