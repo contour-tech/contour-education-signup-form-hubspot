@@ -117,7 +117,8 @@ var ContourForm1Logic = function () {
     // pinned to that campus's street address (Maps Embed API — no-cost tier,
     // key locked to this site's domains). Options with no bracketed address,
     // "Coming Soon" placeholders and the Online option never get one
-    // (Amrit, 1 Sep 2026).
+    // (Amrit, 1 Sep 2026); "Address TBA" gets the suburb instead of a pin
+    // (Amrit, 4 Sep 2026).
     campusMapHover: true,
     // Which voice the header bands speak in: the card titles, the section
     // pills, the Student / Guardian segment names and the subject summary's
@@ -627,7 +628,9 @@ var ContourForm1Logic = function () {
      "(Coming Soon)" / "(Live & Recorded)" and bracketless labels (Adelaide)
      mean none, and the ONLINE structured code is excluded outright. An
      address containing " or " (Glen Waverley runs two premises) renders one
-     tab per address, labelled Campus 1 / Campus 2.
+     tab per address, labelled Campus 1 / Campus 2. "(Address TBA)" opens a
+     plain map of the suburb — no pin, no place card, just Google's own
+     "Open in Maps" corner button (Amrit, 4 Sep 2026).
 
      Nothing loads until the first hover — no Google request ever leaves the
      page for visitors who never hover a campus. Loaded iframes stay in the
@@ -644,6 +647,28 @@ var ContourForm1Logic = function () {
   // the referrer lock is the protection.
   var CAMPUS_MAP_EMBED_KEY = "AIzaSyB5EGt7mRhhl_-4S3Iu-Cua5tps6Tbb6So";
   var CAMPUS_MAP_NON_ADDRESS = /coming\s+soon|live\s*&\s*recorded/i;
+  // "(Address TBA)" is a real campus with no premises yet. Sent through the
+  // place search it geocoded to whichever Contour listing Google liked
+  // best — Epping VIC and NSW both landed on Glen Waverley, Indooroopilly
+  // and Parramatta on Bentleigh, Brisbane CBD on Melbourne CBD, and adding
+  // the state made it pick competitors' tutoring centres instead. So these
+  // show the suburb, with no pin and no place card (Amrit, 4 Sep 2026).
+  var CAMPUS_MAP_ADDRESS_PENDING = /\baddress\s+(tba|tbc|to\s+be\s+(announced|confirmed))\b|^\s*tb[ac]\s*$/i;
+  // Suburb centres for the pending-address campuses, keyed by campus code.
+  // The Embed API's view mode (plain map, nothing overlaid) wants a lat/lng
+  // and the browser key can't call the Geocoding API, so they are fixed here
+  // (OpenStreetMap suburb boundaries, 4 Sep 2026). A pending campus with no
+  // entry falls back to a place search on "Suburb, State, Country" — still
+  // the right area, only with Google's own suburb card in the corner.
+  var CAMPUS_MAP_AREA_CENTERS = {
+    EPNG: "-37.6391,145.0266",
+    BNEC: "-27.4703,153.0258",
+    INDR: "-27.5066,152.9823",
+    PARA: "-33.8140,151.0027",
+    HRST: "-33.9607,151.1004",
+    EPNW: "-33.7719,151.0745"
+  };
+  var CAMPUS_MAP_AREA_ZOOM = 13;
   // The popover opens as good as immediately — the tiny delay only filters
   // out a cursor passing straight through a card on its way elsewhere. The
   // map's own loading state lives inside the popover (spinner over the body),
@@ -750,27 +775,48 @@ var ContourForm1Logic = function () {
     if (!name || !addressText || CAMPUS_MAP_NON_ADDRESS.test(addressText)) return null;
     var classification = getCampusClassification(inputEl);
     if (!classification || classification.code === "ONLINE") return null;
+    var pending = CAMPUS_MAP_ADDRESS_PENDING.test(addressText);
     // "Level 1/75-77 Railway Parade or Level 1/6-10 Kingsway" — two premises
-    // share one campus; each address gets its own tab in the popover.
-    var addresses = addressText.split(/\s+or\s+/i).map(function (part) {
+    // share one campus; each address gets its own tab in the popover. A
+    // pending address is not a premises, so it contributes none.
+    var addresses = pending ? [] : addressText.split(/\s+or\s+/i).map(function (part) {
       return part.trim();
     }).filter(Boolean);
-    if (!addresses.length) return null;
+    if (!pending && !addresses.length) return null;
     return {
       code: classification.code || name,
       name: name,
       addresses: addresses,
+      pending: pending,
+      state: classification.state,
       country: classification.country
     };
   }
   function buildCampusMapSrc(info, index) {
+    var base = "https://www.google.com/maps/embed/v1/";
+    if (info.pending) {
+      // View mode is the plain map: no pin, no place card, only Google's own
+      // "Open in Maps" corner button — which is the whole of what a campus
+      // without an address has to offer.
+      var center = CAMPUS_MAP_AREA_CENTERS[info.code];
+      if (center) {
+        return base + "view?key=" + CAMPUS_MAP_EMBED_KEY + "&center=" + center + "&zoom=" + CAMPUS_MAP_AREA_ZOOM;
+      }
+      // "Epping, VIC, Australia" — the suburb as a geocodable phrase.
+      var area = [info.name];
+      if (info.state) area.push(info.state);
+      if (info.country && info.country !== "ALL") {
+        area.push(CAMPUS_MAP_COUNTRY_NAMES[info.country] || info.country);
+      }
+      return base + "place?key=" + CAMPUS_MAP_EMBED_KEY + "&q=" + encodeURIComponent(area.join(", ")) + "&zoom=" + CAMPUS_MAP_AREA_ZOOM;
+    }
     // "Contour Education" first so Google resolves our own place listing
     // (pin click then shows the business card, not a bare street address).
     var parts = ["Contour Education", info.name, info.addresses[index]];
     if (info.country && info.country !== "ALL") {
       parts.push(CAMPUS_MAP_COUNTRY_NAMES[info.country] || info.country);
     }
-    return "https://www.google.com/maps/embed/v1/place?key=" + CAMPUS_MAP_EMBED_KEY + "&q=" + encodeURIComponent(parts.join(", ")) + "&zoom=17";
+    return base + "place?key=" + CAMPUS_MAP_EMBED_KEY + "&q=" + encodeURIComponent(parts.join(", ")) + "&zoom=17";
   }
   function injectCampusMapStyles() {
     if (document.getElementById("contour-campus-map-styles")) return;
@@ -908,7 +954,7 @@ var ContourForm1Logic = function () {
     var entry = campusMapFrames[key];
     if (!entry) {
       var iframe = document.createElement("iframe");
-      iframe.setAttribute("title", "Map of Contour Education " + info.name);
+      iframe.setAttribute("title", info.pending ? "Map of " + info.name : "Map of Contour Education " + info.name);
       iframe.setAttribute("allowfullscreen", "");
       iframe.src = buildCampusMapSrc(info, index);
       entry = campusMapFrames[key] = {
