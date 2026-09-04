@@ -2138,13 +2138,17 @@ var ContourForm1Logic = function () {
       // personLabelMarker in FEATURE_DEFAULTS.
       (featureEnabled("personLabelOutline") ?
         // Outline pill: the name inside a thin navy ring, the shape the
-        // site's own buttons wear (team feedback via Amrit, 4 Sep 2026). The
-        // pill is an object rather than a stroke, so its outer edge — not
-        // the text — sits on the field labels' grid line; no gutter bleed.
+        // site's own buttons wear (team feedback via Amrit, 4 Sep 2026).
         // 18px line box + 3px padding + 1px ring = 26px, inside the 30px
         // band the section boxes pin, and centred on the separator rule by
         // the band's own align-items: center.
-        ".hs-form .contour-person-tabs--static .contour-person-tabs__label { display: inline-block; color: #0C3166; padding: 3px 12px; border: 1px solid #0C3166; border-radius: 999px; line-height: 18px; }"
+        ".hs-form .contour-person-tabs--static .contour-person-tabs__label { display: inline-block; color: #0C3166; padding: 3px 12px; border: 1px solid #0C3166; border-radius: 999px; line-height: 18px; }" +
+        // The text, not the ring, sits on the field labels' grid line, so
+        // the pill's left half bleeds into the gutter the way the marker
+        // stroke did — with the ring on the grid line the name read as
+        // indented against the labels under it (Amrit, 4 Sep 2026). The
+        // 13px is the padding plus the ring.
+        ".hs-form .contour-person-tabs--static.contour-person-tabs--label-left .contour-person-tabs__label { margin-left: -13px; }"
       : featureEnabled("personLabelMarker") ?
         // Highlighter lime behind the segment names so they stand out from
         // the field labels below them (Amrit, 1 Sep 2026); navy on lime
