@@ -81,15 +81,16 @@ var ContourForm1Logic = function () {
     //     via Amrit, 4 Sep 2026).
     //   personLabelFill — the same pill filled solid navy with the name
     //     knocked out white, the section-header-theme2 treatment, and the
-    //     separator rule beside it goes solid navy to match. On by default
-    //     (Amrit, 4 Sep 2026). Implies the pill, so it stands alone or on
-    //     top of outline.
+    //     separator rule beside it goes solid navy to match. Tried as the
+    //     default and taken back the same day — the outline reads quieter
+    //     against the field labels (Amrit, 4 Sep 2026). Implies the pill,
+    //     so it stands alone or on top of outline.
     //   personLabelMarker — a lime highlighter stroke drawn behind the
     //     letters (Amrit, 1 Sep 2026). Off by default since the pill arrived.
     // Fill beats outline beats marker; with all three off the name is plain
     // text on the field labels' grid line.
     personLabelOutline: true,
-    personLabelFill: true,
+    personLabelFill: false,
     personLabelMarker: false,
     // Renders the Interested Subjects checkboxes as selectable tiles in the
     // program-card language — navy fill and a blue tick when picked. Off
@@ -7098,11 +7099,14 @@ var ContourForm1Logic = function () {
       // aligned, this label now leads the rows beneath it instead of sitting
       // in the corner, so it carries a heading's weight (Amrit, 25 Aug 2026).
       box + " .contour-person-tabs__heading { font-size: " + headerFontSize(13, 15) + "; font-weight: " + headerFontWeight(800, 650) + "; }" +
-      // White on navy reads a size larger than navy on white, so inside the
-      // filled pill 15px looked oversized against the labels beneath it. It
-      // takes the collapsed section card headers' 13.5px/600 (12.5/700
-      // under caps) — the navy bands then speak in one voice (Amrit, 4 Sep).
-      (featureEnabled("personLabelFill") ? box + " .contour-person-tabs__heading { font-size: " + headerFontSize(12.5, 13.5) + "; font-weight: " + headerFontWeight(700, 600) + "; }" : "") +
+      // Inside a pill the name has the ring (or the fill) doing the work of
+      // marking it out, so the 15px/650 that lets a bare label stand above
+      // the field labels reads oversized there — first seen filled, where
+      // white on navy reads a size larger again, then confirmed on the
+      // outline (Amrit, 4 Sep 2026). Either pill takes the collapsed
+      // section card headers' 13.5px/600 (12.5/700 under caps); the marker
+      // and plain states keep the bigger figures.
+      (featureEnabled("personLabelOutline") || featureEnabled("personLabelFill") ? box + " .contour-person-tabs__heading { font-size: " + headerFontSize(12.5, 13.5) + "; font-weight: " + headerFontWeight(700, 600) + "; }" : "") +
       box + " .contour-person-tabs--static .contour-person-tabs__heading { position: relative; }" +
       // The lime marker stroke behind the label comes from the base person
       // group styles — the white mask that used to live here is gone with
