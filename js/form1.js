@@ -147,13 +147,12 @@ var ContourForm1Logic = function () {
      ========================================================= */
   // Caps read a size larger than they measure: every letter stands at cap
   // height, where title case spends most of its width down at x-height. So
-  // the title-case setting takes size back — the band keeps the presence the
-  // caps had (Amrit, 3 Sep 2026). A point is enough for the small print; the
-  // two headings that name things a visitor navigates by — the card band and
-  // the Student / Guardian segment — say their own figure and take more.
-  function headerFontSize(capsFontSize, titleCaseFontSize) {
-    if (featureEnabled("capsHeaders")) return capsFontSize + "px";
-    return (titleCaseFontSize === undefined ? capsFontSize + 1 : titleCaseFontSize) + "px";
+  // the title-case setting takes a point back and the header keeps the
+  // presence the caps had. A point is the whole of it — 15px and 16px were
+  // tried and read as headings borrowed from another form (Amrit,
+  // 3 Sep 2026).
+  function headerFontSize(capsFontSize) {
+    return (featureEnabled("capsHeaders") ? capsFontSize : capsFontSize + 1) + "px";
   }
   // Weight goes the other way from size. Caps need 700 because each letter
   // is doing the work alone at cap height; title case already has ascenders
@@ -168,9 +167,9 @@ var ContourForm1Logic = function () {
   // not, and wears the same tracking as a gap after every letter. Size,
   // tracking and transform all turn over together, so a rule hands in the
   // figures it used under caps and takes back the whole set.
-  function headerCapsCss(capsFontSize, letterSpacing, titleCaseFontSize) {
+  function headerCapsCss(capsFontSize, letterSpacing) {
     var caps = featureEnabled("capsHeaders");
-    return "font-size: " + headerFontSize(capsFontSize, titleCaseFontSize) + "; letter-spacing: " + (caps ? letterSpacing : "0.01em") + "; text-transform: " + (caps ? "uppercase" : "none") + ";";
+    return "font-size: " + headerFontSize(capsFontSize) + "; letter-spacing: " + (caps ? letterSpacing : "0.01em") + "; text-transform: " + (caps ? "uppercase" : "none") + ";";
   }
   // Only the first letter of each word is touched. The labels are already
   // authored in title case, so lowercasing the rest of a word would buy
@@ -2048,7 +2047,7 @@ var ContourForm1Logic = function () {
       // the active tab shows its errors inline, so it stays as it is.
       ".hs-form button.contour-person-tab.is-errored:not(.is-active) { border-color: rgba(200, 16, 46, 0.30); background: rgba(200, 16, 46, 0.05); color: #8A0C22; }" +
       ".hs-form button.contour-person-tab.is-errored:not(.is-active):hover { background: rgba(200, 16, 46, 0.10); }" +
-      ".hs-form .contour-person-tabs__title { margin-left: auto; font-weight: " + headerFontWeight(700, 600) + "; " + headerCapsCss(11.5, "0.10em", 12.5) + " color: rgba(12, 49, 102, 0.55); }" +
+      ".hs-form .contour-person-tabs__title { margin-left: auto; font-weight: " + headerFontWeight(700, 600) + "; " + headerCapsCss(11.5, "0.10em") + " color: rgba(12, 49, 102, 0.55); }" +
       // Static segment headings (stacked rendering): right-aligned in the
       // form's theme navy rather than the corner label's muted tint (Amrit's
       // review, 21 Aug 2026 — a per-segment left rail was also considered and
@@ -2061,7 +2060,7 @@ var ContourForm1Logic = function () {
       // min-height is the badge's own height, so a band carrying the badge and
       // a band carrying only text come out the same depth — otherwise the two
       // segment bands on the Guardian flow differ by 5px.
-      ".hs-form .contour-person-tabs__heading { display: inline-flex; align-items: center; gap: 8px; min-height: 18px; font-weight: " + headerFontWeight(700, 600) + "; " + headerCapsCss(11.5, "0.10em", 13) + " color: #0C3166; }" +
+      ".hs-form .contour-person-tabs__heading { display: inline-flex; align-items: center; gap: 8px; min-height: 18px; font-weight: " + headerFontWeight(700, 600) + "; " + headerCapsCss(11.5, "0.10em") + " color: #0C3166; }" +
       // The bands are edges, not rows: the static headers hold one short line,
       // so they take tighter padding than the tab strip's touch targets.
       ".hs-form .contour-person-tabs--static { padding: 10px 24px; }" +
@@ -6177,7 +6176,7 @@ var ContourForm1Logic = function () {
       // space to its left — the line IS the section divider, so the header
       // carries no border of its own and the hr dividers below stand down
       // whenever headers are on (Amrit, 21 Aug 2026).
-      ".hs-form .contour-section-header { display: flex; align-items: center; justify-content: flex-end; gap: 14px; box-sizing: border-box; width: 100%; flex: 0 0 100%; grid-column: 1 / -1; margin: 34px 0 20px; }" + ".hs-form .contour-section-header:first-child { margin-top: 0; }" + '.hs-form .contour-section-header::before { content: ""; flex: 1 1 auto; height: 1px; background: linear-gradient(90deg, rgba(12, 49, 102, 0), rgba(12, 49, 102, 0.18)); }' + ".hs-form .contour-section-header__title { flex: 0 0 auto; font-weight: " + headerFontWeight(700, 600) + "; " + headerCapsCss(12, "0.10em", 14) + " color: #0C3166; padding: 6px 14px; border: 1px solid rgba(12, 49, 102, 0.16); border-radius: 999px; background: #FFFFFF; }" +
+      ".hs-form .contour-section-header { display: flex; align-items: center; justify-content: flex-end; gap: 14px; box-sizing: border-box; width: 100%; flex: 0 0 100%; grid-column: 1 / -1; margin: 34px 0 20px; }" + ".hs-form .contour-section-header:first-child { margin-top: 0; }" + '.hs-form .contour-section-header::before { content: ""; flex: 1 1 auto; height: 1px; background: linear-gradient(90deg, rgba(12, 49, 102, 0), rgba(12, 49, 102, 0.18)); }' + ".hs-form .contour-section-header__title { flex: 0 0 auto; font-weight: " + headerFontWeight(700, 600) + "; " + headerCapsCss(12, "0.10em") + " color: #0C3166; padding: 6px 14px; border: 1px solid rgba(12, 49, 102, 0.16); border-radius: 999px; background: #FFFFFF; }" +
       // The three rules predate the headers and would double up with them.
       ".hs-form.contour-section-headers-on hr.contour-section-divider { display: none !important; }" +
       // --- helper note under a field that is waiting on an earlier answer -----
@@ -6915,7 +6914,7 @@ var ContourForm1Logic = function () {
       box + '__status { flex: 0 0 auto; display: none; align-items: center; justify-content: center; width: 24px; height: 24px; box-sizing: border-box; border-radius: 50%; border: 2px solid #FFFFFF; background: #007AFF; color: #FFFFFF; }' +
       box + "__status svg { display: block; }" +
       box + "--collapsed .contour-section-box__status { display: flex; }" +
-      box + "__title { flex: 0 0 auto; font-weight: " + headerFontWeight(700, 600) + "; " + headerCapsCss(12.5, "0.08em", 15) + " color: #0C3166; }" +
+      box + "__title { flex: 0 0 auto; font-weight: " + headerFontWeight(700, 600) + "; " + headerCapsCss(12.5, "0.08em") + " color: #0C3166; }" +
       box + "__summary { flex: 1 1 auto; min-width: 0; display: none; font-size: 13.5px; font-weight: 500; color: #6b7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }" +
       box + "--collapsed .contour-section-box__summary { display: block; }" +
       box + "__action { flex: 0 0 auto; display: none; align-items: center; justify-content: center; width: 28px; height: 28px; margin-left: auto; border-radius: 50%; color: #0C3166; transition: background-color 0.15s ease; }" +
@@ -7001,7 +7000,7 @@ var ContourForm1Logic = function () {
       // Level with the card's own band rather than a step under it: left-
       // aligned, this label now leads the rows beneath it instead of sitting
       // in the corner, so it carries a heading's weight (Amrit, 25 Aug 2026).
-      box + " .contour-person-tabs__heading { font-size: " + headerFontSize(13, 15) + "; font-weight: " + headerFontWeight(800, 650) + "; }" +
+      box + " .contour-person-tabs__heading { font-size: " + headerFontSize(13) + "; font-weight: " + headerFontWeight(800, 650) + "; }" +
       box + " .contour-person-tabs--static .contour-person-tabs__heading { position: relative; }" +
       // The lime marker stroke behind the label comes from the base person
       // group styles — the white mask that used to live here is gone with
