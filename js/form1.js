@@ -812,7 +812,10 @@ var ContourForm1Logic = function () {
     }
     // "Contour Education" first so Google resolves our own place listing
     // (pin click then shows the business card, not a bare street address).
+    // The state sits between address and country so two suburbs sharing a
+    // name (Epping VIC / Epping NSW) can't trade places.
     var parts = ["Contour Education", info.name, info.addresses[index]];
+    if (info.state) parts.push(info.state);
     if (info.country && info.country !== "ALL") {
       parts.push(CAMPUS_MAP_COUNTRY_NAMES[info.country] || info.country);
     }
