@@ -826,10 +826,15 @@ var ContourForm1Logic = function () {
     var style = document.createElement("style");
     style.id = "contour-campus-map-styles";
     style.textContent =
-      // Sized off the viewport with 480x380 as the ceiling: narrower or
-      // shorter windows get a proportionally smaller popover instead of one
-      // that crowds the form; under 768px wide it doesn't render at all.
-      ".contour-campus-map-popover { position: fixed; z-index: 2147483000; width: min(480px, 44vw); background: #fff; border: 1px solid rgba(12, 49, 102, 0.10); border-radius: 14px; box-shadow: 0 16px 40px rgba(12, 49, 102, 0.18), 0 2px 8px rgba(12, 49, 102, 0.10); overflow: hidden; opacity: 0; visibility: hidden; transform: translateY(4px); pointer-events: none; transition: opacity 0.18s ease, transform 0.18s ease, visibility 0s linear 0.18s; }" +
+      // A fixed 480x380. It used to scale down with the viewport (44vw wide,
+      // 45vh tall, floors of 220px), and the map quietly lost its place
+      // card: Google's embed collapses the card into a bare "Open in Maps"
+      // button under about 400px wide or 300px tall, and truncates the
+      // street address to one line under about 360px tall — so on a laptop
+      // window the addressed campuses read exactly like the unaddressed
+      // ones. Under 768px wide the popover doesn't render at all, and above
+      // it 480x380 always fits (Amrit, 4 Sep 2026).
+      ".contour-campus-map-popover { position: fixed; z-index: 2147483000; width: 480px; background: #fff; border: 1px solid rgba(12, 49, 102, 0.10); border-radius: 14px; box-shadow: 0 16px 40px rgba(12, 49, 102, 0.18), 0 2px 8px rgba(12, 49, 102, 0.10); overflow: hidden; opacity: 0; visibility: hidden; transform: translateY(4px); pointer-events: none; transition: opacity 0.18s ease, transform 0.18s ease, visibility 0s linear 0.18s; }" +
       ".contour-campus-map-popover--open { opacity: 1; visibility: visible; transform: none; pointer-events: auto; transition-delay: 0s; }" +
       // Header wears the section-header navy — tried the selected-card
       // #005FCC and went back; the navy is the form's header theme
@@ -840,7 +845,7 @@ var ContourForm1Logic = function () {
       ".contour-campus-map-tab { font: inherit; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; padding: 4px 12px; border-radius: 999px; border: 0; background: #FFFFFF; color: #0C3166; cursor: pointer; }" +
       // Selected premise pill takes the brand lime (submit-button pair).
       ".contour-campus-map-tab--active { background: #D7FC3D; color: #0C3166; }" +
-      ".contour-campus-map-body { position: relative; height: clamp(220px, 45vh, 380px); background: #f5f5f3; }" +
+      ".contour-campus-map-body { position: relative; height: 380px; background: #f5f5f3; }" +
       ".contour-campus-map-body iframe { display: none; width: 100%; height: 100%; border: 0; }" +
       ".contour-campus-map-body iframe.contour-campus-map-frame--active { display: block; }" +
       ".contour-campus-map-loader { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; background: #f5f5f3; font-size: 13px; color: rgba(26, 29, 33, 0.65); }" +
