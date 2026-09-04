@@ -74,6 +74,23 @@ var ContourForm1Logic = function () {
     // rule takes the room the pill used to (Angad, 25 Aug 2026). On restores
     // the pill and the rule starts past it, measured.
     personYouPill: false,
+    // How "Student Details" / "Guardian Details" are set off from the field
+    // labels under them. Two looks, each behind its own switch:
+    //   personLabelOutline — the name inside a thin navy outline pill, the
+    //     shape the site's own buttons wear. On by default (team feedback
+    //     via Amrit, 4 Sep 2026).
+    //   personLabelFill — the same pill filled solid navy with the name
+    //     knocked out white, the section-header-theme2 treatment, and the
+    //     separator rule beside it goes solid navy to match. On by default
+    //     (Amrit, 4 Sep 2026). Implies the pill, so it stands alone or on
+    //     top of outline.
+    //   personLabelMarker — a lime highlighter stroke drawn behind the
+    //     letters (Amrit, 1 Sep 2026). Off by default since the pill arrived.
+    // Fill beats outline beats marker; with all three off the name is plain
+    // text on the field labels' grid line.
+    personLabelOutline: true,
+    personLabelFill: true,
+    personLabelMarker: false,
     // Renders the Interested Subjects checkboxes as selectable tiles in the
     // program-card language — navy fill and a blue tick when picked. Off
     // restores the plain native checkboxes (Angad's "dopeify" round, 22 Aug
@@ -117,8 +134,16 @@ var ContourForm1Logic = function () {
     // pinned to that campus's street address (Maps Embed API — no-cost tier,
     // key locked to this site's domains). Options with no bracketed address,
     // "Coming Soon" placeholders and the Online option never get one
-    // (Amrit, 1 Sep 2026).
+    // (Amrit, 1 Sep 2026); "Address TBA" gets the suburb instead of a pin
+    // (Amrit, 4 Sep 2026).
     campusMapHover: true,
+    // Which voice the header bands speak in: the card titles, the section
+    // pills, the Student / Guardian segment names and the subject summary's
+    // column headings. Off by default — title case, natural letter shapes,
+    // and "and" written as an ampersand, so the Programs card reads
+    // "Programs & Subjects" (Amrit, 3 Sep 2026). On restores the caps look
+    // the form shipped with, tracking and all.
+    capsHeaders: false,
     // Checks the addresses this submission would create a contact for against
     // HubSpot before letting the form go. Parked with the DUPLICATE EMAIL
     // GUARD block — deduplication is moving to the backend, and this comes
@@ -129,6 +154,54 @@ var ContourForm1Logic = function () {
     var overrides = window.ContourForm1Config;
     if (overrides && Object.prototype.hasOwnProperty.call(overrides, name)) return !!overrides[name];
     return !!FEATURE_DEFAULTS[name];
+  }
+  /* =========================================================
+     HEADER CASE
+     -----------------------------------------------------------
+     No header is authored in caps: every one of them is written in title
+     case and put into caps by `text-transform`. So the capsHeaders flag has
+     two jobs — swap the transform off in each rule that carries it, and fix
+     up the wording that only the caps setting made read well.
+     ========================================================= */
+  // Caps read a size larger than they measure: every letter stands at cap
+  // height, where title case spends most of its width down at x-height. So
+  // the title-case setting takes a point back and the header keeps the
+  // presence the caps had. Two points for the two headings a visitor
+  // navigates by — the section card band and the Student / Guardian segment
+  // — because one left them level with the field labels underneath, and a
+  // header that measures the same as a label is not read as a header. Three
+  // was tried and overshot: at 15px and 16px they read as headings borrowed
+  // from another form (Amrit, 3 Sep 2026).
+  function headerFontSize(capsFontSize, titleCaseFontSize) {
+    if (featureEnabled("capsHeaders")) return capsFontSize + "px";
+    return (titleCaseFontSize === undefined ? capsFontSize + 1 : titleCaseFontSize) + "px";
+  }
+  // Weight goes the other way from size. Caps need 700 because each letter
+  // is doing the work alone at cap height; title case already has ascenders
+  // and descenders drawing the eye, so that much weight blackens the band
+  // and shouts. A title-case header reads as one on size and colour instead,
+  // at a weight close to the body's own — Inter is variable here, so 600 and
+  // 650 are real steps and not 700 rounded down.
+  function headerFontWeight(capsWeight, titleCaseWeight) {
+    return featureEnabled("capsHeaders") ? capsWeight : titleCaseWeight;
+  }
+  // The caps look also leans on tracking to stay legible; title case does
+  // not, and wears the same tracking as a gap after every letter. Size,
+  // tracking and transform all turn over together, so a rule hands in the
+  // figures it used under caps and takes back the whole set.
+  function headerCapsCss(capsFontSize, letterSpacing, titleCaseFontSize) {
+    var caps = featureEnabled("capsHeaders");
+    return "font-size: " + headerFontSize(capsFontSize, titleCaseFontSize) + "; letter-spacing: " + (caps ? letterSpacing : "0.01em") + "; text-transform: " + (caps ? "uppercase" : "none") + ";";
+  }
+  // Only the first letter of each word is touched. The labels are already
+  // authored in title case, so lowercasing the rest of a word would buy
+  // nothing and would flatten an acronym ("UCAT", "MedPrep") on the day one
+  // reaches a header.
+  function headerLabel(text) {
+    if (featureEnabled("capsHeaders")) return text;
+    return String(text == null ? "" : text).replace(/(^|\s)and(?=\s)/gi, "$1&").replace(/(^|[\s(\/-])([a-z])/g, function (all, before, letter) {
+      return before + letter.toUpperCase();
+    });
   }
   var VALID_LOCATIONS = ["VIC", "NSW", "QLD", "SA", "ACT", "TAS", "WA", "NT", "United Kingdom", "New Zealand", "Overseas"];
   // "Your Region" (the HubSpot `state` property) is a single-line text field
@@ -572,7 +645,9 @@ var ContourForm1Logic = function () {
      "(Coming Soon)" / "(Live & Recorded)" and bracketless labels (Adelaide)
      mean none, and the ONLINE structured code is excluded outright. An
      address containing " or " (Glen Waverley runs two premises) renders one
-     tab per address, labelled Campus 1 / Campus 2.
+     tab per address, labelled Campus 1 / Campus 2. "(Address TBA)" opens a
+     plain map of the suburb — no pin, no place card, just Google's own
+     "Open in Maps" corner button (Amrit, 4 Sep 2026).
 
      Nothing loads until the first hover — no Google request ever leaves the
      page for visitors who never hover a campus. Loaded iframes stay in the
@@ -589,6 +664,28 @@ var ContourForm1Logic = function () {
   // the referrer lock is the protection.
   var CAMPUS_MAP_EMBED_KEY = "AIzaSyB5EGt7mRhhl_-4S3Iu-Cua5tps6Tbb6So";
   var CAMPUS_MAP_NON_ADDRESS = /coming\s+soon|live\s*&\s*recorded/i;
+  // "(Address TBA)" is a real campus with no premises yet. Sent through the
+  // place search it geocoded to whichever Contour listing Google liked
+  // best — Epping VIC and NSW both landed on Glen Waverley, Indooroopilly
+  // and Parramatta on Bentleigh, Brisbane CBD on Melbourne CBD, and adding
+  // the state made it pick competitors' tutoring centres instead. So these
+  // show the suburb, with no pin and no place card (Amrit, 4 Sep 2026).
+  var CAMPUS_MAP_ADDRESS_PENDING = /\baddress\s+(tba|tbc|to\s+be\s+(announced|confirmed))\b|^\s*tb[ac]\s*$/i;
+  // Suburb centres for the pending-address campuses, keyed by campus code.
+  // The Embed API's view mode (plain map, nothing overlaid) wants a lat/lng
+  // and the browser key can't call the Geocoding API, so they are fixed here
+  // (OpenStreetMap suburb boundaries, 4 Sep 2026). A pending campus with no
+  // entry falls back to a place search on "Suburb, State, Country" — still
+  // the right area, only with Google's own suburb card in the corner.
+  var CAMPUS_MAP_AREA_CENTERS = {
+    EPNG: "-37.6391,145.0266",
+    BNEC: "-27.4703,153.0258",
+    INDR: "-27.5066,152.9823",
+    PARA: "-33.8140,151.0027",
+    HRST: "-33.9607,151.1004",
+    EPNW: "-33.7719,151.0745"
+  };
+  var CAMPUS_MAP_AREA_ZOOM = 13;
   // The popover opens as good as immediately — the tiny delay only filters
   // out a cursor passing straight through a card on its way elsewhere. The
   // map's own loading state lives inside the popover (spinner over the body),
@@ -695,37 +792,66 @@ var ContourForm1Logic = function () {
     if (!name || !addressText || CAMPUS_MAP_NON_ADDRESS.test(addressText)) return null;
     var classification = getCampusClassification(inputEl);
     if (!classification || classification.code === "ONLINE") return null;
+    var pending = CAMPUS_MAP_ADDRESS_PENDING.test(addressText);
     // "Level 1/75-77 Railway Parade or Level 1/6-10 Kingsway" — two premises
-    // share one campus; each address gets its own tab in the popover.
-    var addresses = addressText.split(/\s+or\s+/i).map(function (part) {
+    // share one campus; each address gets its own tab in the popover. A
+    // pending address is not a premises, so it contributes none.
+    var addresses = pending ? [] : addressText.split(/\s+or\s+/i).map(function (part) {
       return part.trim();
     }).filter(Boolean);
-    if (!addresses.length) return null;
+    if (!pending && !addresses.length) return null;
     return {
       code: classification.code || name,
       name: name,
       addresses: addresses,
+      pending: pending,
+      state: classification.state,
       country: classification.country
     };
   }
   function buildCampusMapSrc(info, index) {
+    var base = "https://www.google.com/maps/embed/v1/";
+    if (info.pending) {
+      // View mode is the plain map: no pin, no place card, only Google's own
+      // "Open in Maps" corner button — which is the whole of what a campus
+      // without an address has to offer.
+      var center = CAMPUS_MAP_AREA_CENTERS[info.code];
+      if (center) {
+        return base + "view?key=" + CAMPUS_MAP_EMBED_KEY + "&center=" + center + "&zoom=" + CAMPUS_MAP_AREA_ZOOM;
+      }
+      // "Epping, VIC, Australia" — the suburb as a geocodable phrase.
+      var area = [info.name];
+      if (info.state) area.push(info.state);
+      if (info.country && info.country !== "ALL") {
+        area.push(CAMPUS_MAP_COUNTRY_NAMES[info.country] || info.country);
+      }
+      return base + "place?key=" + CAMPUS_MAP_EMBED_KEY + "&q=" + encodeURIComponent(area.join(", ")) + "&zoom=" + CAMPUS_MAP_AREA_ZOOM;
+    }
     // "Contour Education" first so Google resolves our own place listing
     // (pin click then shows the business card, not a bare street address).
+    // The state sits between address and country so two suburbs sharing a
+    // name (Epping VIC / Epping NSW) can't trade places.
     var parts = ["Contour Education", info.name, info.addresses[index]];
+    if (info.state) parts.push(info.state);
     if (info.country && info.country !== "ALL") {
       parts.push(CAMPUS_MAP_COUNTRY_NAMES[info.country] || info.country);
     }
-    return "https://www.google.com/maps/embed/v1/place?key=" + CAMPUS_MAP_EMBED_KEY + "&q=" + encodeURIComponent(parts.join(", ")) + "&zoom=17";
+    return base + "place?key=" + CAMPUS_MAP_EMBED_KEY + "&q=" + encodeURIComponent(parts.join(", ")) + "&zoom=17";
   }
   function injectCampusMapStyles() {
     if (document.getElementById("contour-campus-map-styles")) return;
     var style = document.createElement("style");
     style.id = "contour-campus-map-styles";
     style.textContent =
-      // Sized off the viewport with 480x380 as the ceiling: narrower or
-      // shorter windows get a proportionally smaller popover instead of one
-      // that crowds the form; under 768px wide it doesn't render at all.
-      ".contour-campus-map-popover { position: fixed; z-index: 2147483000; width: min(480px, 44vw); background: #fff; border: 1px solid rgba(12, 49, 102, 0.10); border-radius: 14px; box-shadow: 0 16px 40px rgba(12, 49, 102, 0.18), 0 2px 8px rgba(12, 49, 102, 0.10); overflow: hidden; opacity: 0; visibility: hidden; transform: translateY(4px); pointer-events: none; transition: opacity 0.18s ease, transform 0.18s ease, visibility 0s linear 0.18s; }" +
+      // A fixed 480x380. It used to scale down with the viewport (44vw wide,
+      // 45vh tall, floors of 220px), and the map quietly lost its place
+      // card: Google's embed collapses the card into a bare "Open in Maps"
+      // button under about 400px wide or 300px tall, and truncates the
+      // street address to one line under about 360px tall — so on a laptop
+      // window the addressed campuses read exactly like the unaddressed
+      // ones. Under 768px wide the popover doesn't render at all, and above
+      // it 480x380 always fits (Amrit, 4 Sep 2026).
+      ".contour-campus-map-popover { position: fixed; z-index: 2147483000; width: 480px; background: #fff; border: 1px solid rgba(12, 49, 102, 0.10); border-radius: 14px; box-shadow: 0 16px 40px rgba(12, 49, 102, 0.18), 0 2px 8px rgba(12, 49, 102, 0.10); overflow: hidden; opacity: 0; visibility: hidden; transform: translateY(4px); pointer-events: none; transition: opacity 0.18s ease, transform 0.18s ease, visibility 0s linear 0.18s; }" +
       ".contour-campus-map-popover--open { opacity: 1; visibility: visible; transform: none; pointer-events: auto; transition-delay: 0s; }" +
       // Header wears the section-header navy — tried the selected-card
       // #005FCC and went back; the navy is the form's header theme
@@ -736,7 +862,7 @@ var ContourForm1Logic = function () {
       ".contour-campus-map-tab { font: inherit; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; padding: 4px 12px; border-radius: 999px; border: 0; background: #FFFFFF; color: #0C3166; cursor: pointer; }" +
       // Selected premise pill takes the brand lime (submit-button pair).
       ".contour-campus-map-tab--active { background: #D7FC3D; color: #0C3166; }" +
-      ".contour-campus-map-body { position: relative; height: clamp(220px, 45vh, 380px); background: #f5f5f3; }" +
+      ".contour-campus-map-body { position: relative; height: 380px; background: #f5f5f3; }" +
       ".contour-campus-map-body iframe { display: none; width: 100%; height: 100%; border: 0; }" +
       ".contour-campus-map-body iframe.contour-campus-map-frame--active { display: block; }" +
       ".contour-campus-map-loader { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; background: #f5f5f3; font-size: 13px; color: rgba(26, 29, 33, 0.65); }" +
@@ -853,7 +979,7 @@ var ContourForm1Logic = function () {
     var entry = campusMapFrames[key];
     if (!entry) {
       var iframe = document.createElement("iframe");
-      iframe.setAttribute("title", "Map of Contour Education " + info.name);
+      iframe.setAttribute("title", info.pending ? "Map of " + info.name : "Map of Contour Education " + info.name);
       iframe.setAttribute("allowfullscreen", "");
       iframe.src = buildCampusMapSrc(info, index);
       entry = campusMapFrames[key] = {
@@ -1198,12 +1324,28 @@ var ContourForm1Logic = function () {
       attributeFilter: ["class"]
     });
   }
+  // The two illustrated cards stay side by side at every width (Amrit, 3 Sep):
+  // stacked full-width tiles pushed "Student Details" a screen and a half down
+  // the phone, so the first question ate the whole viewport. The row itself is
+  // set here rather than in CSS because the page stylesheet stacks this list
+  // with `flex-direction: column !important` under 767px, and an inline
+  // important declaration is the one thing that outranks it whatever the
+  // page CSS says. The card's inside (image size, padding, type) shrinks in
+  // injectContactTypeCardStyles().
   function enforceContactTypeLayout(ul) {
     var mq = window.matchMedia("(max-width: 767px)");
     function apply() {
+      // Guarded, and not for tidiness: this runs from a MutationObserver
+      // watching `class`, and classList.add() writes the attribute even when
+      // the token is already on it. An unguarded add re-fires the observer,
+      // which calls apply() again — an unbounded callback loop that thrashes
+      // layout and leaves the form wedged mid-resize. Reading first means the
+      // attribute is only written when HubSpot has actually stripped it.
+      if (!ul.classList.contains(CONTACT_TYPE_LIST_CLASS)) ul.classList.add(CONTACT_TYPE_LIST_CLASS);
       ul.style.display = "flex";
-      ul.style.flexDirection = mq.matches ? "column" : "row";
-      ul.style.gap = mq.matches ? "0.75rem" : "1.25rem";
+      ul.style.setProperty("flex-direction", "row", "important");
+      ul.style.setProperty("flex-wrap", "nowrap", "important");
+      ul.style.setProperty("gap", mq.matches ? "10px" : "1.25rem", "important");
     }
     apply();
     mq.addEventListener("change", apply);
@@ -1215,7 +1357,55 @@ var ContourForm1Logic = function () {
   }
   function enforceContactTypeLayoutIfPresent() {
     var contactTypeUl = formRoot.querySelector(".hs-fieldtype-radio .input > ul.inputs-list");
-    if (contactTypeUl) enforceContactTypeLayout(contactTypeUl);
+    if (!contactTypeUl) return;
+    injectContactTypeCardStyles();
+    enforceContactTypeLayout(contactTypeUl);
+  }
+  /* Phone sizing for the Student / Guardian cards.
+     Everything here is inside a max-width: 767px query, so the desktop card
+     — 64px illustration, 1.25rem padding, 1rem label — is untouched.
+     On a phone the pair shares one row, so each card is about half the form
+     width. The illustration keeps its full 64px there: a half-width card at
+     390px is 153px across, which leaves 133px inside the padding, so the art
+     never had to shrink to fit — the room comes out of the padding and the
+     label instead (Amrit, 3 Sep: the first cut dropped it to 44px and the
+     line art visibly degraded). It holds 64px on every phone width, down to
+     the 320px handsets where the card is 119px across. The card sizes to its
+     content rather than holding a min-height, and at ~123px tall it clears
+     the 44px tap target several times over.
+     Selectors repeat the page stylesheet's own chain plus the list class
+     added in enforceContactTypeLayout(), so these outrank the page rules
+     (which are themselves !important) rather than tying with them. Scoping
+     to that class keeps any future radio field on the form stacking the way
+     it does today. */
+  var CONTACT_TYPE_LIST_CLASS = "contour-contact-type-list";
+  function injectContactTypeCardStyles() {
+    if (document.getElementById("contour-contact-type-card-styles")) return;
+    var style = document.createElement("style");
+    style.id = "contour-contact-type-card-styles";
+    var list = ".hs-form .hs-fieldtype-radio .input > ul.inputs-list." + CONTACT_TYPE_LIST_CLASS;
+    var item = list + " > li.hs-form-radio";
+    var card = item + " label.hs-form-radio-display.contour-contact-type-has-illustration";
+    style.textContent = "" +
+      "@media screen and (max-width: 767px) {" +
+      " " + list + " { flex-direction: row !important; flex-wrap: nowrap !important; gap: 10px !important; }" +
+      // flex-basis 0 with min-width 0 keeps the halves equal whatever the
+      // label text is — "Guardian" is the wider word.
+      " " + item + " { flex: 1 1 0% !important; min-width: 0 !important; }" +
+      " " + card + " { min-height: 0 !important; padding: 16px 10px 14px !important; gap: 8px !important; border-radius: 14px !important; font-size: 15px !important; }" +
+      // The illustration holds its desktop size; only the chrome around it
+      // gives way. width/height are declared on the img itself so the box is
+      // reserved before the AVIF decodes and the pair can't jump.
+      " " + card + " .contour-contact-type-illustration { width: 64px !important; height: 64px !important; flex: 0 0 auto; }" +
+      "}" +
+      // Narrowest handsets (320px): the card is 119px across, so 64px of art
+      // plus 6px of side padding still fits — the gutters and the label give
+      // way instead, and the illustration never changes size on any phone.
+      "@media screen and (max-width: 360px) {" +
+      " " + list + " { gap: 8px !important; }" +
+      " " + card + " { padding: 14px 6px 12px !important; gap: 6px !important; font-size: 14px !important; }" +
+      "}";
+    document.head.appendChild(style);
   }
   var CONTACT_TYPE_ILLUSTRATIONS = [{
     match: /student/i,
@@ -1543,7 +1733,7 @@ var ContourForm1Logic = function () {
       // separator rule can paint behind the band and mask out under the text.
       var label = document.createElement("span");
       label.className = "contour-person-tabs__label";
-      label.textContent = (id === "student" ? "Student" : "Guardian") + " Details";
+      label.textContent = headerLabel((id === "student" ? "Student" : "Guardian") + " Details");
       title.appendChild(label);
       existing.appendChild(title);
     }
@@ -1810,7 +2000,7 @@ var ContourForm1Logic = function () {
     // The corner label names the tab being looked at, so it reads as the
     // container's heading: "Student Contact Information".
     var titleEl = strip.querySelector(".contour-person-tabs__title");
-    var titleText = (activePersonTab === "guardian" ? "Guardian" : "Student") + " Details";
+    var titleText = headerLabel((activePersonTab === "guardian" ? "Guardian" : "Student") + " Details");
     if (titleEl && titleEl.textContent !== titleText) titleEl.textContent = titleText;
     if (strip.nextSibling !== anchorRow) anchorRow.parentNode.insertBefore(strip, anchorRow);
   }
@@ -1932,7 +2122,7 @@ var ContourForm1Logic = function () {
       // the active tab shows its errors inline, so it stays as it is.
       ".hs-form button.contour-person-tab.is-errored:not(.is-active) { border-color: rgba(200, 16, 46, 0.30); background: rgba(200, 16, 46, 0.05); color: #8A0C22; }" +
       ".hs-form button.contour-person-tab.is-errored:not(.is-active):hover { background: rgba(200, 16, 46, 0.10); }" +
-      ".hs-form .contour-person-tabs__title { margin-left: auto; font-size: 11.5px; font-weight: 700; letter-spacing: 0.10em; text-transform: uppercase; color: rgba(12, 49, 102, 0.55); }" +
+      ".hs-form .contour-person-tabs__title { margin-left: auto; font-weight: " + headerFontWeight(700, 600) + "; " + headerCapsCss(11.5, "0.10em") + " color: rgba(12, 49, 102, 0.55); }" +
       // Static segment headings (stacked rendering): right-aligned in the
       // form's theme navy rather than the corner label's muted tint (Amrit's
       // review, 21 Aug 2026 — a per-segment left rail was also considered and
@@ -1945,23 +2135,45 @@ var ContourForm1Logic = function () {
       // min-height is the badge's own height, so a band carrying the badge and
       // a band carrying only text come out the same depth — otherwise the two
       // segment bands on the Guardian flow differ by 5px.
-      ".hs-form .contour-person-tabs__heading { display: inline-flex; align-items: center; gap: 8px; min-height: 18px; font-size: 11.5px; font-weight: 700; letter-spacing: 0.10em; text-transform: uppercase; color: #0C3166; }" +
+      ".hs-form .contour-person-tabs__heading { display: inline-flex; align-items: center; gap: 8px; min-height: 18px; font-weight: " + headerFontWeight(700, 600) + "; " + headerCapsCss(11.5, "0.10em") + " color: #0C3166; }" +
       // The bands are edges, not rows: the static headers hold one short line,
       // so they take tighter padding than the tab strip's touch targets.
       ".hs-form .contour-person-tabs--static { padding: 10px 24px; }" +
-      // Highlighter lime behind the segment names so they stand out from the
-      // field labels below them (Amrit, 1 Sep 2026); navy on lime holds
-      // ~10:1 where lime text on white was 1.2:1. A marker stroke rather
-      // than a printed chip (Amrit's second pass, 1 Sep): a shorter band
-      // riding the lower half of the letters, faded overall, tapering out
-      // at both ends, faint diagonal streaks for ink texture, and a tiny
-      // tilt so it reads as drawn on. z-index: 0 pins a stacking context so
-      // the stroke's -1 stays inside the label, above the band's paint.
-      ".hs-form .contour-person-tabs--static .contour-person-tabs__label { position: relative; z-index: 0; color: #0C3166; padding: 2px 10px; }" +
-      '.hs-form .contour-person-tabs--static .contour-person-tabs__label::before { content: ""; position: absolute; z-index: -1; left: 0; right: 0; top: 54%; height: 12px; transform: translateY(-50%) rotate(-1.2deg); border-radius: 6px 3px 7px 2px; background: repeating-linear-gradient(115deg, rgba(255, 255, 255, 0.16) 0 3px, rgba(255, 255, 255, 0) 3px 7px), linear-gradient(90deg, rgba(215, 252, 61, 0) 0, rgba(215, 252, 61, 0.5) 7%, rgba(215, 252, 61, 0.82) 22%, rgba(215, 252, 61, 0.82) 78%, rgba(215, 252, 61, 0.5) 93%, rgba(215, 252, 61, 0) 100%); }' +
-      // The negative margin puts the text back on the grid line while the
-      // stroke's taper bleeds into the gutter.
-      ".hs-form .contour-person-tabs--static.contour-person-tabs--label-left .contour-person-tabs__label { margin-left: -10px; }" +
+      // The segment names are set off from the field labels below them in
+      // one of two ways, or neither — see personLabelOutline and
+      // personLabelMarker in FEATURE_DEFAULTS.
+      (featureEnabled("personLabelOutline") || featureEnabled("personLabelFill") ?
+        // Pill: the name inside a thin navy ring, the shape the site's own
+        // buttons wear (team feedback via Amrit, 4 Sep 2026). 18px line box
+        // + 3px padding + 1px ring = 26px, inside the 30px band the section
+        // boxes pin, and centred on the separator rule by the band's own
+        // align-items: center.
+        // The ring, not the text, sits on the field labels' grid line: the
+        // pill is a box like the inputs under it, and on the grid line it
+        // shares a left rail with every input's left edge while its text
+        // indents the way text inside an input does. Bleeding it 13px into
+        // the gutter (tried 4 Sep) left the ring 10px off the card edge on
+        // desktop and 6px on mobile, breaking the card's own 23px gutter.
+        ".hs-form .contour-person-tabs--static .contour-person-tabs__label { display: inline-block; color: #0C3166; padding: 3px 12px; border: 1px solid #0C3166; border-radius: 999px; line-height: 18px; }" +
+        // Filled: solid navy with the name knocked out white, the same
+        // treatment as the section card headers (sectionHeaderTheme2).
+        (featureEnabled("personLabelFill") ? ".hs-form .contour-person-tabs--static .contour-person-tabs__label { background: #0C3166; color: #FFFFFF; }" : "")
+      : featureEnabled("personLabelMarker") ?
+        // Highlighter lime behind the segment names so they stand out from
+        // the field labels below them (Amrit, 1 Sep 2026); navy on lime
+        // holds ~10:1 where lime text on white was 1.2:1. A marker stroke
+        // rather than a printed chip (Amrit's second pass, 1 Sep): a shorter
+        // band riding the lower half of the letters, faded overall, tapering
+        // out at both ends, faint diagonal streaks for ink texture, and a
+        // tiny tilt so it reads as drawn on. z-index: 0 pins a stacking
+        // context so the stroke's -1 stays inside the label, above the
+        // band's paint.
+        ".hs-form .contour-person-tabs--static .contour-person-tabs__label { position: relative; z-index: 0; color: #0C3166; padding: 2px 10px; }" +
+        '.hs-form .contour-person-tabs--static .contour-person-tabs__label::before { content: ""; position: absolute; z-index: -1; left: 0; right: 0; top: 54%; height: 12px; transform: translateY(-50%) rotate(-1.2deg); border-radius: 6px 3px 7px 2px; background: repeating-linear-gradient(115deg, rgba(255, 255, 255, 0.16) 0 3px, rgba(255, 255, 255, 0) 3px 7px), linear-gradient(90deg, rgba(215, 252, 61, 0) 0, rgba(215, 252, 61, 0.5) 7%, rgba(215, 252, 61, 0.82) 22%, rgba(215, 252, 61, 0.82) 78%, rgba(215, 252, 61, 0.5) 93%, rgba(215, 252, 61, 0) 100%); }' +
+        // The negative margin puts the text back on the grid line while the
+        // stroke's taper bleeds into the gutter.
+        ".hs-form .contour-person-tabs--static.contour-person-tabs--label-left .contour-person-tabs__label { margin-left: -10px; }"
+      : "") +
       // "You" leads the segment belonging to whoever is filling the form in,
       // as a navy badge with the highlighter lime knocked out of it — the one
       // legible way to put the lime on this white band (10.9:1, where lime as
@@ -2513,7 +2725,7 @@ var ContourForm1Logic = function () {
     if (document.getElementById("contour-disabled-field-styles")) return;
     var style = document.createElement("style");
     style.id = "contour-disabled-field-styles";
-    style.textContent = ".hs-form select:disabled, .hs-form input:disabled, .hs-form input.contour-prefill-locked[readonly] { opacity: 0.55; background-color: #f1f0ec; cursor: not-allowed; }" + ".hs-form select.contour-prefill-locked { opacity: 0.55; background-color: #f1f0ec; cursor: not-allowed; pointer-events: none; }" + ".contour-prefill-banner { display: flex; align-items: flex-start; gap: 14px; margin: 0 0 24px; padding: 18px 22px; border: 1px solid rgba(12, 49, 102, 0.12); border-radius: 16px; background: #FFFFFF; box-shadow: 0 1px 3px rgba(12, 49, 102, 0.06); }" + ".contour-prefill-banner__badge { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; box-sizing: border-box; border: 2px solid #0C3166; border-radius: 50%; background: #007AFF; color: #FFFFFF; font-size: 15px; font-weight: 700; }" + ".contour-prefill-banner__content { flex: 1; min-width: 0; }" + ".contour-prefill-banner__title { margin: 0 0 2px; font-size: 15px; font-weight: 700; color: #0C3166; }" + ".contour-prefill-banner__text { margin: 0 0 8px; font-size: 13.5px; line-height: 1.45; color: #6b7280; }" + ".contour-prefill-banner__reset { display: inline-block; font-size: 13px; font-weight: 600; color: #0C3166; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }" + ".contour-prefill-banner__reset:hover { color: #0540F2; }" + ".contour-subject-summary { margin: 24px 0; padding: 20px 22px; border: 1px solid rgba(12, 49, 102, 0.12); border-radius: 16px; background: #FFF9F1; box-shadow: 0 1px 3px rgba(12, 49, 102, 0.06); }" + ".contour-subject-summary__heading { font-size: 15px; font-weight: 700; color: #0C3166; margin-bottom: 14px; }" + ".contour-subject-summary__grid { display: flex; flex-wrap: wrap; gap: 24px; }" + ".contour-subject-summary__col { flex: 1 1 180px; min-width: 160px; }" + ".contour-subject-summary__col-title { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #6b7280; margin-bottom: 8px; }" + ".contour-subject-summary__chips { display: flex; flex-wrap: wrap; gap: 6px; }" + ".contour-subject-chip { display: inline-block; padding: 5px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 600; line-height: 1.3; }" + ".contour-subject-chip--navy { background: #092749; color: #FFFFFF; }" + ".contour-subject-chip--lime { background: #D7FC3D; color: #0C3166; }" + ".contour-subject-chip--blue { background: #007AFF; color: #FFFFFF; }" + ".contour-ucat-intake-note { margin: 24px 0; }" + ".contour-welcome-consultation__waitlist-note { margin: 0; padding: 14px 18px; border: 1px solid #f0d9a6; border-radius: 12px; background: #FFF3D6; color: #8a5a00; font-size: 14px; line-height: 1.5; font-weight: 600; }" + ".contour-form-loader { display: flex; flex-direction: column; align-items: center; padding: 60px 0; }" + ".contour-form-loader__spinner { width: 36px; height: 36px; border: 4px solid #e3e0d8; border-top-color: #1a1a2e; border-radius: 50%; animation: contour-spin 0.8s linear infinite; }" + "@keyframes contour-spin { to { transform: rotate(360deg); } }" + ".contour-form-loader__text { margin-top: 12px; font-size: 14px; }";
+    style.textContent = ".hs-form select:disabled, .hs-form input:disabled, .hs-form input.contour-prefill-locked[readonly] { opacity: 0.55; background-color: #f1f0ec; cursor: not-allowed; }" + ".hs-form select.contour-prefill-locked { opacity: 0.55; background-color: #f1f0ec; cursor: not-allowed; pointer-events: none; }" + ".contour-prefill-banner { display: flex; align-items: flex-start; gap: 14px; margin: 0 0 24px; padding: 18px 22px; border: 1px solid rgba(12, 49, 102, 0.12); border-radius: 16px; background: #FFFFFF; box-shadow: 0 1px 3px rgba(12, 49, 102, 0.06); }" + ".contour-prefill-banner__badge { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; box-sizing: border-box; border: 2px solid #0C3166; border-radius: 50%; background: #007AFF; color: #FFFFFF; font-size: 15px; font-weight: 700; }" + ".contour-prefill-banner__content { flex: 1; min-width: 0; }" + ".contour-prefill-banner__title { margin: 0 0 2px; font-size: 15px; font-weight: 700; color: #0C3166; }" + ".contour-prefill-banner__text { margin: 0 0 8px; font-size: 13.5px; line-height: 1.45; color: #6b7280; }" + ".contour-prefill-banner__reset { display: inline-block; font-size: 13px; font-weight: 600; color: #0C3166; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }" + ".contour-prefill-banner__reset:hover { color: #0540F2; }" + ".contour-subject-summary { margin: 24px 0; padding: 20px 22px; border: 1px solid rgba(12, 49, 102, 0.12); border-radius: 16px; background: #FFF9F1; box-shadow: 0 1px 3px rgba(12, 49, 102, 0.06); }" + ".contour-subject-summary__heading { font-size: 15px; font-weight: 700; color: #0C3166; margin-bottom: 14px; }" + ".contour-subject-summary__grid { display: flex; flex-wrap: wrap; gap: 24px; }" + ".contour-subject-summary__col { flex: 1 1 180px; min-width: 160px; }" + ".contour-subject-summary__col-title { font-weight: " + headerFontWeight(700, 600) + "; " + headerCapsCss(11, "0.08em") + " color: #6b7280; margin-bottom: 8px; }" + ".contour-subject-summary__chips { display: flex; flex-wrap: wrap; gap: 6px; }" + ".contour-subject-chip { display: inline-block; padding: 5px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 600; line-height: 1.3; }" + ".contour-subject-chip--navy { background: #092749; color: #FFFFFF; }" + ".contour-subject-chip--lime { background: #D7FC3D; color: #0C3166; }" + ".contour-subject-chip--blue { background: #007AFF; color: #FFFFFF; }" + ".contour-ucat-intake-note { margin: 24px 0; }" + ".contour-welcome-consultation__waitlist-note { margin: 0; padding: 14px 18px; border: 1px solid #f0d9a6; border-radius: 12px; background: #FFF3D6; color: #8a5a00; font-size: 14px; line-height: 1.5; font-weight: 600; }" + ".contour-form-loader { display: flex; flex-direction: column; align-items: center; padding: 60px 0; }" + ".contour-form-loader__spinner { width: 36px; height: 36px; border: 4px solid #e3e0d8; border-top-color: #1a1a2e; border-radius: 50%; animation: contour-spin 0.8s linear infinite; }" + "@keyframes contour-spin { to { transform: rotate(360deg); } }" + ".contour-form-loader__text { margin-top: 12px; font-size: 14px; }";
     document.head.appendChild(style);
   }
   function getClassification(inputEl) {
@@ -4813,7 +5025,7 @@ var ContourForm1Logic = function () {
       if (visibleColumns.length > 1) {
         var title = document.createElement("div");
         title.className = "contour-subject-summary__col-title";
-        title.textContent = col.title;
+        title.textContent = headerLabel(col.title);
         colEl.appendChild(title);
       }
       var chips = document.createElement("div");
@@ -5668,6 +5880,43 @@ var ContourForm1Logic = function () {
          behaviour of HubSpot's message arriving on the next submit. */
     }
   }
+  /* Hiding an error list takes a class, not just an inline style.
+
+     The page header carries, to keep the two single-checkbox lists out of the
+     two-column grid the other checkbox fields use:
+
+       .hs_join_no_program_waitlist ul.inputs-list,
+       .hs_tos_privacy_consent ul.inputs-list { display: block !important; }
+
+     An error list inside the consent field is a ul.inputs-list too, so that
+     !important beat every `style.display = "none"` written here. The standby
+     message under the terms tick could therefore never be stood down: it sat
+     beside HubSpot's own copy of the same sentence on a blocked submit, and
+     stayed on its own after the box was ticked, with the code reading it as
+     hidden the whole time (Amrit, 4 Sep 2026).
+
+     Every error list this file shows or hides goes through the pair below, so
+     a page rule on one field can never again strand a message on screen. */
+  var ERROR_HIDDEN_CLASS = "contour-error-hidden";
+  function injectErrorVisibilityStyles() {
+    if (document.getElementById("contour-error-visibility-styles")) return;
+    var style = document.createElement("style");
+    style.id = "contour-error-visibility-styles";
+    // Two class names and a tag against the page rule's one class and one tag,
+    // so this wins on specificity where both sides are !important.
+    style.textContent = ".hs-form ul.hs-error-msgs." + ERROR_HIDDEN_CLASS + ", .hs-form ." + ERROR_HIDDEN_CLASS + " { display: none !important; }";
+    document.head.appendChild(style);
+  }
+  function hideErrorList(list) {
+    if (!list) return;
+    list.style.display = "none";
+    if (list.classList) list.classList.add(ERROR_HIDDEN_CLASS);
+  }
+  function showErrorList(list) {
+    if (!list) return;
+    list.style.removeProperty("display");
+    if (list.classList) list.classList.remove(ERROR_HIDDEN_CLASS);
+  }
   var NATIVE_FALLBACK_CLASS = "contour-required-fallback";
   // HubSpot draws its own message from a blur handler for most field types,
   // but not for the consent checkbox, which it only validates during a submit
@@ -5680,7 +5929,7 @@ var ContourForm1Logic = function () {
     });
     var own = wrap.querySelector("." + NATIVE_FALLBACK_CLASS);
     if (hubspotSpoke) {
-      if (own) own.style.display = "none";
+      if (own) hideErrorList(own);
       return;
     }
     if (!own) {
@@ -5695,7 +5944,7 @@ var ContourForm1Logic = function () {
       own.appendChild(item);
       wrap.appendChild(own);
     }
-    own.style.removeProperty("display");
+    showErrorList(own);
   }
   // At most one message per field, and never the same sentence twice.
   //
@@ -5724,7 +5973,7 @@ var ContourForm1Logic = function () {
       // Anything else on the field makes it redundant, whatever it says.
       if (real.length > 0) {
         visible.forEach(function (list) {
-          if (list.classList.contains(NATIVE_FALLBACK_CLASS)) list.style.display = "none";
+          if (list.classList.contains(NATIVE_FALLBACK_CLASS)) hideErrorList(list);
         });
       }
       // Beyond that, only collapse messages that read identically — two checks
@@ -5734,7 +5983,7 @@ var ContourForm1Logic = function () {
         var text = (list.textContent || "").replace(/\s+/g, " ").trim().toLowerCase();
         if (!text) return;
         if (seen[text]) {
-          list.style.display = "none";
+          hideErrorList(list);
           return;
         }
         seen[text] = true;
@@ -5745,7 +5994,7 @@ var ContourForm1Logic = function () {
     if (!formRoot) return;
     Array.prototype.forEach.call(formRoot.querySelectorAll("." + NATIVE_FALLBACK_CLASS), function (el) {
       var wrap = el.closest("." + FIELD_WRAPPER_CLASS);
-      if (wrap && fieldWrapperAnswered(wrap)) el.style.display = "none";
+      if (wrap && fieldWrapperAnswered(wrap)) hideErrorList(el);
     });
   }
   function documentOrder(a, b) {
@@ -6024,7 +6273,7 @@ var ContourForm1Logic = function () {
       // space to its left — the line IS the section divider, so the header
       // carries no border of its own and the hr dividers below stand down
       // whenever headers are on (Amrit, 21 Aug 2026).
-      ".hs-form .contour-section-header { display: flex; align-items: center; justify-content: flex-end; gap: 14px; box-sizing: border-box; width: 100%; flex: 0 0 100%; grid-column: 1 / -1; margin: 34px 0 20px; }" + ".hs-form .contour-section-header:first-child { margin-top: 0; }" + '.hs-form .contour-section-header::before { content: ""; flex: 1 1 auto; height: 1px; background: linear-gradient(90deg, rgba(12, 49, 102, 0), rgba(12, 49, 102, 0.18)); }' + ".hs-form .contour-section-header__title { flex: 0 0 auto; font-size: 12px; font-weight: 700; letter-spacing: 0.10em; text-transform: uppercase; color: #0C3166; padding: 6px 14px; border: 1px solid rgba(12, 49, 102, 0.16); border-radius: 999px; background: #FFFFFF; }" +
+      ".hs-form .contour-section-header { display: flex; align-items: center; justify-content: flex-end; gap: 14px; box-sizing: border-box; width: 100%; flex: 0 0 100%; grid-column: 1 / -1; margin: 34px 0 20px; }" + ".hs-form .contour-section-header:first-child { margin-top: 0; }" + '.hs-form .contour-section-header::before { content: ""; flex: 1 1 auto; height: 1px; background: linear-gradient(90deg, rgba(12, 49, 102, 0), rgba(12, 49, 102, 0.18)); }' + ".hs-form .contour-section-header__title { flex: 0 0 auto; font-weight: " + headerFontWeight(700, 600) + "; " + headerCapsCss(12, "0.10em") + " color: #0C3166; padding: 6px 14px; border: 1px solid rgba(12, 49, 102, 0.16); border-radius: 999px; background: #FFFFFF; }" +
       // The three rules predate the headers and would double up with them.
       ".hs-form.contour-section-headers-on hr.contour-section-divider { display: none !important; }" +
       // --- helper note under a field that is waiting on an earlier answer -----
@@ -6224,7 +6473,7 @@ var ContourForm1Logic = function () {
   function sectionTitle(def) {
     // The person-tabs band inside the card carries the Student/Guardian
     // split; the card header stays constant.
-    return def.title;
+    return headerLabel(def.title);
   }
   function ensureSectionHeader(def, firstNode) {
     var title = featureEnabled("sectionHeaders") ? sectionTitle(def) : null;
@@ -6697,15 +6946,39 @@ var ContourForm1Logic = function () {
   // in a half-width tile. 880px gives the tiles the ~50px each they were
   // short of, and stays well inside the page's own 1296px content width. Only
   // the cap moves, so every narrower screen is untouched (Amrit, 23 Aug).
+  var FORM_WIDTH_CAP = 880;
   function injectFormWidthStyles() {
     if (!featureEnabled("widerForm")) return;
-    if (document.getElementById("contour-form-width-styles")) return;
-    var style = document.createElement("style");
-    style.id = "contour-form-width-styles";
-    style.textContent =
-      ".container-form { max-width: 880px; }" +
-      ".hs-form { max-width: 880px; }";
-    document.head.appendChild(style);
+    if (!document.getElementById("contour-form-width-styles")) {
+      var style = document.createElement("style");
+      style.id = "contour-form-width-styles";
+      style.textContent =
+        ".container-form { max-width: " + FORM_WIDTH_CAP + "px; }" +
+        ".hs-form { max-width: " + FORM_WIDTH_CAP + "px; }" +
+        ".contour-form-width-host { max-width: " + FORM_WIDTH_CAP + "px !important; }";
+      document.head.appendChild(style);
+    }
+    liftFormWidthCaps();
+  }
+  // Staging wraps the form in .container-form, production in .container-small
+  // — both 48rem in the Webflow stylesheet, but only the first is named in the
+  // rule above, so the addresses started wrapping again once production got
+  // its own page. Rather than chase class names, walk the form's own ancestors
+  // and lift whichever ones are actually holding it under 880px. Only caps
+  // below the target move, so a full-width section stays full width, and
+  // width: 100% still keeps every narrower screen where it was
+  // (Amrit, 3 Sep 2026).
+  function liftFormWidthCaps() {
+    if (!formRoot || !window.getComputedStyle) return;
+    var node = formRoot.parentElement;
+    while (node && node !== document.body) {
+      // Only pixel caps count: "none" is no cap at all, and a percentage is
+      // measured against a parent this loop is about to visit anyway.
+      var maxWidth = window.getComputedStyle(node).maxWidth || "";
+      var cap = /px$/.test(maxWidth) ? parseFloat(maxWidth) : NaN;
+      if (cap > 0 && cap < FORM_WIDTH_CAP) node.classList.add("contour-form-width-host");
+      node = node.parentElement;
+    }
   }
   function injectSectionBoxStyles() {
     if (document.getElementById("contour-section-box-styles")) return;
@@ -6738,7 +7011,7 @@ var ContourForm1Logic = function () {
       box + '__status { flex: 0 0 auto; display: none; align-items: center; justify-content: center; width: 24px; height: 24px; box-sizing: border-box; border-radius: 50%; border: 2px solid #FFFFFF; background: #007AFF; color: #FFFFFF; }' +
       box + "__status svg { display: block; }" +
       box + "--collapsed .contour-section-box__status { display: flex; }" +
-      box + "__title { flex: 0 0 auto; font-size: 12.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #0C3166; }" +
+      box + "__title { flex: 0 0 auto; font-weight: " + headerFontWeight(700, 600) + "; " + headerCapsCss(12.5, "0.08em", 14.5) + " color: #0C3166; }" +
       box + "__summary { flex: 1 1 auto; min-width: 0; display: none; font-size: 13.5px; font-weight: 500; color: #6b7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }" +
       box + "--collapsed .contour-section-box__summary { display: block; }" +
       box + "__action { flex: 0 0 auto; display: none; align-items: center; justify-content: center; width: 28px; height: 28px; margin-left: auto; border-radius: 50%; color: #0C3166; transition: background-color 0.15s ease; }" +
@@ -6757,7 +7030,19 @@ var ContourForm1Logic = function () {
       // overflow stays visible while open: the school suggestion list drops
       // out of its box. The collapsed class clips, which the 0fr squeeze
       // needs anyway.
-      box + "__content-inner { min-height: 0; padding: 16px 22px 20px; }" +
+      // min-width belongs with min-height here, and it is load-bearing on
+      // phones. As a grid item this div takes min-width: auto, which is its
+      // min-content width — and in WebKit a fieldset's min-content never
+      // drops below the widest field it holds, so the box sat at a fixed
+      // 352px however narrow the screen was. Under about 370px that pushed
+      // the document wider than the viewport: Safari then lets the page pan
+      // and pinch out, which reads as the whole form shrinking and sliding
+      // left with a dead gutter down the right. Blink shrinks the fieldset
+      // on its own, which is why this never showed up in Chrome. Both halves
+      // are needed — the grid item has to stop reserving min-content, and
+      // the fieldset inside it has to be allowed to shrink (3 Sep 2026).
+      box + "__content-inner { min-height: 0; min-width: 0; padding: 16px 22px 20px; }" +
+      ".hs-form fieldset { min-width: 0 !important; }" +
       box + "--collapsed .contour-section-box__content { grid-template-rows: 0fr; }" +
       // visibility keeps collapsed fields out of the tab order; expansion
       // hooks (header, focusin, error links) bring them back first.
@@ -6812,7 +7097,12 @@ var ContourForm1Logic = function () {
       // Level with the card's own band rather than a step under it: left-
       // aligned, this label now leads the rows beneath it instead of sitting
       // in the corner, so it carries a heading's weight (Amrit, 25 Aug 2026).
-      box + " .contour-person-tabs__heading { font-size: 13px; font-weight: 800; }" +
+      box + " .contour-person-tabs__heading { font-size: " + headerFontSize(13, 15) + "; font-weight: " + headerFontWeight(800, 650) + "; }" +
+      // White on navy reads a size larger than navy on white, so inside the
+      // filled pill 15px looked oversized against the labels beneath it. It
+      // takes the collapsed section card headers' 13.5px/600 (12.5/700
+      // under caps) — the navy bands then speak in one voice (Amrit, 4 Sep).
+      (featureEnabled("personLabelFill") ? box + " .contour-person-tabs__heading { font-size: " + headerFontSize(12.5, 13.5) + "; font-weight: " + headerFontWeight(700, 600) + "; }" : "") +
       box + " .contour-person-tabs--static .contour-person-tabs__heading { position: relative; }" +
       // The lime marker stroke behind the label comes from the base person
       // group styles — the white mask that used to live here is gone with
@@ -6841,6 +7131,10 @@ var ContourForm1Logic = function () {
       // out — a taper needs enough run to be seen as a taper, and enough clear
       // space after it that the eye is not looking for more (Amrit, 25 Aug).
       box + ' .contour-person-tabs--static.contour-person-tabs--label-left::before { left: var(--contour-seg-rule-start, 130px); background: linear-gradient(to right, rgba(12, 49, 102, 0.85), rgba(12, 49, 102, 0.85) calc(100% - 260px), rgba(12, 49, 102, 0) calc(100% - 60px), rgba(12, 49, 102, 0)); }' +
+      // Beside a filled navy pill the 0.85 wash reads as a different, greyer
+      // blue leaving the pill; the rule takes the pill's own solid navy and
+      // keeps the same taper (Amrit, 4 Sep 2026).
+      (featureEnabled("personLabelFill") ? box + ' .contour-person-tabs--static.contour-person-tabs--label-left::before { background: linear-gradient(to right, #0C3166, #0C3166 calc(100% - 260px), rgba(12, 49, 102, 0) calc(100% - 60px), rgba(12, 49, 102, 0)); }' : "") +
       box + " .contour-person-tabs--mid { margin-top: 26px; border-top: 0; }" +
       box + " .contour-person-group-host { margin-bottom: 0 !important; }" +
       box + " .contour-person-group-host > .contour-person-card__row { border: 0 !important; border-radius: 0 !important; }" +
@@ -6853,6 +7147,18 @@ var ContourForm1Logic = function () {
       "@media screen and (max-width: 767px) {" +
       " " + box + " .contour-person-tabs--static { padding: 6px 2px 8px !important; }" +
       " " + box + " .contour-person-group-host > .contour-person-card__row { border: 0 !important; padding: 10px 0 14px !important; }" +
+      // The two-column gutter above is set per field — `.hs_student_last_name`
+      // and `.hs_student_phone_number` carry the 12px padding-left, the other
+      // two the mirrored padding-right — so a reset written against the shared
+      // `.contour-person-card__row` class alone is one class short of them and
+      // loses the tie on specificity, !important on both sides or not. Media
+      // queries buy no specificity. The rows then stack full width but keep
+      // the gutter, and the second field of each pair sits 12px in from the
+      // first while the first is 12px short on the right — the misalignment
+      // reported on a phone (Amrit, 3 Sep 2026). Repeating the four chains is
+      // the same shape as the guardian reset on the line below, which is why
+      // that variant was never affected.
+      " " + box + " .contour-person-group-host > .hs_student_first_name.contour-person-card__row, " + box + " .contour-person-group-host > .hs_student_last_name.contour-person-card__row, " + box + " .contour-person-group-host > .hs_student_email.contour-person-card__row, " + box + " .contour-person-group-host > .hs_student_phone_number.contour-person-card__row { padding: 10px 0 14px !important; }" +
       " " + box + " fieldset.contour-person-card__row--guardian > .hs-form-field, " + box + " fieldset.contour-person-card__row--guardian > .hs-form-field + .hs-form-field { padding: 10px 0 14px !important; }" +
       "}" +
       // "Preferred Campuses" under the "Preferred Campus" band and "Program
@@ -6959,7 +7265,7 @@ var ContourForm1Logic = function () {
       box + "--locked .contour-section-box__status svg { display: none; }" +
       // The state word, wherever it is used: set small against the far edge of
       // the band so it never reads as one of the answers.
-      box + '--collapsed[data-contour-pending="1"] .contour-section-box__summary { display: block; text-align: right; font-size: 11px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; }' +
+      box + '--collapsed[data-contour-pending="1"] .contour-section-box__summary { display: block; text-align: right; font-weight: ' + headerFontWeight(700, 600) + '; ' + headerCapsCss(11, "0.09em") + ' }' +
       box + '--locked[data-contour-pending="1"] .contour-section-box__summary { color: rgba(12, 49, 102, 0.4); }' +
       // No pencil on a card there is no way into.
       box + "--locked .contour-section-box__action { display: none; }" +
@@ -8161,7 +8467,7 @@ var ContourForm1Logic = function () {
     var errorList = document.createElement("ul");
     errorList.className = "no-list hs-error-msgs inputs-list " + errorClass;
     errorList.setAttribute("role", "alert");
-    errorList.style.display = "none";
+    hideErrorList(errorList);
     var errorItem = document.createElement("li");
     var errorLabel = document.createElement("label");
     errorLabel.className = "hs-error-msg hs-main-font-element";
@@ -8170,11 +8476,11 @@ var ContourForm1Logic = function () {
     errorList.appendChild(errorItem);
     fieldWrap.appendChild(errorList);
     function showError() {
-      errorList.style.display = "";
+      showErrorList(errorList);
       reportFieldError(fieldWrap, focusTargetIn(fieldWrap));
     }
     function clearError() {
-      errorList.style.display = "none";
+      hideErrorList(errorList);
     }
     options.forEach(function (opt) {
       opt.addEventListener("change", function () {
@@ -8303,7 +8609,7 @@ var ContourForm1Logic = function () {
     var errorList = document.createElement("ul");
     errorList.className = "no-list hs-error-msgs inputs-list contour-program-coverage-error";
     errorList.setAttribute("role", "alert");
-    errorList.style.display = "none";
+    hideErrorList(errorList);
     var errorItem = document.createElement("li");
     var errorLabel = document.createElement("label");
     errorLabel.className = "hs-error-msg hs-main-font-element";
@@ -8315,11 +8621,11 @@ var ContourForm1Logic = function () {
         return PROGRAM_DISPLAY_NAMES[programValue] || programValue;
       });
       errorLabel.textContent = "Please select a " + names.join(" and ") + " subject, or deselect the program.";
-      errorList.style.display = "";
+      showErrorList(errorList);
       reportFieldError(fieldWrap, focusTargetIn(fieldWrap));
     }
     function clearError() {
-      errorList.style.display = "none";
+      hideErrorList(errorList);
     }
     qAll(FIELD_SELECTORS.interestedSubjects).concat(qAll(FIELD_SELECTORS.programInterest)).forEach(function (opt) {
       opt.addEventListener("change", function () {
@@ -8445,7 +8751,7 @@ var ContourForm1Logic = function () {
     var errorList = document.createElement("ul");
     errorList.className = "no-list hs-error-msgs inputs-list " + errorClass;
     errorList.setAttribute("role", "alert");
-    errorList.style.display = "none";
+    hideErrorList(errorList);
     var errorItem = document.createElement("li");
     var errorLabel = document.createElement("label");
     errorLabel.className = "hs-error-msg hs-main-font-element";
@@ -8458,11 +8764,11 @@ var ContourForm1Logic = function () {
   function showContourError(input, errorClass) {
     input.classList.add("invalid", "error");
     var list = contourErrorList(input, errorClass);
-    if (list) list.style.display = "";
+    showErrorList(list);
   }
   function clearContourError(input, errorClass) {
     var list = contourErrorList(input, errorClass);
-    if (list) list.style.display = "none";
+    hideErrorList(list);
     // Student Email carries two checks (format, and not the guardian's), and
     // HubSpot adds its own, so the red state only comes off the box once none
     // of them is showing.
@@ -9335,7 +9641,7 @@ var ContourForm1Logic = function () {
     var errorList = document.createElement("ul");
     errorList.className = "no-list hs-error-msgs inputs-list contour-student-phone-error";
     errorList.setAttribute("role", "alert");
-    errorList.style.display = "none";
+    hideErrorList(errorList);
     var errorItem = document.createElement("li");
     var errorLabel = document.createElement("label");
     errorLabel.className = "hs-error-msg hs-main-font-element";
@@ -9351,7 +9657,7 @@ var ContourForm1Logic = function () {
     var state = studentPhoneState();
     if (state === "ok" || state === "empty") {
       input.classList.remove("invalid", "error");
-      errorList.style.display = "none";
+      hideErrorList(errorList);
       return;
     }
     if (!showWhenInvalid) return;
@@ -9360,7 +9666,7 @@ var ContourForm1Logic = function () {
       errorLabel.textContent = state === "incomplete" ? "Please complete this required field." : "Please enter a valid phone number.";
     }
     input.classList.add("invalid", "error");
-    errorList.style.display = "";
+    showErrorList(errorList);
   }
   function enforceStudentPhoneValidation() {
     if (!formRoot) return;
@@ -9739,6 +10045,7 @@ var ContourForm1Logic = function () {
     injectFormWidthStyles();
     injectSubjectTileStyles();
     injectDisabledFieldStyles();
+    injectErrorVisibilityStyles();
     injectErrorRollupStyles();
     injectMotionStyles();
     watchErrorRollup();
