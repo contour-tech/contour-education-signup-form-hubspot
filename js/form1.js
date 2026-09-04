@@ -74,6 +74,17 @@ var ContourForm1Logic = function () {
     // rule takes the room the pill used to (Angad, 25 Aug 2026). On restores
     // the pill and the rule starts past it, measured.
     personYouPill: false,
+    // How "Student Details" / "Guardian Details" are set off from the field
+    // labels under them. Two looks, each behind its own switch:
+    //   personLabelOutline — the name inside a thin navy outline pill, the
+    //     shape the site's own buttons wear. On by default (team feedback
+    //     via Amrit, 4 Sep 2026).
+    //   personLabelMarker — a lime highlighter stroke drawn behind the
+    //     letters (Amrit, 1 Sep 2026). Off by default since the pill arrived.
+    // With both on the outline wins; with both off the name is plain text
+    // on the field labels' grid line.
+    personLabelOutline: true,
+    personLabelMarker: false,
     // Renders the Interested Subjects checkboxes as selectable tiles in the
     // program-card language — navy fill and a blue tick when picked. Off
     // restores the plain native checkboxes (Angad's "dopeify" round, 22 Aug
@@ -2122,19 +2133,34 @@ var ContourForm1Logic = function () {
       // The bands are edges, not rows: the static headers hold one short line,
       // so they take tighter padding than the tab strip's touch targets.
       ".hs-form .contour-person-tabs--static { padding: 10px 24px; }" +
-      // Highlighter lime behind the segment names so they stand out from the
-      // field labels below them (Amrit, 1 Sep 2026); navy on lime holds
-      // ~10:1 where lime text on white was 1.2:1. A marker stroke rather
-      // than a printed chip (Amrit's second pass, 1 Sep): a shorter band
-      // riding the lower half of the letters, faded overall, tapering out
-      // at both ends, faint diagonal streaks for ink texture, and a tiny
-      // tilt so it reads as drawn on. z-index: 0 pins a stacking context so
-      // the stroke's -1 stays inside the label, above the band's paint.
-      ".hs-form .contour-person-tabs--static .contour-person-tabs__label { position: relative; z-index: 0; color: #0C3166; padding: 2px 10px; }" +
-      '.hs-form .contour-person-tabs--static .contour-person-tabs__label::before { content: ""; position: absolute; z-index: -1; left: 0; right: 0; top: 54%; height: 12px; transform: translateY(-50%) rotate(-1.2deg); border-radius: 6px 3px 7px 2px; background: repeating-linear-gradient(115deg, rgba(255, 255, 255, 0.16) 0 3px, rgba(255, 255, 255, 0) 3px 7px), linear-gradient(90deg, rgba(215, 252, 61, 0) 0, rgba(215, 252, 61, 0.5) 7%, rgba(215, 252, 61, 0.82) 22%, rgba(215, 252, 61, 0.82) 78%, rgba(215, 252, 61, 0.5) 93%, rgba(215, 252, 61, 0) 100%); }' +
-      // The negative margin puts the text back on the grid line while the
-      // stroke's taper bleeds into the gutter.
-      ".hs-form .contour-person-tabs--static.contour-person-tabs--label-left .contour-person-tabs__label { margin-left: -10px; }" +
+      // The segment names are set off from the field labels below them in
+      // one of two ways, or neither — see personLabelOutline and
+      // personLabelMarker in FEATURE_DEFAULTS.
+      (featureEnabled("personLabelOutline") ?
+        // Outline pill: the name inside a thin navy ring, the shape the
+        // site's own buttons wear (team feedback via Amrit, 4 Sep 2026). The
+        // pill is an object rather than a stroke, so its outer edge — not
+        // the text — sits on the field labels' grid line; no gutter bleed.
+        // 18px line box + 3px padding + 1px ring = 26px, inside the 30px
+        // band the section boxes pin, and centred on the separator rule by
+        // the band's own align-items: center.
+        ".hs-form .contour-person-tabs--static .contour-person-tabs__label { display: inline-block; color: #0C3166; padding: 3px 12px; border: 1px solid #0C3166; border-radius: 999px; line-height: 18px; }"
+      : featureEnabled("personLabelMarker") ?
+        // Highlighter lime behind the segment names so they stand out from
+        // the field labels below them (Amrit, 1 Sep 2026); navy on lime
+        // holds ~10:1 where lime text on white was 1.2:1. A marker stroke
+        // rather than a printed chip (Amrit's second pass, 1 Sep): a shorter
+        // band riding the lower half of the letters, faded overall, tapering
+        // out at both ends, faint diagonal streaks for ink texture, and a
+        // tiny tilt so it reads as drawn on. z-index: 0 pins a stacking
+        // context so the stroke's -1 stays inside the label, above the
+        // band's paint.
+        ".hs-form .contour-person-tabs--static .contour-person-tabs__label { position: relative; z-index: 0; color: #0C3166; padding: 2px 10px; }" +
+        '.hs-form .contour-person-tabs--static .contour-person-tabs__label::before { content: ""; position: absolute; z-index: -1; left: 0; right: 0; top: 54%; height: 12px; transform: translateY(-50%) rotate(-1.2deg); border-radius: 6px 3px 7px 2px; background: repeating-linear-gradient(115deg, rgba(255, 255, 255, 0.16) 0 3px, rgba(255, 255, 255, 0) 3px 7px), linear-gradient(90deg, rgba(215, 252, 61, 0) 0, rgba(215, 252, 61, 0.5) 7%, rgba(215, 252, 61, 0.82) 22%, rgba(215, 252, 61, 0.82) 78%, rgba(215, 252, 61, 0.5) 93%, rgba(215, 252, 61, 0) 100%); }' +
+        // The negative margin puts the text back on the grid line while the
+        // stroke's taper bleeds into the gutter.
+        ".hs-form .contour-person-tabs--static.contour-person-tabs--label-left .contour-person-tabs__label { margin-left: -10px; }"
+      : "") +
       // "You" leads the segment belonging to whoever is filling the form in,
       // as a navy badge with the highlighter lime knocked out of it — the one
       // legible way to put the lime on this white band (10.9:1, where lime as
