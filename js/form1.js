@@ -2147,13 +2147,13 @@ var ContourForm1Logic = function () {
         // + 3px padding + 1px ring = 26px, inside the 30px band the section
         // boxes pin, and centred on the separator rule by the band's own
         // align-items: center.
+        // The ring, not the text, sits on the field labels' grid line: the
+        // pill is a box like the inputs under it, and on the grid line it
+        // shares a left rail with every input's left edge while its text
+        // indents the way text inside an input does. Bleeding it 13px into
+        // the gutter (tried 4 Sep) left the ring 10px off the card edge on
+        // desktop and 6px on mobile, breaking the card's own 23px gutter.
         ".hs-form .contour-person-tabs--static .contour-person-tabs__label { display: inline-block; color: #0C3166; padding: 3px 12px; border: 1px solid #0C3166; border-radius: 999px; line-height: 18px; }" +
-        // The text, not the ring, sits on the field labels' grid line, so
-        // the pill's left half bleeds into the gutter the way the marker
-        // stroke did — with the ring on the grid line the name read as
-        // indented against the labels under it (Amrit, 4 Sep 2026). The
-        // 13px is the padding plus the ring.
-        ".hs-form .contour-person-tabs--static.contour-person-tabs--label-left .contour-person-tabs__label { margin-left: -13px; }" +
         // Filled: solid navy with the name knocked out white, the same
         // treatment as the section card headers (sectionHeaderTheme2).
         (featureEnabled("personLabelFill") ? ".hs-form .contour-person-tabs--static .contour-person-tabs__label { background: #0C3166; color: #FFFFFF; }" : "")
