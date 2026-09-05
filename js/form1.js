@@ -150,6 +150,10 @@ var ContourForm1Logic = function () {
     // GUARD block — deduplication is moving to the backend, and this comes
     // back as the "email me my pre-fill link" enhancement.
     // duplicateEmailCheck: true
+    // Asks the email-verify Cloud Function, as each email box is left,
+    // whether the address can take mail: real domain, live mail server, not
+    // a throwaway inbox. See EMAIL DELIVERABILITY CHECK (Amrit, 5 Sep 2026).
+    emailDeliverabilityCheck: true
   };
   function featureEnabled(name) {
     var overrides = window.ContourForm1Config;
@@ -3447,6 +3451,8 @@ var ContourForm1Logic = function () {
     });
   }
   var PREFETCH_ENDPOINT = "https://australia-southeast1-hubspot-signup-form.cloudfunctions.net/contour-form1-prefetch";
+  // functions/email-verify — domain-level deliverability verdict for an address.
+  var EMAIL_VERIFY_ENDPOINT = "https://australia-southeast1-hubspot-signup-form.cloudfunctions.net/contour-form1-email-verify";
   // Shared by the school search and by the completeness test that decides
   // whether Academic Details is finished.
   var SCHOOL_MIN_SEARCH_CHARS = 2;
@@ -9061,6 +9067,7 @@ var ContourForm1Logic = function () {
       // after the Guardian radio is set, and HubSpot re-renders swap in fresh
       // unlocked nodes. The binder no-ops on anything already locked.
       enforcePrefilledFieldLock();
+      enforceEmailDeliverabilityValidation();
       // enforceDuplicateEmailValidation(); // parked — see DUPLICATE EMAIL GUARD
       refreshAllContactFormatErrors();
       // The student fields join the DOM only after the Guardian radio is set,
@@ -9156,6 +9163,285 @@ var ContourForm1Logic = function () {
       });
     }
   }
+  /* =========================================================
+     EMAIL DELIVERABILITY CHECK
+     -----------------------------------------------------------
+     The structure check above says whether a string is shaped like an
+     address. This asks functions/email-verify whether the address could
+     take mail: the domain exists, it runs a mail server (or, per RFC
+     5321, at least answers on its own name), and it is not a throwaway
+     inbox. The verdict is about the domain — nothing on our side probes
+     the mailbox, since Google Cloud blocks outbound SMTP and the big
+     providers accept every recipient anyway — so it is remembered per
+     domain as well as per address, and a guardian and student at the
+     same domain cost one lookup between them.
+
+     When the lookup runs: on the way out of either email box, once the
+     address is structurally sound and not the same as the other person's
+     (the pair check owns that clash, and there is nothing to verify
+     twice). Never while typing. Locked prefilled addresses came out of
+     HubSpot and are skipped.
+
+     Failure is open: a timeout or a 5xx yields "unknown", which passes.
+     Our own outage must never hold a sign-up. A submit that lands before
+     the first verdict is held by emailVerifyPendingGate(), resolved,
+     and re-issued — clean addresses go straight through on the retry,
+     bad ones report the same way every other check does.
+     ========================================================= */
+  var EMAIL_VERIFY_ERROR_CLASS = "contour-email-verify-error";
+  var EMAIL_VERIFY_BOUND_ATTR = "data-contour-email-verify";
+  var EMAIL_VERIFY_TIMEOUT_MS = 4000;
+  var EMAIL_VERIFY_SLOTS = [
+    { key: "emailTemp", selector: FIELD_SELECTORS.emailTemp },
+    { key: "studentEmail", selector: FIELD_SELECTORS.studentEmail }
+  ];
+  // Keyed by the function's reason vocabulary.
+  var EMAIL_VERIFY_MESSAGES = {
+    syntax: "Please enter a valid email address.",
+    no_domain: "We couldn't find that email domain. Please check the address.",
+    no_mx: "That domain doesn't accept email. Please check the address.",
+    null_mx: "That domain doesn't accept email. Please check the address.",
+    disposable: "Temporary email addresses aren't accepted. Please use a permanent address."
+  };
+  var EMAIL_VERIFY_FALLBACK_MESSAGE = "We couldn't verify this email address. Please check it.";
+  // { status: "valid" | "invalid" | "unknown", reason, scope, domain }
+  var emailVerifyByAddress = {};
+  var emailVerifyByDomain = {};
+  var emailVerifyPending = {};
+  var emailVerifyGatesBound = {};
+  var emailVerifyPendingGateBound = false;
+  var emailVerifyContactTypeBound = false;
+
+  function emailVerifyEnabled() {
+    if (!featureEnabled("emailDeliverabilityCheck") || !EMAIL_VERIFY_ENDPOINT) return false;
+    return typeof window.fetch === "function";
+  }
+  function emailVerifyValue(input) {
+    return ((input && input.value) || "").trim().toLowerCase();
+  }
+  function emailVerifyDomain(value) {
+    var at = value.lastIndexOf("@");
+    return at < 0 ? "" : value.slice(at + 1);
+  }
+  // The box a slot names, but only while it is in play: on the page, on
+  // screen and typable. student_email sits in the Contact Type dependent
+  // group and lingers for a moment after the flow switches away from it.
+  function emailVerifySlotInput(slot) {
+    if (!emailVerifyEnabled()) return null;
+    var input = q(slot.selector);
+    if (!input || input.readOnly || input.disabled) return null;
+    var wrap = fieldWrapper(input);
+    if (wrap && !isFieldWrapVisible(wrap)) return null;
+    return input;
+  }
+  // Worth a lookup. Blank and malformed are other checks' to report, and
+  // two boxes holding the same address are the pair check's — no round
+  // trip is spent until that is put right.
+  function emailVerifyCheckable(value) {
+    if (value === "" || !emailStructureIsValid(value)) return false;
+    return emailPairIsValid();
+  }
+  // The remembered verdict for an address, or null when it has none. A
+  // domain-scoped verdict answers for every address at that domain.
+  function emailVerifyVerdict(value) {
+    if (Object.prototype.hasOwnProperty.call(emailVerifyByAddress, value)) return emailVerifyByAddress[value];
+    var domain = emailVerifyDomain(value);
+    if (domain && Object.prototype.hasOwnProperty.call(emailVerifyByDomain, domain)) return emailVerifyByDomain[domain];
+    return null;
+  }
+  function rememberEmailVerdict(value, verdict) {
+    emailVerifyByAddress[value] = verdict;
+    if (verdict.scope !== "domain") return;
+    var domain = verdict.domain || emailVerifyDomain(value);
+    if (domain) emailVerifyByDomain[domain] = verdict;
+  }
+  function emailVerifyRequest(value) {
+    var controller = typeof AbortController === "function" ? new AbortController() : null;
+    var timer = controller ? setTimeout(function () { controller.abort(); }, EMAIL_VERIFY_TIMEOUT_MS) : null;
+    // A plain GET with no custom headers, so the browser sends it without a
+    // preflight: one round trip per address.
+    return fetch(EMAIL_VERIFY_ENDPOINT + "?email=" + encodeURIComponent(value), controller ? { signal: controller.signal } : undefined).then(function (res) {
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      return res.json();
+    }).then(function (data) {
+      if (timer) clearTimeout(timer);
+      return data;
+    }, function (err) {
+      if (timer) clearTimeout(timer);
+      throw err;
+    });
+  }
+  // One lookup per address, shared by whoever asks while it is in flight.
+  // "unknown" is remembered too — otherwise the pending gate would re-ask
+  // and re-hold the submit forever on a dead network — but a blur retries
+  // it, since the next attempt may well get through.
+  function lookupEmailVerdict(value, retryUnknown) {
+    var known = emailVerifyVerdict(value);
+    if (known && !(retryUnknown && known.status === "unknown")) return Promise.resolve(known);
+    if (emailVerifyPending[value]) return emailVerifyPending[value];
+    var request = emailVerifyRequest(value).then(function (data) {
+      var status = data && (data.status === "invalid" || data.status === "valid") ? data.status : "unknown";
+      return {
+        status: status,
+        reason: (data && data.reason) || null,
+        scope: data && data.scope === "domain" ? "domain" : "address",
+        domain: (data && data.domain) || ""
+      };
+    }).catch(function (err) {
+      console.warn("Contour Form 1 logic: email check failed:", err);
+      return { status: "unknown", reason: "network", scope: "address", domain: "" };
+    }).then(function (verdict) {
+      rememberEmailVerdict(value, verdict);
+      delete emailVerifyPending[value];
+      return verdict;
+    });
+    emailVerifyPending[value] = request;
+    return request;
+  }
+  // Unknown and not-yet-asked both pass here; the pending gate resolves the
+  // latter before the form leaves.
+  function emailVerifySlotIsValid(slot) {
+    var input = emailVerifySlotInput(slot);
+    if (!input) return true;
+    var value = emailVerifyValue(input);
+    if (!emailVerifyCheckable(value)) return true;
+    var verdict = emailVerifyVerdict(value);
+    return !verdict || verdict.status !== "invalid";
+  }
+  function updateEmailVerifyError(slot) {
+    var input = q(slot.selector);
+    if (!input) return;
+    var list = ensureContourError(input, EMAIL_VERIFY_ERROR_CLASS, EMAIL_VERIFY_FALLBACK_MESSAGE);
+    if (emailVerifySlotIsValid(slot)) {
+      clearContourError(input, EMAIL_VERIFY_ERROR_CLASS);
+      return;
+    }
+    var verdict = emailVerifyVerdict(emailVerifyValue(input));
+    var label = list && list.querySelector(".hs-error-msg");
+    if (label) label.textContent = EMAIL_VERIFY_MESSAGES[verdict && verdict.reason] || EMAIL_VERIFY_FALLBACK_MESSAGE;
+    showContourError(input, EMAIL_VERIFY_ERROR_CLASS);
+  }
+  // Both boxes, so a clash cleared in one box lets the remembered verdict
+  // on the other show again, and a flow switch takes a stale message with it.
+  function refreshEmailVerifyErrors() {
+    EMAIL_VERIFY_SLOTS.forEach(updateEmailVerifyError);
+  }
+  function checkEmailVerifyOnBlur(slot) {
+    var input = emailVerifySlotInput(slot);
+    if (!input) return;
+    var value = emailVerifyValue(input);
+    if (!emailVerifyCheckable(value)) {
+      clearContourError(input, EMAIL_VERIFY_ERROR_CLASS);
+      return;
+    }
+    lookupEmailVerdict(value, true).then(function () {
+      // Typed on since leaving: whatever is in the box now owns the
+      // verdict, and its own blur will ask for it.
+      if (emailVerifyValue(input) !== value) return;
+      refreshEmailVerifyErrors();
+      syncFieldErrorAria();
+    });
+  }
+  // Submit can beat the first verdict: Enter inside the box, or a quick
+  // click after a paste. The submission is held for whatever is still
+  // outstanding, then re-issued. Remembered-clean addresses pass straight
+  // through on the retry; bad ones are reported like any sync failure.
+  function emailVerifyPendingGate(e) {
+    var waiting = [];
+    EMAIL_VERIFY_SLOTS.forEach(function (slot) {
+      var input = emailVerifySlotInput(slot);
+      if (!input) return;
+      var value = emailVerifyValue(input);
+      if (!emailVerifyCheckable(value)) return;
+      if (emailVerifyVerdict(value)) return;
+      if (waiting.indexOf(value) === -1) waiting.push(value);
+    });
+    if (waiting.length === 0) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    markSubmitBusy(true);
+    Promise.all(waiting.map(function (value) {
+      return lookupEmailVerdict(value, false);
+    })).then(function () {
+      markSubmitBusy(false);
+      var flagged = [];
+      EMAIL_VERIFY_SLOTS.forEach(function (slot) {
+        updateEmailVerifyError(slot);
+        if (emailVerifySlotIsValid(slot)) return;
+        var input = emailVerifySlotInput(slot);
+        if (input) flagged.push({ wrap: fieldWrapper(input) || input, input: input });
+      });
+      if (flagged.length === 0) {
+        if (typeof formRoot.requestSubmit === "function") {
+          formRoot.requestSubmit();
+        } else {
+          var button = submitButtonEl();
+          if (button) button.click();
+        }
+        return;
+      }
+      // The verdict can land a second after the click, by which time the
+      // caret may have moved on. Always scroll to the reason the submit did
+      // nothing, but only take focus if nothing else holds it.
+      var active = document.activeElement;
+      var caretIsFree = !active || active === document.body || active.type === "submit" || active.tagName === "BUTTON";
+      reportFieldError(flagged[0].wrap, caretIsFree ? flagged[0].input : null);
+      showFormErrorSummary(flagged.map(function (item) {
+        return item.wrap;
+      }));
+      syncFieldErrorAria();
+    });
+  }
+  // Called from init() ahead of the first registerSubmitValidator(), so this
+  // capture listener sits before runSubmitGate and holds the submit before
+  // the gate has marked the form busy or cleared the draft.
+  function bindEmailVerifyPendingGate() {
+    if (!formRoot || emailVerifyPendingGateBound || !emailVerifyEnabled()) return;
+    emailVerifyPendingGateBound = true;
+    formRoot.addEventListener("submit", emailVerifyPendingGate, true);
+  }
+  function enforceEmailDeliverabilityValidation() {
+    if (!emailVerifyEnabled()) return;
+    if (!emailVerifyContactTypeBound) {
+      emailVerifyContactTypeBound = true;
+      onContactTypeChange(refreshEmailVerifyErrors);
+    }
+    EMAIL_VERIFY_SLOTS.forEach(function (slot) {
+      // Bound whether or not the box is in play right now: HubSpot swaps
+      // nodes on re-render, and the observer brings the fresh one back here.
+      var input = q(slot.selector);
+      if (input && input.getAttribute(EMAIL_VERIFY_BOUND_ATTR) !== "1") {
+        input.setAttribute(EMAIL_VERIFY_BOUND_ATTR, "1");
+        input.addEventListener("blur", function () {
+          checkEmailVerifyOnBlur(slot);
+        });
+        input.addEventListener("input", function () {
+          // Typing only ever takes the message away; it comes back on the way out.
+          clearContourError(input, EMAIL_VERIFY_ERROR_CLASS);
+        });
+      }
+      if (formRoot && !emailVerifyGatesBound[slot.key]) {
+        emailVerifyGatesBound[slot.key] = true;
+        registerSubmitValidator({
+          isValid: function () {
+            return emailVerifySlotIsValid(slot);
+          },
+          showError: function () {
+            var current = emailVerifySlotInput(slot);
+            if (!current) return;
+            updateEmailVerifyError(slot);
+            reportFieldError(fieldWrapper(current) || current, current);
+          },
+          anchor: function () {
+            var current = emailVerifySlotInput(slot);
+            return current ? fieldWrapper(current) || current : null;
+          }
+        });
+      }
+    });
+    bindEmailVerifyPendingGate();
+  }
+
   /* =========================================================
      DUPLICATE EMAIL GUARD — PARKED (Amrit, 20 Aug 2026)
      -----------------------------------------------------------
@@ -10075,12 +10361,16 @@ var ContourForm1Logic = function () {
     enhanceContactTypeIllustrations();
     updateGuardianFieldLabels();
     onContactTypeChange(updateGuardianFieldLabels);
+    // Before the first registerSubmitValidator() call binds runSubmitGate, so
+    // an email lookup still in flight holds the submit ahead of the gate.
+    bindEmailVerifyPendingGate();
     enforceAllContactFormatValidation();
     injectStudentPhoneStyles();
     enhanceStudentPhoneField();
     watchStudentPhoneField();
     enforceStudentPhoneValidation();
     enforceGuardianStudentEmailValidation();
+    enforceEmailDeliverabilityValidation();
     // enforceDuplicateEmailValidation(); // parked — see DUPLICATE EMAIL GUARD
     watchContactFields();
     enforceFieldRequiredValidation("programInterest", "Please select a program.", "contour-program-interest-error", anyProgramInterestOptionEligible);
