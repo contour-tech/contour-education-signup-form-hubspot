@@ -9198,9 +9198,9 @@ var ContourForm1Logic = function () {
   // Keyed by the function's reason vocabulary.
   var EMAIL_VERIFY_MESSAGES = {
     syntax: "Please enter a valid email address.",
-    no_domain: "We couldn't find that email domain. Please check the address.",
-    no_mx: "That domain doesn't accept email. Please check the address.",
-    null_mx: "That domain doesn't accept email. Please check the address.",
+    no_domain: "Please enter a valid email address.",
+    no_mx: "Please enter a valid email address.",
+    null_mx: "Please enter a valid email address.",
     disposable: "Temporary email addresses aren't accepted. Please use a permanent address."
   };
   var EMAIL_VERIFY_FALLBACK_MESSAGE = "We couldn't verify this email address. Please check it.";
