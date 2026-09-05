@@ -4525,6 +4525,113 @@ var ContourForm1Logic = function () {
      cannot see. */
   var PHONE_PROXY_CLASS = "contour-phone-proxy";
   var PHONE_PROXY_ATTR = "data-contour-phone-proxied";
+  /* DUPLICATE COUNTRY CODE — "91 9876543210" typed into a box that already
+     has +91 on its dropdown. Without the plus nothing marks it international,
+     so it composed to "+91 919876543210" and passed the 7–20 digit rule.
+
+     A number that merely starts with the same digits as its country code is
+     told apart by length: an Indian mobile is 10 national digits, so
+     "9198765432" fits and is left alone, while "919876543210" is two over and
+     the two extra are the code. The code is only ever taken off when the
+     number is too long for its country AND dropping the code brings it into
+     range — never off a number that already fits. For countries not in the
+     table the E.164 cap of 15 digits (code + national) decides.
+
+     Bounds are national-digit counts after the trunk zero, for countries with
+     a fixed or tightly bounded plan. Countries with genuinely variable plans
+     (DE, IT, AT, SE, FI, …) are left to the E.164 fallback on purpose.
+     (Amrit, 5 Sep 2026) */
+  var PHONE_NATIONAL_LENGTHS = {
+    "1": [10, 10],    // US / CA
+    "7": [10, 10],    // RU / KZ
+    "20": [10, 10],   // EG
+    "27": [9, 9],     // ZA
+    "31": [9, 9],     // NL
+    "33": [9, 9],     // FR
+    "34": [9, 9],     // ES
+    "44": [10, 10],   // UK
+    "52": [10, 10],   // MX
+    "55": [10, 11],   // BR
+    "60": [9, 10],    // MY
+    "61": [9, 9],     // AU
+    "62": [9, 12],    // ID
+    "63": [10, 10],   // PH
+    "64": [8, 10],    // NZ
+    "65": [8, 8],     // SG
+    "66": [9, 9],     // TH
+    "81": [10, 10],   // JP
+    "82": [9, 10],    // KR
+    "84": [9, 9],     // VN
+    "86": [11, 11],   // CN
+    "90": [10, 10],   // TR
+    "91": [10, 10],   // IN
+    "92": [10, 10],   // PK
+    "94": [9, 9],     // LK
+    "98": [10, 10],   // IR
+    "234": [10, 10],  // NG
+    "254": [9, 9],    // KE
+    "353": [9, 9],    // IE
+    "852": [8, 8],    // HK
+    "880": [10, 10],  // BD
+    "966": [9, 9],    // SA
+    "971": [9, 9],    // AE
+    "977": [10, 10]   // NP
+  };
+  var PHONE_E164_MAX_DIGITS = 15;
+  var PHONE_FALLBACK_MIN_DIGITS = 7;
+  // The national digits with the duplicated code taken off, or null when
+  // there is nothing to take off — no code at the front, or the number is a
+  // plausible length as it stands, or stripping would not make it one.
+  function stripDuplicateDial(dial, national) {
+    if (!dial || !national || national.indexOf(dial) !== 0) return null;
+    // "61 0412…": the trunk zero can sit behind the duplicated code too.
+    var stripped = national.slice(dial.length).replace(/^0+/, "");
+    if (stripped === "") return null;
+    var range = PHONE_NATIONAL_LENGTHS[dial];
+    if (range) {
+      if (national.length <= range[1]) return null;
+      if (stripped.length < range[0] || stripped.length > range[1]) return null;
+      return stripped;
+    }
+    if (dial.length + national.length <= PHONE_E164_MAX_DIGITS) return null;
+    if (dial.length + stripped.length > PHONE_E164_MAX_DIGITS) return null;
+    if (stripped.length < PHONE_FALLBACK_MIN_DIGITS) return null;
+    return stripped;
+  }
+  // "0091 …" and, with a North American country selected, "011 91 …": the
+  // international exit codes people type from habit. Rewritten to "+…" so the
+  // pasted-number branch moves the country onto the dropdown. "011" is only
+  // read that way for +1 — it is the start of real numbers elsewhere (0117 is
+  // Bristol). Returns the rewritten value, or null when nothing applies.
+  function phoneExitCodeToPlus(value, dial) {
+    var compact = value.replace(/[\s().-]/g, "");
+    if (/^00\d/.test(compact)) return "+" + compact.slice(2);
+    if (dial === "1" && /^011\d/.test(compact)) return "+" + compact.slice(3);
+    return null;
+  }
+  // Told, not just fixed: the note sits where HubSpot's field description
+  // would, in the email typo hint's voice, and goes on the next keystroke.
+  var PHONE_NOTE_CLASS = "contour-phone-note";
+  var PHONE_NOTE_MESSAGE = "Looks like the country code was entered twice, so we removed it.";
+  function phoneNoteNode(group) {
+    var wrap = fieldWrapper(group) || group.parentElement;
+    return wrap ? wrap.querySelector("." + PHONE_NOTE_CLASS) : null;
+  }
+  function showPhoneNote(group) {
+    var node = phoneNoteNode(group);
+    if (node) return;
+    var wrap = fieldWrapper(group) || group.parentElement;
+    if (!wrap) return;
+    node = document.createElement("div");
+    node.className = "hs-field-desc " + PHONE_NOTE_CLASS;
+    node.setAttribute("role", "status");
+    node.textContent = PHONE_NOTE_MESSAGE;
+    wrap.appendChild(node);
+  }
+  function clearPhoneNote(group) {
+    var node = phoneNoteNode(group);
+    if (node && node.parentNode) node.parentNode.removeChild(node);
+  }
   function phoneGroupParts(group) {
     return {
       real: group.querySelector('input[type="tel"]:not(.' + PHONE_PROXY_CLASS + ')'),
@@ -4532,13 +4639,19 @@ var ContourForm1Logic = function () {
       select: group.querySelector("select")
     };
   }
-  function pushProxyThrough(group) {
+  // settle: true on blur and at submit, when the box is finished and may be
+  // corrected (duplicate code, exit code); false on every keystroke.
+  function pushProxyThrough(group, settle) {
     var parts = phoneGroupParts(group);
     if (!parts.real || !parts.proxy) return;
     // A pasted full international number wins over the current select: its
     // country moves onto the dropdown and only the national digits stay in
     // the box, rather than composing a second dial code in front of it.
     var pasted = (parts.proxy.value || "").trim();
+    if (settle && pasted.charAt(0) !== "+" && parts.select) {
+      var rewritten = phoneExitCodeToPlus(pasted, dialCodeForIso(parts.select.value));
+      if (rewritten && splitE164(rewritten)) pasted = rewritten;
+    }
     if (pasted.charAt(0) === "+" && parts.select) {
       var pastedParts = splitE164(pasted);
       if (pastedParts && selectPhoneCountryOption(parts.select, pastedParts)) {
@@ -4546,6 +4659,9 @@ var ContourForm1Logic = function () {
         fireInputEvents(parts.select);
       }
     }
+    // Typing "+91 98…" one key at a time hands the country over at "+91" and
+    // leaves the space behind in the box; tidied once the visitor is done.
+    if (settle && parts.proxy.value !== (parts.proxy.value || "").trim()) parts.proxy.value = parts.proxy.value.trim();
     var dial = parts.select ? dialCodeForIso(parts.select.value) : null;
     // Read as a national number even if something put a dial code in our box:
     // whatever seeds it, only one code goes into the composed value.
@@ -4553,6 +4669,17 @@ var ContourForm1Logic = function () {
     // Leading zeros are trunk prefixes (0412… in AU, 07… in the UK) and are
     // never part of the international number the real box carries.
     if (dial) typed = typed.replace(/^0+/, "");
+    // Only once the visitor has left the box (or at submit): rewriting the
+    // box mid-word would move the caret out from under them, and a number is
+    // only "too long" once it is finished.
+    if (settle) {
+      var stripped = stripDuplicateDial(dial, typed);
+      if (stripped !== null) {
+        typed = stripped;
+        parts.proxy.value = stripped;
+        showPhoneNote(group);
+      }
+    }
     // Empty stays empty: a box holding nothing but a dial code is what made
     // "+91" read as an answered phone number in the first place.
     var next = typed === "" ? "" : (dial ? "+" + dial + " " : "") + typed;
@@ -4625,10 +4752,16 @@ var ContourForm1Logic = function () {
         if (label && label.id) proxy.setAttribute("aria-labelledby", label.id);
         else if (label) proxy.setAttribute("aria-label", (label.textContent || "Phone Number").replace(/\*/g, "").trim());
         proxy.addEventListener("input", function () {
+          clearPhoneNote(group);
           pushProxyThrough(group);
         });
         proxy.addEventListener("change", function () {
           pushProxyThrough(group);
+        });
+        // Bound at creation, so it runs before the blur listeners the
+        // validators add later: the box is settled before anything judges it.
+        proxy.addEventListener("blur", function () {
+          pushProxyThrough(group, true);
         });
       }
       // Kept immediately after the widget's box wherever that box has moved to.
@@ -4672,7 +4805,7 @@ var ContourForm1Logic = function () {
       var group = proxy.parentElement;
       var parts = group ? phoneGroupParts(group) : null;
       if (!parts || !parts.real || !parts.proxy) return;
-      pushProxyThrough(group);
+      pushProxyThrough(group, true);
       var composed = (parts.real.value || "").trim();
       if (parts.real.value !== composed) {
         parts.real.value = composed;
@@ -7225,6 +7358,7 @@ var ContourForm1Logic = function () {
       box + " .contour-email-suggest { margin-top: 6px; font-size: 13px; color: #6b7280; }" +
       box + " .contour-email-suggest__fix { appearance: none; -webkit-appearance: none; border: 0; background: none; padding: 0; font: inherit; font-weight: 700; color: #0C3166; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }" +
       box + " .contour-email-suggest__fix:hover { color: #007AFF; }" +
+      box + " .contour-phone-note { margin-top: 6px; font-size: 13px; color: #6b7280; }" +
       // Hidden, not removed: the widget still composes from it, it still
       // carries the field name on the student's control, and every check in
       // this file still reads it. clip rather than display:none, so the widget
