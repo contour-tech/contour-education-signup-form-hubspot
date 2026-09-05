@@ -9888,10 +9888,35 @@ var ContourForm1Logic = function () {
     // itself just no-op on the next observer callback.
     var observer = new MutationObserver(function () {
       enhanceStudentPhoneField();
+      bindStudentPhoneProxy();
     });
     observer.observe(formRoot, {
       childList: true,
       subtree: true
+    });
+  }
+  // The blur and input listeners enhanceStudentPhoneField() puts on the named
+  // input never fire once enhancePhoneBoxes() has stood a proxy in front of it:
+  // the named box is tabindex -1 and clipped, and the proxy is where the visitor
+  // types. Without this the student's phone showed no error until submit while
+  // the guardian's showed on the way out of the box (Amrit, 5 Sep 2026). The
+  // proxy's own input listener writes the composed value onto the named box
+  // synchronously, so studentPhoneState() reads the settled value here.
+  var STUDENT_PHONE_PROXY_BOUND_ATTR = "data-contour-student-phone-bound";
+  function bindStudentPhoneProxy() {
+    var input = q(FIELD_SELECTORS.studentPhone);
+    if (!input) return;
+    var proxy = typableInput(input);
+    if (!proxy || proxy === input) return;
+    if (proxy.getAttribute(STUDENT_PHONE_PROXY_BOUND_ATTR) === "1") return;
+    proxy.setAttribute(STUDENT_PHONE_PROXY_BOUND_ATTR, "1");
+    proxy.addEventListener("input", function () {
+      // Typing only ever takes the message away; it comes back on the way out.
+      updateStudentPhoneError();
+    });
+    proxy.addEventListener("blur", function () {
+      updateStudentPhoneError(true);
+      syncFieldErrorAria();
     });
   }
   // "ok" | "empty" | "incomplete" | "invalid". Seeding the dial code means the
@@ -9912,7 +9937,10 @@ var ContourForm1Logic = function () {
     var dial = select ? studentPhoneDial(select) : "";
     var national = dial && digits.indexOf(dial) === 0 ? digits.slice(dial.length) : digits;
     if (national === "") return "incomplete";
-    if (digits.length < STUDENT_PHONE_MIN_DIGITS || digits.length > STUDENT_PHONE_MAX_DIGITS) {
+    // Judged on the national digits alone, the same way the guardian phone is
+    // (contactFormatIsValid). Counting the dial code in let "+61 41234" through
+    // as seven digits when the visitor had typed five (Amrit, 5 Sep 2026).
+    if (national.length < STUDENT_PHONE_MIN_DIGITS || national.length > STUDENT_PHONE_MAX_DIGITS) {
       return "invalid";
     }
     return "ok";
@@ -9945,8 +9973,13 @@ var ContourForm1Logic = function () {
     var errorList = ensureStudentPhoneError();
     if (!input || !errorList) return;
     var state = studentPhoneState();
+    // The red state has to land on the box the visitor can see. Once
+    // enhancePhoneBoxes() has run, that is the proxy beside the named input,
+    // and the named input itself is clipped off the page.
+    var visible = typableInput(input);
     if (state === "ok" || state === "empty") {
       input.classList.remove("invalid", "error");
+      if (visible !== input) visible.classList.remove("invalid", "error");
       hideErrorList(errorList);
       return;
     }
@@ -9956,6 +9989,7 @@ var ContourForm1Logic = function () {
       errorLabel.textContent = state === "incomplete" ? "Please complete this required field." : "Please enter a valid phone number.";
     }
     input.classList.add("invalid", "error");
+    if (visible !== input) visible.classList.add("invalid", "error");
     showErrorList(errorList);
   }
   function enforceStudentPhoneValidation() {
@@ -9965,7 +9999,8 @@ var ContourForm1Logic = function () {
       showError: function () {
         updateStudentPhoneError(true);
         var input = q(FIELD_SELECTORS.studentPhone);
-        reportFieldError(fieldWrapper(input) || input, input);
+        // Focus goes to the box the visitor can type in, not the clipped one.
+        reportFieldError(fieldWrapper(input) || input, typableInput(input));
       },
       anchor: function () {
         var input = q(FIELD_SELECTORS.studentPhone);
