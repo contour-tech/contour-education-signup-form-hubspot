@@ -10603,6 +10603,9 @@ var ContourForm1Logic = function () {
      ========================================================= */
   var INTAKE_GATE_CLASS = "contour-intake-gate";
   var INTAKE_GATE_PENDING_CLASS = "contour-intake-gate-pending";
+  // On the form for as long as the gate is rendered — the hook for layout
+  // that only holds once the dropdown has left Academic Details.
+  var INTAKE_GATE_ON_CLASS = "contour-intake-gate-on";
   var INTAKE_GATE_QUESTION_FALLBACK = "Which year are you interested in tutoring for?";
   // What a student_id link means when the record does not say: the coming
   // intake. Matched against the select's options before it is used, so a
@@ -10618,6 +10621,7 @@ var ContourForm1Logic = function () {
     style.id = "contour-intake-gate-styles";
     var gate = ".hs-form ." + INTAKE_GATE_CLASS;
     var tile = gate + "__tile";
+    var study = ".hs-form." + INTAKE_GATE_ON_CLASS + ' .contour-section-box[data-contour-section="study"]';
     style.textContent = "" +
       // Everything under the gate waits. display rather than visibility so the
       // page has no phantom height to scroll into; the banners a return visit
@@ -10666,6 +10670,24 @@ var ContourForm1Logic = function () {
       " " + gate + "__tiles { gap: 8px; }" +
       " " + tile + " { padding: 16px 6px 14px; }" +
       " " + gate + "__year { font-size: 28px; }" +
+      "}" +
+      // With the intake year gone from Academic Details, Year Level was left
+      // alone in the right half of its row and Location alone above it. The
+      // two share one row now (Amrit, 7 Sep 2026). HubSpot renders them in
+      // separate fieldsets, and Location's carries its dependent Region /
+      // Country fields, so nothing is moved: the card's content becomes a
+      // two-column grid, Location's fieldset takes the left column, Year
+      // Level's the right, and every other row spans both. Region and
+      // Country, when they appear, stack under Location in its column.
+      // The gutter is the page's own two-column gutter (0.75rem). Desktop
+      // only — under 768px the page stacks every column anyway.
+      "@media screen and (min-width: 768px) {" +
+      " " + study + " .contour-section-box__content-inner { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 0.75rem; align-items: start; }" +
+      " " + study + " .contour-section-box__content-inner > * { grid-column: 1 / -1; min-width: 0; }" +
+      " " + study + ' .contour-section-box__content-inner > fieldset:has([name="state_territory_country"]) { grid-column: 1; }' +
+      " " + study + ' .contour-section-box__content-inner > fieldset:has([name="year_level"]) { grid-column: 2; }' +
+      // Year Level was the second of two columns; it fills its fieldset now.
+      " " + study + ' .contour-section-box__content-inner > fieldset:has([name="year_level"]) > .hs-form-field { width: 100% !important; float: none !important; padding-right: 0 !important; }' +
       "}";
     document.head.appendChild(style);
   }
@@ -10761,6 +10783,7 @@ var ContourForm1Logic = function () {
     });
     gate.appendChild(tiles);
     formRoot.insertBefore(gate, formRoot.firstChild);
+    formRoot.classList.add(INTAKE_GATE_ON_CLASS);
     syncIntakeYearGate();
   }
   function chooseIntakeYear(value) {
