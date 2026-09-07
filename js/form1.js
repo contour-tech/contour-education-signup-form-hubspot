@@ -10719,21 +10719,26 @@ var ContourForm1Logic = function () {
              a centre-out wipe was tried first and read as busy). */
       gate + "__art { position: relative; display: block; width: 180px; height: 74px; }" +
       gate + "__art-layer { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; display: block; }" +
-      // The figures are set in Plus Jakarta Sans, not the page's Inter. Inter's
-      // 6 ends its terminal a hair from the bowl at every weight, and the
-      // outer half of the stroke bridged the gap however the weight and line
-      // were traded off; Jakarta's 6 is open, its weight sits with Inter's,
-      // and it is grotesque enough not to read as a novelty face beside the
-      // labels (picked from a ten-face render, Amrit, 8 Sep 2026). Loaded
-      // from Google Fonts by loadIntakeYearFont; Inter stands in until it
-      // lands. 56 of the 150-unit box, tracked tight, and a 3.6 stroke of
-      // which the outer 1.8 shows.
-      gate + "__art text { font-family: 'Plus Jakarta Sans', Inter, sans-serif; font-weight: 800; font-size: 56px; letter-spacing: -0.03em; }" +
-      gate + "__art-outline text { fill: #FFF9F1; stroke: #0C3166; stroke-width: 3.6; stroke-linejoin: round; paint-order: stroke fill; transition: stroke 1.2s " + feed + "; }" +
-      // Picked, the outline stays and turns white on the same clock as the
-      // white fill fades in: the outer half of the stroke then adds to the
-      // figure, which is what keeps the solid year from reading thin.
-      tile + '[aria-checked="true"] .' + INTAKE_GATE_CLASS + "__art-outline text { stroke: #FFFFFF; }" +
+      // The figures are set in Oswald, not the page's Inter. Inter's 6 ends
+      // its terminal a hair from the bowl at every weight, and the outer half
+      // of the stroke bridged the gap however weight and line were traded
+      // off. Oswald's is open, and the condensed grotesque gives the year a
+      // headline voice of its own beside the labels rather than a near-Inter
+      // that invites comparison (Amrit, 8 Sep 2026). Loaded from Google Fonts
+      // by loadIntakeYearFont; Inter stands in until it lands. Condensed
+      // figures sit narrow in a wide tile, so they are set taller — 64 of the
+      // 62-unit box's height, on a baseline that leaves the cap height room —
+      // with a touch of tracking, and a 3.6 stroke of which the outer 1.8
+      // shows.
+      gate + "__art text { font-family: Oswald, Inter, sans-serif; font-weight: 600; font-size: 64px; letter-spacing: 0.02em; }" +
+      gate + "__art-outline text { fill: #FFF9F1; stroke: #0C3166; stroke-width: 3.6; stroke-linejoin: round; paint-order: stroke fill; }" +
+      // Picked, one complete white figure — fill and a stroke the size of the
+      // outline's — fades in over the drawn one. Fading a whole figure keeps
+      // every edge crisp at every point of the fade; fading the fill while
+      // the outline changed colour underneath read as a blur (Amrit, 8 Sep
+      // 2026). The outer half of its stroke is what keeps the solid year
+      // from reading thin.
+      gate + "__art-white text { stroke: #FFFFFF; stroke-width: 3.6; stroke-linejoin: round; paint-order: stroke fill; }" +
       // Three ways for the fill to arrive, chosen by the animationStyle
       // setting (a class on the card). Each style states its own resting and
       // arrived values, so switching never leaves a property behind.
@@ -10743,18 +10748,18 @@ var ContourForm1Logic = function () {
       gate + "__art-blue text { fill: #007AFF; }" +
       gate + "__art-white text { fill: #FFFFFF; }" +
 
-      "@media (prefers-reduced-motion: reduce) { " + gate + "__art-feed, " + gate + "__art-outline text, " + tile + " { transition: none; } }" +
+      "@media (prefers-reduced-motion: reduce) { " + gate + "__art-feed, " + tile + " { transition: none; } }" +
       ".contour-sr-only { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }" +
       gate + "__hint { display: block; font-size: 13.5px; font-weight: 500; line-height: 1.3; color: #6b7280; transition: color .3s ease; }" +
       tile + '[aria-checked="true"] .' + INTAKE_GATE_CLASS + "__hint { color: rgba(255, 255, 255, 0.78); }" +
       // The confirmation disc, navy here rather than the form's usual blue:
       // on the blue tile a blue disc vanished into it, and navy is the one
       // colour in the palette that stands off both the tile and the white
-      // figure (Amrit, 8 Sep 2026). Inside the tile, set in from the corner
-      // by the tile's own inset, rather than half-out on the corner the way
-      // the program cards' badge sits: the tiles share a 10px gap on a phone,
-      // and a disc riding the corner would lie across the neighbour.
-      gate + "__tick { position: absolute; top: 12px; right: 12px; display: none; align-items: center; justify-content: center; width: 28px; height: 28px; box-sizing: border-box; border-radius: 50%; border: 2px solid #FFFFFF; background: #0C3166; color: #FFFFFF; }" +
+      // figure. Half-out on the top-right corner with a white ring, the way
+      // the program cards' badge sits, and the same size on every width
+      // (Amrit, 8 Sep 2026); the phone gap between the tiles widens to give
+      // it room past the neighbour.
+      gate + "__tick { position: absolute; top: -12px; right: -12px; display: none; align-items: center; justify-content: center; width: 28px; height: 28px; box-sizing: border-box; border-radius: 50%; border: 2px solid #FFFFFF; background: #0C3166; color: #FFFFFF; }" +
       gate + "__tick svg { display: block; }" +
       tile + '[aria-checked="true"] .' + INTAKE_GATE_CLASS + "__tick { display: flex; }" +
       "@media (prefers-reduced-motion: no-preference) { " + tile + '[aria-checked="true"] .' + INTAKE_GATE_CLASS + "__tick { animation: contour-badge-in 260ms " + REVEAL_EASE + " both; } }" +
@@ -10763,14 +10768,13 @@ var ContourForm1Logic = function () {
       // Phones: the pair shares the row, the way the Student / Guardian cards
       // do, so the room comes out of the padding and the type.
       "@media screen and (max-width: 767px) {" +
-      " " + gate + "__tiles { gap: 10px; }" +
+      " " + gate + "__tiles { gap: 16px; }" +
       " " + tile + " { padding: 20px 10px 18px; gap: 6px; border-radius: 14px; }" +
       " " + gate + "__art { width: 124px; height: 51px; }" +
-      " " + gate + "__tick { top: 10px; right: 10px; width: 24px; height: 24px; }" +
       " " + gate + "__hint { font-size: 12.5px; }" +
       "}" +
       "@media screen and (max-width: 360px) {" +
-      " " + gate + "__tiles { gap: 8px; }" +
+      " " + gate + "__tiles { gap: 14px; }" +
       " " + tile + " { padding: 16px 6px 14px; }" +
       " " + gate + "__art { width: 104px; height: 43px; }" +
       "}" +
@@ -10829,7 +10833,7 @@ var ContourForm1Logic = function () {
       svg.setAttribute("focusable", "false");
       var text = document.createElementNS(SVG_NS, "text");
       text.setAttribute("x", "75");
-      text.setAttribute("y", "50");
+      text.setAttribute("y", "54");
       text.setAttribute("text-anchor", "middle");
       text.textContent = label;
       svg.appendChild(text);
@@ -10852,7 +10856,7 @@ var ContourForm1Logic = function () {
   }
   // The figures' face, fetched once from Google Fonts — the same host the
   // Webflow page takes Inter from. Only the one weight used.
-  var INTAKE_GATE_FONT_HREF = "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@800&display=swap";
+  var INTAKE_GATE_FONT_HREF = "https://fonts.googleapis.com/css2?family=Oswald:wght@600&display=swap";
   function loadIntakeYearFont() {
     if (document.getElementById("contour-intake-gate-font")) return;
     var link = document.createElement("link");
