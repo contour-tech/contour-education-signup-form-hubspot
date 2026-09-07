@@ -10900,9 +10900,12 @@ var ContourForm1Logic = function () {
       '<span class="contour-section-box__collapse"><svg viewBox="0 0 24 24" width="15" height="15" focusable="false" aria-hidden="true"><path d="M5 12h14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg><span class="contour-sr-only">Collapse</span></span>';
     header.querySelector(".contour-section-box__title").textContent = headerLabel(INTAKE_GATE_TITLE);
     header.addEventListener("click", function () {
-      if (!intakeGateFoldable()) return;
+      if (!intakeGateAnsweredNow()) return;
       var folded = gate.classList.contains(INTAKE_GATE_FOLDED_CLASS);
       intakeGateEditing = folded;
+      // A fold the visitor asked for holds through the section passes that
+      // would otherwise open an answered card the form has not moved on from.
+      intakeGateManualFold = !folded;
       setIntakeGateFolded(!folded);
       if (!folded) return;
       // Focus lands once the fold has opened: the content is visibility:
@@ -10976,6 +10979,7 @@ var ContourForm1Logic = function () {
     gate.appendChild(content);
     formRoot.insertBefore(gate, formRoot.firstChild);
     formRoot.classList.add(INTAKE_GATE_ON_CLASS);
+    watchContactForIntakeGate();
     syncIntakeYearGate();
   }
   // Pressing the folded header reopens the tiles; the next pick folds them
@@ -10987,16 +10991,61 @@ var ContourForm1Logic = function () {
   var intakeGatePicking = false;
   var intakeGateFoldTimer = null;
   /* When the card folds. Not on the pick: the answer stays in view, tiles and
-     all, for as long as the visitor is still on their own details, and folds
-     to its summary line at the moment Academic Details unlocks — the form
-     moving on is what puts the question behind them (Amrit, 8 Sep 2026). A
-     pre-fill unlocks every card, so it arrives folded; a restored draft folds
-     only if it had got that far. Without the stepper (staff mode) there is
-     nothing to wait for, so an answered card may fold. */
-  function intakeGateFoldable() {
+     all, until the visitor turns to Contact Information — the first press,
+     keystroke or answer on any of its fields is what puts the question
+     behind them, and the card folds to its summary line then (Amrit, 8 Sep
+     2026; it first waited for Academic Details to unlock, which left the
+     tiles on screen through the whole of the first card). Academic Details
+     unlocking still counts: a pre-fill unlocks every card, so it arrives
+     folded, and a restored draft folds if it had got that far. Without the
+     stepper (staff mode) there is nothing to wait for, so an answered card
+     may fold. The header is ahead of all this — it answers a press, and
+     shows the dash, from the moment there is an answer. */
+  var intakeGateContactTouched = false;
+  var intakeGateManualFold = false;
+  function intakeGateAnsweredNow() {
     var select = q(FIELD_SELECTORS.intakeYear);
-    if (!select || !select.value) return false;
-    return !stepModeEnabled() || !!sectionUnlocked.study;
+    return !!select && !!select.value;
+  }
+  function intakeGateFoldable() {
+    if (!intakeGateAnsweredNow()) return false;
+    return !stepModeEnabled() || intakeGateContactTouched || !!sectionUnlocked.study;
+  }
+  // The contact card's fields are watched from the form root, on capture:
+  // HubSpot re-renders the fields themselves, and the person pills are
+  // buttons, not fields. isTrusted keeps the form's own dispatched prefill
+  // events from counting as the visitor's move, and the depth counter keeps
+  // out the ones the browser raises for the form's own click() calls — the
+  // Student default arrives as a trusted change on the contact type (see
+  // setCheckboxChecked). Click rather than pointerdown: the card folding above the field
+  // shifts the page, and after the click has landed that is only a scroll
+  // the anchor below holds, not a press that misses. The card's own header
+  // is a fold, not an answer, so it is left out.
+  var intakeGateContactWatched = false;
+  function watchContactForIntakeGate() {
+    if (intakeGateContactWatched || !formRoot) return;
+    intakeGateContactWatched = true;
+    function onContact(e) {
+      if (!e.isTrusted || isProgrammaticEdit()) return;
+      var gate = formRoot.querySelector("." + INTAKE_GATE_CLASS);
+      if (!gate || gate.classList.contains(INTAKE_GATE_FOLDED_CLASS)) return;
+      var target = e.target;
+      if (!target || !target.closest) return;
+      if (target.closest(".contour-section-box__header")) return;
+      if (sectionIdForNode(target) !== "contact") return;
+      intakeGateContactTouched = true;
+      // Reopening the card to look at the year and then turning back to the
+      // contact fields is the visitor done with it again.
+      intakeGateEditing = false;
+      var box = target.closest(".contour-section-box");
+      withScrollAnchor(function () {
+        syncIntakeYearGate();
+        return gate.classList.contains(INTAKE_GATE_FOLDED_CLASS);
+      }, box ? { el: box, top: box.getBoundingClientRect().top } : null);
+    }
+    ["click", "keydown", "input", "change"].forEach(function (type) {
+      formRoot.addEventListener(type, onContact, true);
+    });
   }
   function setIntakeGateFolded(folded) {
     var gate = formRoot && formRoot.querySelector("." + INTAKE_GATE_CLASS);
@@ -11018,7 +11067,7 @@ var ContourForm1Logic = function () {
     var complete = value ? "1" : "0";
     if (gate.getAttribute("data-contour-complete") !== complete) gate.setAttribute("data-contour-complete", complete);
     var header = gate.querySelector(".contour-section-box__header");
-    var togglable = intakeGateFoldable();
+    var togglable = intakeGateAnsweredNow();
     if (header && header.classList.contains("contour-section-box__header--togglable") !== togglable) header.classList.toggle("contour-section-box__header--togglable", togglable);
   }
   function chooseIntakeYear(value) {
@@ -11068,9 +11117,14 @@ var ContourForm1Logic = function () {
     var answered = !!value;
     updateIntakeGateHeader(gate, value);
     var folded = gate.classList.contains(INTAKE_GATE_FOLDED_CLASS);
-    if (!intakeGateFoldable()) {
+    if (!answered) {
       intakeGateEditing = false;
+      intakeGateManualFold = false;
       if (folded) setIntakeGateFolded(false);
+    } else if (!intakeGateFoldable()) {
+      // Answered, but the form has not moved on: open, unless the visitor
+      // folded it themselves with the header's dash.
+      if (folded && !intakeGateManualFold) setIntakeGateFolded(false);
     } else if (!intakeGateEditing && !folded && !intakeGateFoldTimer) {
       // A fold already on the timer is left to it: the section pass that
       // follows a pick lands here a tick later and would otherwise fold at
