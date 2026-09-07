@@ -10752,20 +10752,22 @@ var ContourForm1Logic = function () {
       ".contour-sr-only { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }" +
       gate + "__hint { display: block; font-size: 13.5px; font-weight: 500; line-height: 1.3; color: #6b7280; transition: color .3s ease; }" +
       tile + '[aria-checked="true"] .' + INTAKE_GATE_CLASS + "__hint { color: rgba(255, 255, 255, 0.78); }" +
-      // The confirmation disc in the form's dark green — the page
-      // stylesheet's own, used for the program cards' selected edge and
-      // their original badge: on the blue tile a blue disc vanished into it,
-      // and the green stands off both the tile and the white figure (navy
-      // was tried first). Half-out on the top-right corner with a white ring, the way
+      // The confirmation disc, navy rather than the form's usual blue: on
+      // the blue tile a blue disc vanished into it, and navy is the one
+      // colour in the palette that stands off both the tile and the white
+      // figure (the form's dark green was tried and sent back, Amrit, 8 Sep
+      // 2026). Tucked in on the top-right corner with a white ring, the way
       // the program cards' badge sits, and the same size on every width
       // (Amrit, 8 Sep 2026); the phone gap between the tiles widens to give
       // it room past the neighbour.
       // Sized to the viewport between 26px on a phone and 36px on a wide
-      // screen, and always half-out — the offsets are derived from the size.
-      gate + "__tick { --contour-tick: clamp(26px, 3vw, 36px); position: absolute; top: calc(var(--contour-tick) / -2); right: calc(var(--contour-tick) / -2); display: none; align-items: center; justify-content: center; width: var(--contour-tick); height: var(--contour-tick); box-sizing: border-box; border-radius: 50%; border: 2px solid #FFFFFF; background: #2F6F3E; color: #FFFFFF; }" +
-      // The tick fills more of the disc, and heavier: a 46% hairline read
+      // screen, and a third out rather than half — a little further down
+      // and in from the corner (Amrit, 8 Sep 2026); the offsets are derived
+      // from the size.
+      gate + "__tick { --contour-tick: clamp(26px, 3vw, 36px); position: absolute; top: calc(var(--contour-tick) * -0.34); right: calc(var(--contour-tick) * -0.34); display: none; align-items: center; justify-content: center; width: var(--contour-tick); height: var(--contour-tick); box-sizing: border-box; border-radius: 50%; border: 2px solid #FFFFFF; background: #0C3166; color: #FFFFFF; }" +
+      // The tick fills most of the disc, and heavier: a 46% hairline read
       // as a speck on the phone size (Amrit, 8 Sep 2026).
-      gate + "__tick svg { display: block; width: 58%; height: 58%; }" +
+      gate + "__tick svg { display: block; width: 66%; height: 66%; }" +
       tile + '[aria-checked="true"] .' + INTAKE_GATE_CLASS + "__tick { display: flex; }" +
       "@media (prefers-reduced-motion: no-preference) { " + tile + '[aria-checked="true"] .' + INTAKE_GATE_CLASS + "__tick { animation: contour-badge-in 260ms " + REVEAL_EASE + " both; } }" +
       // The note under the pair, where the dropdown's helper text used to be.
