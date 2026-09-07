@@ -10723,18 +10723,19 @@ var ContourForm1Logic = function () {
              a centre-out wipe was tried first and read as busy). */
       gate + "__art { position: relative; display: block; width: 180px; height: 74px; }" +
       gate + "__art-layer { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; display: block; }" +
-      // The figures are set in Oswald, not the page's Inter. Inter's 6 ends
-      // its terminal a hair from the bowl at every weight, and the outer half
-      // of the stroke bridged the gap however weight and line were traded
-      // off. Oswald's is open, and the condensed grotesque gives the year a
-      // headline voice of its own beside the labels rather than a near-Inter
-      // that invites comparison (Amrit, 8 Sep 2026). Loaded from Google Fonts
-      // by loadIntakeYearFont; Inter stands in until it lands. Condensed
-      // figures sit narrow in a wide tile, so they are set taller — 64 of the
-      // 62-unit box's height, on a baseline that leaves the cap height room —
-      // with a touch of tracking, and a 3.6 stroke of which the outer 1.8
+      // The figures are set in Polysans Bulky, the site's own heading face
+      // (the Webflow page's --_typography---font-styles--heading), so the
+      // year speaks in the site's headline voice rather than the form's Inter
+      // (team via Amrit, 8 Sep 2026; Inter's 6 closed its gap under the
+      // stroke, and Oswald and Momo Trust Display were tried in between).
+      // Declared by loadIntakeYearFont from the same Webflow CDN file the
+      // page uses, so it also renders off the page; Inter stands in until it
+      // lands. Polysans is wide: at 64 the four figures ran 173 units across
+      // the 150-unit box and inside a phone tile's padding, so they are set
+      // at 58, which keeps them within the tile's own 10px on a 390 screen,
+      // with a hair of tracking and a 3.6 stroke of which the outer 1.8
       // shows.
-      gate + "__art text { font-family: 'Momo Trust Display', Oswald, Inter, sans-serif; font-weight: 400; font-size: 64px; letter-spacing: 0.02em; }" +
+      gate + "__art text { font-family: 'Polysans Bulky', Inter, Arial, sans-serif; font-weight: 700; font-size: 58px; letter-spacing: 0.01em; }" +
       gate + "__art-outline text { fill: #FFF9F1; stroke: #0C3166; stroke-width: 3.6; stroke-linejoin: round; paint-order: stroke fill; transition: stroke .15s ease; }" +
       // Picked, the outline snaps to white first, then the white fill takes
       // its time filling it in — the drawn figure is white from the first
@@ -10844,7 +10845,7 @@ var ContourForm1Logic = function () {
       svg.setAttribute("focusable", "false");
       var text = document.createElementNS(SVG_NS, "text");
       text.setAttribute("x", "75");
-      text.setAttribute("y", "54");
+      text.setAttribute("y", "53");
       text.setAttribute("text-anchor", "middle");
       text.textContent = label;
       svg.appendChild(text);
@@ -10865,16 +10866,17 @@ var ContourForm1Logic = function () {
       return { value: opt.value, label: opt.textContent.trim() || opt.value };
     });
   }
-  // The figures' face, fetched once from Google Fonts — the same host the
-  // Webflow page takes Inter from. Only the one weight used.
-  var INTAKE_GATE_FONT_HREF = "https://fonts.googleapis.com/css2?family=Momo+Trust+Display&display=swap";
+  // The figures' face: the Webflow page's own Polysans Bulky file, the one
+  // weight the site declares.
+  var INTAKE_GATE_FONT_SRC = "https://cdn.prod.website-files.com/696ed06d2e62378f0a51f2d4/6982c51839ccd087e99f8077_%20PolySans%20Bulky.otf";
   function loadIntakeYearFont() {
     if (document.getElementById("contour-intake-gate-font")) return;
-    var link = document.createElement("link");
-    link.id = "contour-intake-gate-font";
-    link.rel = "stylesheet";
-    link.href = INTAKE_GATE_FONT_HREF;
-    document.head.appendChild(link);
+    // The same @font-face the Webflow stylesheet carries, so on the page it
+    // is a no-op and off it (the local test page) the year still renders.
+    var style = document.createElement("style");
+    style.id = "contour-intake-gate-font";
+    style.textContent = "@font-face { font-family: 'Polysans Bulky'; src: url(" + INTAKE_GATE_FONT_SRC + ") format('opentype'); font-weight: 700; font-style: normal; font-display: swap; }";
+    document.head.appendChild(style);
   }
   function renderIntakeYearGate() {
     if (!intakeYearGateEnabled()) return;
