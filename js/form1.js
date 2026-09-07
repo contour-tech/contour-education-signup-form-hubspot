@@ -10663,12 +10663,16 @@ var ContourForm1Logic = function () {
     var feed = "cubic-bezier(.22,.61,.36,1)";
     // The blue arrives under the pointer, on keyboard focus and on the pick;
     // the white only on the pick.
-    function feedRules(styleName, resting, arrived) {
+    // The white takes longer than the blue: the pick is the moment to be
+    // enjoyed, the hover only a reply to the pointer (Amrit, 8 Sep 2026).
+    function feedRules(styleName, resting, arrived, blueSeconds, whiteSeconds) {
       var scope = gate + "--anim-" + styleName + " ";
       var scopedTile = scope + "." + INTAKE_GATE_CLASS + "__tile";
       var blue = " ." + INTAKE_GATE_CLASS + "__art-blue";
       var white = " ." + INTAKE_GATE_CLASS + "__art-white";
       return scope + "." + INTAKE_GATE_CLASS + "__art-feed { " + resting + " }" +
+        scope + "." + INTAKE_GATE_CLASS + "__art-blue { transition-duration: " + blueSeconds + "s; }" +
+        scope + "." + INTAKE_GATE_CLASS + "__art-white { transition-duration: " + whiteSeconds + "s; }" +
         scopedTile + ":hover" + blue + ", " + scopedTile + ":focus-visible" + blue + ", " + scopedTile + '[aria-checked="true"]' + blue + ", " + scopedTile + '[aria-checked="true"]' + white + " { " + arrived + " }";
     }
     style.textContent = "" +
@@ -10709,21 +10713,26 @@ var ContourForm1Logic = function () {
              a centre-out wipe was tried first and read as busy). */
       gate + "__art { position: relative; display: block; width: 180px; height: 74px; }" +
       gate + "__art-layer { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; display: block; }" +
-      // 56 of the 150-unit box, and a 2.6 stroke of which the outer 1.3 shows:
-      // heavier closed the gap between the hook and the bowl of the 6.
+      // 56 of the 150-unit box, and a 3.2 stroke of which the outer 1.6 shows.
+      // At 52 that closed the gap between the hook and the bowl of the 6; the
+      // larger figure gives the line the room (Amrit, 8 Sep 2026).
       gate + "__art text { font-family: inherit; font-weight: 800; font-size: 56px; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }" +
-      gate + "__art-outline text { fill: #FFF9F1; stroke: #0C3166; stroke-width: 2.6; stroke-linejoin: round; paint-order: stroke fill; transition: stroke .3s ease, fill .3s ease; }" +
-      tile + '[aria-checked="true"] .' + INTAKE_GATE_CLASS + "__art-outline text { stroke: #FFFFFF; }" +
+      gate + "__art-outline text { fill: #FFF9F1; stroke: #0C3166; stroke-width: 3.2; stroke-linejoin: round; paint-order: stroke fill; }" +
+      // Picked, the outline fades away on the same clock as the white fades
+      // in, so the drawn figure becomes the solid one rather than gaining a
+      // white edge.
+      gate + "__art-outline { transition: opacity 1.2s " + feed + "; }" +
+      tile + '[aria-checked="true"] .' + INTAKE_GATE_CLASS + "__art-outline { opacity: 0; }" +
       // Three ways for the fill to arrive, chosen by the animationStyle
       // setting (a class on the card). Each style states its own resting and
       // arrived values, so switching never leaves a property behind.
-      feedRules("fade", "opacity: 0; transition: opacity .6s " + feed + ";", "opacity: 1;") +
-      feedRules("wipe-radial", "clip-path: circle(0% at 50% 50%); transition: clip-path .55s " + feed + ";", "clip-path: circle(80% at 50% 50%);") +
-      feedRules("wipe-left", "clip-path: inset(-6px 100% -6px -6px); transition: clip-path .7s ease;", "clip-path: inset(-6px);") +
+      feedRules("fade", "opacity: 0; transition: opacity .75s " + feed + ";", "opacity: 1;", 0.75, 1.2) +
+      feedRules("wipe-radial", "clip-path: circle(0% at 50% 50%); transition: clip-path .85s " + feed + ";", "clip-path: circle(80% at 50% 50%);", 0.85, 1.3) +
+      feedRules("wipe-left", "clip-path: inset(-6px 100% -6px -6px); transition: clip-path .85s ease;", "clip-path: inset(-6px);", 0.85, 1.2) +
       gate + "__art-blue text { fill: #007AFF; }" +
       gate + "__art-white text { fill: #FFFFFF; }" +
 
-      "@media (prefers-reduced-motion: reduce) { " + gate + "__art-feed, " + gate + "__art-outline text, " + tile + " { transition: none; } }" +
+      "@media (prefers-reduced-motion: reduce) { " + gate + "__art-feed, " + gate + "__art-outline, " + tile + " { transition: none; } }" +
       ".contour-sr-only { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }" +
       gate + "__hint { display: block; font-size: 13.5px; font-weight: 500; line-height: 1.3; color: #6b7280; transition: color .3s ease; }" +
       tile + '[aria-checked="true"] .' + INTAKE_GATE_CLASS + "__hint { color: rgba(255, 249, 241, 0.78); }" +
