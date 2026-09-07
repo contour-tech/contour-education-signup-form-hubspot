@@ -4599,13 +4599,13 @@ var ContourForm1Logic = function () {
     var max = rule ? rule[1] : PHONE_FALLBACK_MAX_DIGITS;
     return national.length >= min && national.length <= max;
   }
-  // Says how many digits were expected, so "1111111" under AU (+61) reads as
-  // two short rather than merely wrong.
+  // One wording for every country. A first cut spelled out the expected digit
+  // count ("9 digits after the country code"); it wrapped to a second line on
+  // the phone and read as instruction rather than error, so it went (Amrit,
+  // 7 Sep 2026). The dial code is still taken so the call sites need not
+  // change if a per-country hint ever comes back.
   function phoneLengthMessage(dial) {
-    var rule = phoneLengthRule(dial);
-    if (!rule) return "Please enter a valid phone number.";
-    var count = rule[0] === rule[1] ? String(rule[0]) : rule[0] + "–" + rule[1];
-    return "Please enter a valid phone number (" + count + " digits after the country code).";
+    return "Please enter a valid phone number.";
   }
   // The dial code of whichever widget the box belongs to — HubSpot's
   // .hs-fieldtype-intl-phone for the guardian, the page's .contour-intl-phone
