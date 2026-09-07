@@ -4583,10 +4583,11 @@ var ContourForm1Logic = function () {
   /* Countries whose length is enforced as a validation rule, not only used to
      tell a duplicated code from a genuine number. Agreed with Akshay on Slack
      (7 Sep 2026): the main demographic — AU, NZ, UK — plus Canada, US,
-     Malaysia, Japan and Dubai. Everywhere else keeps the generic 7–20 rule so
+     Malaysia, Japan and Dubai; India added the same day (10 digits for both
+     mobiles and landlines with their STD code). Everywhere else keeps the generic 7–20 rule so
      nobody is turned away on a numbering plan nobody here has checked. No
      library: the table above is the whole of it. */
-  var PHONE_LENGTH_ENFORCED_DIALS = ["61", "64", "44", "1", "60", "81", "971"];
+  var PHONE_LENGTH_ENFORCED_DIALS = ["61", "64", "44", "1", "60", "81", "971", "91"];
   function phoneLengthRule(dial) {
     if (!dial || PHONE_LENGTH_ENFORCED_DIALS.indexOf(dial) === -1) return null;
     return PHONE_NATIONAL_LENGTHS[dial] || null;
