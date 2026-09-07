@@ -10734,7 +10734,7 @@ var ContourForm1Logic = function () {
       // 62-unit box's height, on a baseline that leaves the cap height room —
       // with a touch of tracking, and a 3.6 stroke of which the outer 1.8
       // shows.
-      gate + "__art text { font-family: Oswald, Inter, sans-serif; font-weight: 600; font-size: 64px; letter-spacing: 0.02em; }" +
+      gate + "__art text { font-family: 'Momo Trust Display', Oswald, Inter, sans-serif; font-weight: 400; font-size: 64px; letter-spacing: 0.02em; }" +
       gate + "__art-outline text { fill: #FFF9F1; stroke: #0C3166; stroke-width: 3.6; stroke-linejoin: round; paint-order: stroke fill; transition: stroke .15s ease; }" +
       // Picked, the outline snaps to white first, then the white fill takes
       // its time filling it in — the drawn figure is white from the first
@@ -10867,7 +10867,7 @@ var ContourForm1Logic = function () {
   }
   // The figures' face, fetched once from Google Fonts — the same host the
   // Webflow page takes Inter from. Only the one weight used.
-  var INTAKE_GATE_FONT_HREF = "https://fonts.googleapis.com/css2?family=Oswald:wght@600&display=swap";
+  var INTAKE_GATE_FONT_HREF = "https://fonts.googleapis.com/css2?family=Momo+Trust+Display&display=swap";
   function loadIntakeYearFont() {
     if (document.getElementById("contour-intake-gate-font")) return;
     var link = document.createElement("link");
