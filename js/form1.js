@@ -10696,14 +10696,15 @@ var ContourForm1Logic = function () {
       tile + ":active { transform: scale(0.985); }" +
       tile + ":focus { outline: none; }" +
       tile + ":focus-visible { border-color: #0540F2; box-shadow: 0 0 0 3px rgba(5, 64, 242, 0.18); }" +
-      // Picked in the program cards' #005FCC rather than the navy: the card's
-      // own band above, the Contact band below and the picked Student card
-      // under that are all navy, and a navy tile between them made four
-      // navy blocks in a column read as one mass — the same reason the
-      // program cards moved to this blue (Amrit, 8 Sep 2026). Edge and ring
-      // follow the fill as they do there.
-      tile + '[aria-checked="true"] { background: #005FCC; border-color: #005FCC; box-shadow: 0 0 0 2px #005FCC; color: #FFFFFF; }' +
-      tile + '[aria-checked="true"]:hover { box-shadow: 0 0 0 2px #005FCC; transform: none; }' +
+      // Picked in the form's dark green — the page stylesheet's own, used for
+      // the program cards' selected edge and their original badge — rather
+      // than the navy: the card's own band above, the Contact band below and
+      // the picked Student card under that are all navy, and a navy tile
+      // between them made four navy blocks in a column read as one mass
+      // (Amrit, 8 Sep 2026; a blue was tried in between). Edge and ring
+      // follow the fill as they do on the cards.
+      tile + '[aria-checked="true"] { background: #2F6F3E; border-color: #2F6F3E; box-shadow: 0 0 0 2px #2F6F3E; color: #FFFFFF; }' +
+      tile + '[aria-checked="true"]:hover { box-shadow: 0 0 0 2px #2F6F3E; transform: none; }' +
       /* The year is the picture on this card. Three copies of the same figure
          in the page's own type, stacked:
            - the outline: the glyph stroked navy with its own fill painted on
@@ -10731,14 +10732,14 @@ var ContourForm1Logic = function () {
       // with a touch of tracking, and a 3.6 stroke of which the outer 1.8
       // shows.
       gate + "__art text { font-family: Oswald, Inter, sans-serif; font-weight: 600; font-size: 64px; letter-spacing: 0.02em; }" +
-      gate + "__art-outline text { fill: #FFF9F1; stroke: #0C3166; stroke-width: 3.6; stroke-linejoin: round; paint-order: stroke fill; }" +
-      // Picked, one complete white figure — fill and a stroke the size of the
-      // outline's — fades in over the drawn one. Fading a whole figure keeps
-      // every edge crisp at every point of the fade; fading the fill while
-      // the outline changed colour underneath read as a blur (Amrit, 8 Sep
-      // 2026). The outer half of its stroke is what keeps the solid year
-      // from reading thin.
-      gate + "__art-white text { stroke: #FFFFFF; stroke-width: 3.6; stroke-linejoin: round; paint-order: stroke fill; }" +
+      gate + "__art-outline text { fill: #FFF9F1; stroke: #0C3166; stroke-width: 3.6; stroke-linejoin: round; paint-order: stroke fill; transition: stroke .15s ease; }" +
+      // Picked, the outline snaps to white first, then the white fill takes
+      // its time filling it in — the drawn figure is white from the first
+      // frame and the ink arrives after (Amrit, 8 Sep 2026). With the edge
+      // settled before the fill moves, every frame of the fade stays crisp.
+      // The outer half of the white stroke is what keeps the solid year from
+      // reading thin.
+      tile + '[aria-checked="true"] .' + INTAKE_GATE_CLASS + "__art-outline text { stroke: #FFFFFF; }" +
       // Three ways for the fill to arrive, chosen by the animationStyle
       // setting (a class on the card). Each style states its own resting and
       // arrived values, so switching never leaves a property behind.
@@ -10748,7 +10749,7 @@ var ContourForm1Logic = function () {
       gate + "__art-blue text { fill: #007AFF; }" +
       gate + "__art-white text { fill: #FFFFFF; }" +
 
-      "@media (prefers-reduced-motion: reduce) { " + gate + "__art-feed, " + tile + " { transition: none; } }" +
+      "@media (prefers-reduced-motion: reduce) { " + gate + "__art-feed, " + gate + "__art-outline text, " + tile + " { transition: none; } }" +
       ".contour-sr-only { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }" +
       gate + "__hint { display: block; font-size: 13.5px; font-weight: 500; line-height: 1.3; color: #6b7280; transition: color .3s ease; }" +
       tile + '[aria-checked="true"] .' + INTAKE_GATE_CLASS + "__hint { color: rgba(255, 255, 255, 0.78); }" +
@@ -10759,8 +10760,10 @@ var ContourForm1Logic = function () {
       // the program cards' badge sits, and the same size on every width
       // (Amrit, 8 Sep 2026); the phone gap between the tiles widens to give
       // it room past the neighbour.
-      gate + "__tick { position: absolute; top: -12px; right: -12px; display: none; align-items: center; justify-content: center; width: 28px; height: 28px; box-sizing: border-box; border-radius: 50%; border: 2px solid #FFFFFF; background: #0C3166; color: #FFFFFF; }" +
-      gate + "__tick svg { display: block; }" +
+      // Sized to the viewport between 26px on a phone and 36px on a wide
+      // screen, and always half-out — the offsets are derived from the size.
+      gate + "__tick { --contour-tick: clamp(26px, 3vw, 36px); position: absolute; top: calc(var(--contour-tick) / -2); right: calc(var(--contour-tick) / -2); display: none; align-items: center; justify-content: center; width: var(--contour-tick); height: var(--contour-tick); box-sizing: border-box; border-radius: 50%; border: 2px solid #FFFFFF; background: #0C3166; color: #FFFFFF; }" +
+      gate + "__tick svg { display: block; width: 46%; height: 46%; }" +
       tile + '[aria-checked="true"] .' + INTAKE_GATE_CLASS + "__tick { display: flex; }" +
       "@media (prefers-reduced-motion: no-preference) { " + tile + '[aria-checked="true"] .' + INTAKE_GATE_CLASS + "__tick { animation: contour-badge-in 260ms " + REVEAL_EASE + " both; } }" +
       // The note under the pair, where the dropdown's helper text used to be.
