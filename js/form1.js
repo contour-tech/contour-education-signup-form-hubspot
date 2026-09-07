@@ -167,6 +167,21 @@ var ContourForm1Logic = function () {
     if (overrides && Object.prototype.hasOwnProperty.call(overrides, name)) return !!overrides[name];
     return !!FEATURE_DEFAULTS[name];
   }
+  // Settings with a value rather than a switch, overridden the same way:
+  //   <script>window.ContourForm1Config = { animationStyle: "wipe-radial" };</script>
+  var SETTING_DEFAULTS = {
+    // How the intake-year figures fill under the pointer and on the pick.
+    //   "fade"        — the fill fades in, slowly (default; Amrit, 8 Sep 2026)
+    //   "wipe-radial" — a circle grows out from the centre until it covers
+    //   "wipe-left"   — the fill sweeps in from the left, the program cards'
+    //                   logo-tint wipe
+    animationStyle: "fade"
+  };
+  function settingValue(name) {
+    var overrides = window.ContourForm1Config;
+    if (overrides && Object.prototype.hasOwnProperty.call(overrides, name) && overrides[name] != null) return String(overrides[name]);
+    return SETTING_DEFAULTS[name];
+  }
   /* =========================================================
      HEADER CASE
      -----------------------------------------------------------
@@ -6783,6 +6798,9 @@ var ContourForm1Logic = function () {
     });
     updateSectionBoxStates(groups);
     updateStudentSegmentCascade();
+    // The intake card folds when Academic Details unlocks, which this pass
+    // has just decided.
+    syncIntakeYearGate();
     if (initial || revealedNow.length === 0) return;
     revealedNow.forEach(function (entry, i) {
       // Several sections open at once only on a prefilled return, where a
@@ -10582,7 +10600,7 @@ var ContourForm1Logic = function () {
       return parseInt(option.value, 10) === now + 1;
     })[0];
     if (!next) return INTAKE_YEAR_NOTE_TEXT;
-    return "New students: book for " + next.label + ". Programs begin as early as November " + now + " with a two-week free trial.";
+    return "Most new students join the " + next.label + " intake. Many of our programs begin as early as November " + now + " with a two-week free trial.";
   }
   /* =========================================================
      INTAKE YEAR GATE
@@ -10616,9 +10634,12 @@ var ContourForm1Logic = function () {
   // On the form for as long as the gate is rendered — the hook for layout
   // that only holds once the dropdown has left Academic Details.
   var INTAKE_GATE_ON_CLASS = "contour-intake-gate-on";
+  // The gate is a section card: the same shell, header band and fold as
+  // Academic Details and the rest, so its open and folded states belong to
+  // one system rather than a bespoke row imitating a card (Amrit, 8 Sep 2026).
+  var INTAKE_GATE_FOLDED_CLASS = "contour-section-box--collapsed";
+  var INTAKE_GATE_TITLE = "Intake Year";
   var INTAKE_GATE_QUESTION_FALLBACK = "Which year are you interested in tutoring for?";
-  var INTAKE_GATE_RING_NAVY_ID = "contour-intake-gate-ring-navy";
-  var INTAKE_GATE_RING_WHITE_ID = "contour-intake-gate-ring-white";
   // What a student_id link means when the record does not say: the coming
   // intake. Matched against the select's options before it is used, so a
   // form that has moved on to 2028 simply gets no default.
@@ -10627,6 +10648,11 @@ var ContourForm1Logic = function () {
   function intakeYearGateEnabled() {
     return featureEnabled("intakeYearGate");
   }
+  var INTAKE_GATE_ANIMATIONS = ["fade", "wipe-radial", "wipe-left"];
+  function intakeYearAnimationStyle() {
+    var style = settingValue("animationStyle");
+    return INTAKE_GATE_ANIMATIONS.indexOf(style) === -1 ? "fade" : style;
+  }
   function injectIntakeYearGateStyles() {
     if (document.getElementById("contour-intake-gate-styles")) return;
     var style = document.createElement("style");
@@ -10634,124 +10660,93 @@ var ContourForm1Logic = function () {
     var gate = ".hs-form ." + INTAKE_GATE_CLASS;
     var tile = gate + "__tile";
     var study = ".hs-form." + INTAKE_GATE_ON_CLASS + ' .contour-section-box[data-contour-section="study"]';
+    var feed = "cubic-bezier(.22,.61,.36,1)";
+    // The blue arrives under the pointer, on keyboard focus and on the pick;
+    // the white only on the pick.
+    function feedRules(styleName, resting, arrived) {
+      var scope = gate + "--anim-" + styleName + " ";
+      var scopedTile = scope + "." + INTAKE_GATE_CLASS + "__tile";
+      var blue = " ." + INTAKE_GATE_CLASS + "__art-blue";
+      var white = " ." + INTAKE_GATE_CLASS + "__art-white";
+      return scope + "." + INTAKE_GATE_CLASS + "__art-feed { " + resting + " }" +
+        scopedTile + ":hover" + blue + ", " + scopedTile + ":focus-visible" + blue + ", " + scopedTile + '[aria-checked="true"]' + blue + ", " + scopedTile + '[aria-checked="true"]' + white + " { " + arrived + " }";
+    }
     style.textContent = "" +
       // Everything under the gate waits. display rather than visibility so the
       // page has no phantom height to scroll into; the banners a return visit
       // puts above the gate stay, they are about the visitor, not the answer.
       ".hs-form." + INTAKE_GATE_PENDING_CLASS + " > :not(." + INTAKE_GATE_CLASS + "):not(.contour-prefill-banner):not(.contour-restore-banner) { display: none !important; }" +
-      gate + " { margin: 0 0 24px; }" +
-      // Same tier as the section card titles, one step up from the field
-      // labels: it is the form's first line, not one field among many.
-      gate + "__question { display: block; margin: 0 0 14px; font-size: 16px; font-weight: 600; line-height: 1.35; color: #0C3166; }" +
+      // The question inside the card sits where a field label would, one step
+      // up in size: it is the card's only question.
+      gate + "__question { display: block; margin: 0 0 14px; font-size: 15px; font-weight: 600; line-height: 1.35; color: #0C3166; }" +
       gate + "__tiles { display: flex; flex-direction: row; flex-wrap: nowrap; gap: 1.25rem; margin: 0; padding: 0; }" +
       // The Student / Guardian card, restated as a button: same border, same
-      // radius, same navy fill on selection, same lift on hover. A button
-      // rather than a hidden radio so HubSpot never sees a field it did not
-      // define.
-      tile + " { position: relative; flex: 1 1 0%; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; margin: 0; padding: 26px 16px 22px; border: 1px solid rgba(12, 49, 102, 0.14); border-radius: 1rem; background: rgba(0, 122, 255, 0.07); color: #0C3166; font: inherit; text-align: center; cursor: pointer; appearance: none; -webkit-appearance: none; transition: background-color .2s ease, border-color .2s ease, color .2s ease, transform .15s ease, box-shadow .16s ease; }" +
-      // Idle on a pale Contour-blue tint, white under the pointer while the
-      // fill rolls in, navy once picked (Amrit, 7 Sep 2026). The tint rather
-      // than the section bands' grey wash: the grey is what the locked cards
-      // below wear, so the pair read as disabled before anyone touched them.
-      tile + ":hover { background: #FFFFFF; border-color: rgba(12, 49, 102, 0.22); transform: translateY(-1px); }" +
+      // radius, same navy fill on selection. The surface holds white until
+      // the pick; the pointer is answered by the outline going navy, not by
+      // the surface changing (Amrit, 8 Sep 2026). A button rather than a
+      // hidden radio so HubSpot never sees a field it did not define. Inside
+      // the card the surface is the form's cream, the well colour the inputs
+      // and the unpicked Student / Guardian card sit in (Amrit, 8 Sep 2026).
+      tile + " { position: relative; flex: 1 1 0%; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; box-sizing: border-box; margin: 0; padding: 26px 16px 22px; border: 1px solid rgba(12, 49, 102, 0.14); border-radius: 1rem; background: #FFF9F1; color: #0C3166; font: inherit; text-align: center; cursor: pointer; appearance: none; -webkit-appearance: none; transition: background-color .3s ease, border-color .2s ease, color .3s ease, transform .15s ease, box-shadow .2s ease; }" +
+      tile + ":hover { border-color: #0C3166; box-shadow: 0 0 0 1px #0C3166; transform: translateY(-1px); }" +
       tile + ":active { transform: scale(0.985); }" +
       tile + ":focus { outline: none; }" +
       tile + ":focus-visible { border-color: #0540F2; box-shadow: 0 0 0 3px rgba(5, 64, 242, 0.18); }" +
-      tile + '[aria-checked="true"] { background: #0C3166; border-color: transparent; color: #FFF9F1; }' +
-      tile + '[aria-checked="true"]:hover { background: #0C3166; transform: none; }' +
-      // The year is the picture on this card, and it moves the way the
-      // program cards' logos do: an outline figure sits idle, and a solid
-      // Contour-blue copy of it wipes in from the left (clip-path, the same
-      // 0.7s ease as the logo tint) while the pointer is on the tile, filling
-      // the outline like ink. Picked, the wipe completes and holds, the tile
-      // goes navy and the outline flips cream, so the figure reads blue on
-      // navy the way the cards' wordmark reads white on blue. The two layers
-      // are registered exactly — the fill belongs to the outline, it is not a
-      // shadow of it — and there is no lime: the highlighter is the CTAs' and
-      // the chips', and the cards it takes its cue from never use it (Amrit,
-      // 7 Sep 2026). Both layers are the page's own type via SVG text, so the
-      // figures match the labels around them and there is nothing to host.
-      // Two stacked SVGs rather than two <text> nodes in one: the wipe is a
-      // clip-path transition, and Chrome steps clip-path on an SVG text node
-      // instead of easing it, while on the SVG element itself (an HTML box,
-      // like the cards' logo <img>) it eases as written.
-      // The outline is not a stroke. Stroking type draws every contour of a
-      // glyph, and where a "2" overlaps itself the seams show as a star at
-      // its tail (Amrit, 7 Sep 2026). The ring is taken off the filled shape
-      // instead — dilate the alpha, cut the original out of it — so it
-      // follows the glyph's outer edge only. The ring's colour is fixed by
-      // the filter, so navy and white are two layers cross-faded.
-      gate + "__art { position: relative; display: block; width: 150px; height: 62px; }" +
+      tile + '[aria-checked="true"] { background: #0C3166; border-color: #0C3166; color: #FFF9F1; }' +
+      tile + '[aria-checked="true"]:hover { box-shadow: none; transform: none; }' +
+      /* The year is the picture on this card. Three copies of the same figure
+         in the page's own type, stacked:
+           - the outline: the glyph stroked navy with its own fill painted on
+             top (paint-order), so only the outer half of the stroke shows.
+             Stroking type draws every contour, and where a "2" overlaps
+             itself the seams showed as a star at its tail — the fill now
+             covers them, and the line is vector, so it is the same width
+             everywhere (the raster ring it replaces was not);
+           - a Contour-blue fill that fades in, slowly, under the pointer;
+           - a white fill that fades in the same way on the pick, over the
+             blue, while the outline fades to white — the picked year reads
+             as one solid white figure cut out of the navy (Amrit, 8 Sep 2026;
+             a centre-out wipe was tried first and read as busy). */
+      gate + "__art { position: relative; display: block; width: 180px; height: 74px; }" +
       gate + "__art-layer { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; display: block; }" +
-      gate + "__art text { font-family: inherit; font-weight: 800; font-size: 52px; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }" +
-      gate + "__art-fill { clip-path: inset(-6px 100% -6px -6px); transition: clip-path 0.7s ease; }" +
-      gate + "__art-back { fill: #007AFF; transition: fill .3s ease; }" +
-      // Picked, the figure goes solid white — fill and ring together — a
-      // negative cut out of the navy, the way the cards' wordmark goes white.
-      tile + '[aria-checked="true"] .' + INTAKE_GATE_CLASS + "__art-back { fill: #FFFFFF; }" +
-      gate + "__art-ring { fill: #000000; }" +
-      gate + "__art-outline--navy text { filter: url(#" + INTAKE_GATE_RING_NAVY_ID + "); }" +
-      gate + "__art-outline--white text { filter: url(#" + INTAKE_GATE_RING_WHITE_ID + "); }" +
-      gate + "__art-outline { transition: opacity .3s ease; }" +
-      gate + "__art-outline--white { opacity: 0; }" +
-      tile + ":hover ." + INTAKE_GATE_CLASS + "__art-fill, " + tile + ":focus-visible ." + INTAKE_GATE_CLASS + "__art-fill, " + tile + '[aria-checked="true"] .' + INTAKE_GATE_CLASS + "__art-fill { clip-path: inset(-6px -6px -6px -6px); }" +
-      tile + '[aria-checked="true"] .' + INTAKE_GATE_CLASS + "__art-outline--navy { opacity: 0; }" +
-      tile + '[aria-checked="true"] .' + INTAKE_GATE_CLASS + "__art-outline--white { opacity: 1; }" +
-      gate + "__defs { position: absolute; width: 0; height: 0; overflow: hidden; }" +
-      "@media (prefers-reduced-motion: reduce) { " + gate + "__art-fill { transition: none; } }" +
+      // 56 of the 150-unit box, and a 2.6 stroke of which the outer 1.3 shows:
+      // heavier closed the gap between the hook and the bowl of the 6.
+      gate + "__art text { font-family: inherit; font-weight: 800; font-size: 56px; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }" +
+      gate + "__art-outline text { fill: #FFF9F1; stroke: #0C3166; stroke-width: 2.6; stroke-linejoin: round; paint-order: stroke fill; transition: stroke .3s ease, fill .3s ease; }" +
+      tile + '[aria-checked="true"] .' + INTAKE_GATE_CLASS + "__art-outline text { stroke: #FFFFFF; }" +
+      // Three ways for the fill to arrive, chosen by the animationStyle
+      // setting (a class on the card). Each style states its own resting and
+      // arrived values, so switching never leaves a property behind.
+      feedRules("fade", "opacity: 0; transition: opacity .6s " + feed + ";", "opacity: 1;") +
+      feedRules("wipe-radial", "clip-path: circle(0% at 50% 50%); transition: clip-path .55s " + feed + ";", "clip-path: circle(80% at 50% 50%);") +
+      feedRules("wipe-left", "clip-path: inset(-6px 100% -6px -6px); transition: clip-path .7s ease;", "clip-path: inset(-6px);") +
+      gate + "__art-blue text { fill: #007AFF; }" +
+      gate + "__art-white text { fill: #FFFFFF; }" +
+
+      "@media (prefers-reduced-motion: reduce) { " + gate + "__art-feed, " + gate + "__art-outline text, " + tile + " { transition: none; } }" +
       ".contour-sr-only { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }" +
-      gate + "__hint { display: block; font-size: 13.5px; font-weight: 500; line-height: 1.3; color: #6b7280; transition: color .2s ease; }" +
-      // Once answered the question folds to one navy row — the collapsed
-      // section card's own band, tick, title and pencil — and the tiles
-      // come back when the row is pressed. The fold is the cards' 1fr/0fr
-      // squeeze, so the height animates without being measured.
-      gate + "__body { display: grid; grid-template-rows: 1fr; }" +
-      gate + "__body-inner { min-height: 0; min-width: 0; }" +
-      gate + "--answered ." + INTAKE_GATE_CLASS + "__body { grid-template-rows: 0fr; }" +
-      gate + "--answered ." + INTAKE_GATE_CLASS + "__body-inner { overflow: hidden; visibility: hidden; opacity: 0; }" +
-            // visibility is only delayed on the way shut. A transition is read from
-      // the state being entered, so the folded rule carries the delay (the
-      // tiles stay visible while they fade) and the open rule none — the
-      // tiles are visible the instant the row is pressed, which is what lets
-      // the Change handler put focus on one in the same tick.
-      "@media (prefers-reduced-motion: no-preference) { " + gate + "__body { transition: grid-template-rows 0.3s ease; } " + gate + "__body-inner { transition: opacity 0.25s ease; } " + gate + "--answered ." + INTAKE_GATE_CLASS + "__body-inner { transition: visibility 0.3s, opacity 0.25s ease; } }" +
-      gate + "__compact { display: none; align-items: center; gap: 12px; width: 100%; margin: 0; padding: 12px 22px; box-sizing: border-box; border: 0; border-radius: 16px; background: #0C3166; color: #FFFFFF; font: inherit; text-align: left; cursor: pointer; appearance: none; -webkit-appearance: none; transition: background-color .15s ease; }" +
-      gate + "--answered ." + INTAKE_GATE_CLASS + "__compact { display: flex; }" +
-      gate + "__compact:hover { background: #123B73; }" +
-      gate + "__compact:focus { outline: none; }" +
-      gate + "__compact:focus-visible { box-shadow: 0 0 0 3px rgba(5, 64, 242, 0.35); }" +
-      gate + "__compact-status { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; box-sizing: border-box; border-radius: 50%; border: 2px solid #FFFFFF; background: #007AFF; color: #FFFFFF; }" +
-      gate + "__compact-status svg { display: block; }" +
-      gate + "__compact-title { flex: 0 0 auto; font-weight: " + headerFontWeight(700, 600) + "; " + headerCapsCss(12.5, "0.08em", 14.5) + " color: #FFFFFF; }" +
-      gate + "__compact-summary { flex: 1 1 auto; min-width: 0; font-size: 13.5px; font-weight: 500; color: rgba(255, 255, 255, 0.72); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }" +
-      gate + "__compact-action { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; margin-left: auto; border-radius: 50%; color: #FFFFFF; transition: background-color 0.15s ease; }" +
-      gate + "__compact:hover ." + INTAKE_GATE_CLASS + "__compact-action { background: rgba(255, 255, 255, 0.12); }" +
-      gate + "__compact-action svg { display: block; }" +
+      gate + "__hint { display: block; font-size: 13.5px; font-weight: 500; line-height: 1.3; color: #6b7280; transition: color .3s ease; }" +
       tile + '[aria-checked="true"] .' + INTAKE_GATE_CLASS + "__hint { color: rgba(255, 249, 241, 0.78); }" +
       // The blue disc and white tick — the one confirmation glyph the form
-      // keeps (section cards, subject tiles). Sits in the corner so the year
-      // stays centred whether or not it is there.
+      // keeps. Sits in the corner so the year stays centred either way.
       gate + "__tick { position: absolute; top: 10px; right: 10px; display: none; align-items: center; justify-content: center; width: 22px; height: 22px; box-sizing: border-box; border-radius: 50%; border: 2px solid #FFFFFF; background: #007AFF; color: #FFFFFF; }" +
       gate + "__tick svg { display: block; }" +
       tile + '[aria-checked="true"] .' + INTAKE_GATE_CLASS + "__tick { display: flex; }" +
       "@media (prefers-reduced-motion: no-preference) { " + tile + '[aria-checked="true"] .' + INTAKE_GATE_CLASS + "__tick { animation: contour-badge-in 260ms " + REVEAL_EASE + " both; } }" +
-      "@media (prefers-reduced-motion: reduce) { " + tile + " { transition: none; } }" +
       // The note under the pair, where the dropdown's helper text used to be.
-      gate + " .contour-intake-year-note { margin-top: 12px; }" +
+      gate + " .contour-intake-year-note { margin-top: 14px; }" +
       // Phones: the pair shares the row, the way the Student / Guardian cards
       // do, so the room comes out of the padding and the type.
       "@media screen and (max-width: 767px) {" +
       " " + gate + "__tiles { gap: 10px; }" +
-      " " + tile + " { padding: 20px 10px 18px; gap: 5px; border-radius: 14px; }" +
-      " " + gate + "__art { width: 112px; height: 46px; }" +
+      " " + tile + " { padding: 20px 10px 18px; gap: 6px; border-radius: 14px; }" +
+      " " + gate + "__art { width: 124px; height: 51px; }" +
       " " + gate + "__hint { font-size: 12.5px; }" +
-      " " + gate + "__compact { padding: 14px 16px; }" +
-      " " + gate + "__compact-summary { display: none; }" +
       "}" +
       "@media screen and (max-width: 360px) {" +
       " " + gate + "__tiles { gap: 8px; }" +
       " " + tile + " { padding: 16px 6px 14px; }" +
-      " " + gate + "__art { width: 96px; height: 40px; }" +
+      " " + gate + "__art { width: 104px; height: 43px; }" +
       "}" +
       // With the intake year gone from Academic Details, Year Level was left
       // alone in the right half of its row and Location alone above it. The
@@ -10798,58 +10793,15 @@ var ContourForm1Logic = function () {
     return "";
   }
   var SVG_NS = "http://www.w3.org/2000/svg";
-  // One <defs> for the gate: two ring filters, navy and cream. A filter
-  // referenced from CSS by id resolves anywhere in the document, so the
-  // tiles' own SVGs stay free of it.
-  function intakeYearRingDefs() {
-    var svg = document.createElementNS(SVG_NS, "svg");
-    svg.setAttribute("class", INTAKE_GATE_CLASS + "__defs");
-    svg.setAttribute("aria-hidden", "true");
-    svg.setAttribute("focusable", "false");
-    var defs = document.createElementNS(SVG_NS, "defs");
-    [[INTAKE_GATE_RING_NAVY_ID, [12, 49, 102]], [INTAKE_GATE_RING_WHITE_ID, [255, 255, 255]]].forEach(function (entry) {
-      var filter = document.createElementNS(SVG_NS, "filter");
-      filter.setAttribute("id", entry[0]);
-      filter.setAttribute("x", "-10%");
-      filter.setAttribute("y", "-10%");
-      filter.setAttribute("width", "120%");
-      filter.setAttribute("height", "120%");
-      filter.setAttribute("color-interpolation-filters", "sRGB");
-      var dilate = document.createElementNS(SVG_NS, "feMorphology");
-      dilate.setAttribute("in", "SourceAlpha");
-      dilate.setAttribute("operator", "dilate");
-      // In viewBox units: 1.7 of 150 is 1.7px on the desktop tile and about
-      // 1.3px on a phone, a proper drawn line rather than a hairline.
-      dilate.setAttribute("radius", "1.7");
-      dilate.setAttribute("result", "grown");
-      var ring = document.createElementNS(SVG_NS, "feComposite");
-      ring.setAttribute("in", "grown");
-      ring.setAttribute("in2", "SourceAlpha");
-      ring.setAttribute("operator", "out");
-      ring.setAttribute("result", "ring");
-      var colour = document.createElementNS(SVG_NS, "feColorMatrix");
-      colour.setAttribute("in", "ring");
-      colour.setAttribute("type", "matrix");
-      var c = entry[1].map(function (v) { return (v / 255).toFixed(4); });
-      colour.setAttribute("values", "0 0 0 0 " + c[0] + " 0 0 0 0 " + c[1] + " 0 0 0 0 " + c[2] + " 0 0 0 1 0");
-      filter.appendChild(dilate);
-      filter.appendChild(ring);
-      filter.appendChild(colour);
-      defs.appendChild(filter);
-    });
-    svg.appendChild(defs);
-    return svg;
-  }
   function intakeYearArt(label) {
-    function layer(layerClasses, textClass) {
+    function layer(classes) {
       var svg = document.createElementNS(SVG_NS, "svg");
-      svg.setAttribute("class", INTAKE_GATE_CLASS + "__art-layer " + layerClasses.map(function (cls) {
+      svg.setAttribute("class", INTAKE_GATE_CLASS + "__art-layer " + classes.map(function (cls) {
         return INTAKE_GATE_CLASS + "__" + cls;
       }).join(" "));
       svg.setAttribute("viewBox", "0 0 150 62");
       svg.setAttribute("focusable", "false");
       var text = document.createElementNS(SVG_NS, "text");
-      text.setAttribute("class", INTAKE_GATE_CLASS + "__" + textClass);
       text.setAttribute("x", "75");
       text.setAttribute("y", "50");
       text.setAttribute("text-anchor", "middle");
@@ -10860,10 +10812,9 @@ var ContourForm1Logic = function () {
     var art = document.createElement("span");
     art.className = INTAKE_GATE_CLASS + "__art";
     art.setAttribute("aria-hidden", "true");
-    // Fill under the rings, so the outline always draws over the blue.
-    art.appendChild(layer(["art-fill"], "art-back"));
-    art.appendChild(layer(["art-outline", "art-outline--navy"], "art-ring"));
-    art.appendChild(layer(["art-outline", "art-outline--white"], "art-ring"));
+    art.appendChild(layer(["art-outline"]));
+    art.appendChild(layer(["art-feed", "art-blue"]));
+    art.appendChild(layer(["art-feed", "art-white"]));
     return art;
   }
   function intakeYearOptions(select) {
@@ -10881,19 +10832,45 @@ var ContourForm1Logic = function () {
     if (options.length === 0) return;
     injectIntakeYearGateStyles();
     var gate = document.createElement("div");
-    gate.className = INTAKE_GATE_CLASS;
-    gate.appendChild(intakeYearRingDefs());
-    var body = document.createElement("div");
-    body.className = INTAKE_GATE_CLASS + "__body";
-    var bodyInner = document.createElement("div");
-    bodyInner.className = INTAKE_GATE_CLASS + "__body-inner";
-    body.appendChild(bodyInner);
+    gate.className = INTAKE_GATE_CLASS + " contour-section-box contour-section-box--intake " + INTAKE_GATE_CLASS + "--anim-" + intakeYearAnimationStyle();
+    gate.setAttribute("data-contour-complete", "0");
+    // The header is the section cards' own: status disc, title, one-line
+    // summary once folded, pencil to reopen, dash to fold.
+    var header = document.createElement("button");
+    header.type = "button";
+    header.className = "contour-section-box__header";
+    header.setAttribute("aria-expanded", "true");
+    header.innerHTML = '<span class="contour-section-box__status" aria-hidden="true"><svg viewBox="0 0 24 24" width="11" height="11" focusable="false"><path d="M20 6.5L9 17.5l-5-5" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>' +
+      '<span class="contour-section-box__title"></span>' +
+      '<span class="contour-section-box__summary"></span>' +
+      '<span class="contour-section-box__action"><svg viewBox="0 0 24 24" width="15" height="15" focusable="false" aria-hidden="true"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="contour-sr-only">Edit</span></span>' +
+      '<span class="contour-section-box__collapse"><svg viewBox="0 0 24 24" width="15" height="15" focusable="false" aria-hidden="true"><path d="M5 12h14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg><span class="contour-sr-only">Collapse</span></span>';
+    header.querySelector(".contour-section-box__title").textContent = headerLabel(INTAKE_GATE_TITLE);
+    header.addEventListener("click", function () {
+      if (!intakeGateFoldable()) return;
+      var folded = gate.classList.contains(INTAKE_GATE_FOLDED_CLASS);
+      intakeGateEditing = folded;
+      setIntakeGateFolded(!folded);
+      if (!folded) return;
+      // Focus lands once the fold has opened: the content is visibility:
+      // hidden while shut, and its transition is shared with the way open.
+      setTimeout(function () {
+        var checked = gate.querySelector("." + INTAKE_GATE_CLASS + '__tile[aria-checked="true"]') || gate.querySelector("." + INTAKE_GATE_CLASS + "__tile");
+        if (checked) focusQuietly(checked);
+      }, prefersReducedMotion() ? 0 : 320);
+    });
+    gate.appendChild(header);
+    var content = document.createElement("div");
+    content.className = "contour-section-box__content";
+    var inner = document.createElement("div");
+    inner.className = "contour-section-box__content-inner " + INTAKE_GATE_CLASS + "__body-inner";
+    content.appendChild(inner);
     var questionId = "contour-intake-gate-question";
     var question = document.createElement("span");
     question.id = questionId;
     question.className = INTAKE_GATE_CLASS + "__question";
     question.textContent = intakeYearQuestionText(select);
-    bodyInner.appendChild(question);
+    inner.appendChild(question);
     var tiles = document.createElement("div");
     tiles.className = INTAKE_GATE_CLASS + "__tiles";
     tiles.setAttribute("role", "radiogroup");
@@ -10940,35 +10917,32 @@ var ContourForm1Logic = function () {
       next.focus();
       chooseIntakeYear(next.getAttribute("data-contour-intake-year"));
     });
-    bodyInner.appendChild(tiles);
-    gate.appendChild(body);
-    var compact = document.createElement("button");
-    compact.type = "button";
-    compact.className = INTAKE_GATE_CLASS + "__compact";
-    compact.setAttribute("aria-expanded", "false");
-    compact.innerHTML = '<span class="' + INTAKE_GATE_CLASS + '__compact-status" aria-hidden="true"><svg viewBox="0 0 24 24" width="11" height="11" focusable="false"><path d="M20 6.5L9 17.5l-5-5" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>' +
-      '<span class="' + INTAKE_GATE_CLASS + '__compact-title"></span>' +
-      '<span class="' + INTAKE_GATE_CLASS + '__compact-summary"></span>' +
-      '<span class="' + INTAKE_GATE_CLASS + '__compact-action" aria-hidden="true"><svg viewBox="0 0 24 24" width="15" height="15" focusable="false"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>' +
-      '<span class="contour-sr-only">Change</span>';
-    compact.addEventListener("click", function () {
-      intakeGateEditing = true;
-      setIntakeGateFolded(false);
-      var checked = gate.querySelector("." + INTAKE_GATE_CLASS + '__tile[aria-checked="true"]') || gate.querySelector("." + INTAKE_GATE_CLASS + "__tile");
-      if (checked) focusQuietly(checked);
-    });
-    gate.appendChild(compact);
+    inner.appendChild(tiles);
+    gate.appendChild(content);
     formRoot.insertBefore(gate, formRoot.firstChild);
     formRoot.classList.add(INTAKE_GATE_ON_CLASS);
     syncIntakeYearGate();
   }
-  // Pressing Change reopens the tiles; the next pick folds them again.
+  // Pressing the folded header reopens the tiles; the next pick folds them
+  // again.
   var intakeGateEditing = false;
-  // Set for the length of a tile pick, so the sync can tell a choice made on
-  // the page — which folds after the tick has had its moment — from a value
-  // that arrived with a draft or a pre-fill, which folds at once.
+  // Set for the length of a tile pick, so the sync can tell a fold owed to a
+  // choice made on the page — which waits for the tick to have its moment —
+  // from one owed to the form moving on, which happens at once.
   var intakeGatePicking = false;
   var intakeGateFoldTimer = null;
+  /* When the card folds. Not on the pick: the answer stays in view, tiles and
+     all, for as long as the visitor is still on their own details, and folds
+     to its summary line at the moment Academic Details unlocks — the form
+     moving on is what puts the question behind them (Amrit, 8 Sep 2026). A
+     pre-fill unlocks every card, so it arrives folded; a restored draft folds
+     only if it had got that far. Without the stepper (staff mode) there is
+     nothing to wait for, so an answered card may fold. */
+  function intakeGateFoldable() {
+    var select = q(FIELD_SELECTORS.intakeYear);
+    if (!select || !select.value) return false;
+    return !stepModeEnabled() || !!sectionUnlocked.study;
+  }
   function setIntakeGateFolded(folded) {
     var gate = formRoot && formRoot.querySelector("." + INTAKE_GATE_CLASS);
     if (!gate) return;
@@ -10976,19 +10950,21 @@ var ContourForm1Logic = function () {
       clearTimeout(intakeGateFoldTimer);
       intakeGateFoldTimer = null;
     }
-    var cls = INTAKE_GATE_CLASS + "--answered";
-    if (gate.classList.contains(cls) !== folded) gate.classList.toggle(cls, folded);
-    var compact = gate.querySelector("." + INTAKE_GATE_CLASS + "__compact");
+    if (gate.classList.contains(INTAKE_GATE_FOLDED_CLASS) !== folded) gate.classList.toggle(INTAKE_GATE_FOLDED_CLASS, folded);
+    var header = gate.querySelector(".contour-section-box__header");
     var expanded = folded ? "false" : "true";
-    if (compact && compact.getAttribute("aria-expanded") !== expanded) compact.setAttribute("aria-expanded", expanded);
+    if (header && header.getAttribute("aria-expanded") !== expanded) header.setAttribute("aria-expanded", expanded);
   }
-  function updateIntakeGateCompactText(gate, value) {
-    var title = gate.querySelector("." + INTAKE_GATE_CLASS + "__compact-title");
-    var summary = gate.querySelector("." + INTAKE_GATE_CLASS + "__compact-summary");
-    var titleText = value ? "Tutoring for " + value : "";
-    var summaryText = value ? intakeYearHint(value) : "";
-    if (title && title.textContent !== titleText) title.textContent = titleText;
+  function updateIntakeGateHeader(gate, value) {
+    var summary = gate.querySelector(".contour-section-box__summary");
+    var hint = value ? intakeYearHint(value) : "";
+    var summaryText = value ? [value, hint].filter(Boolean).join(" · ") : "";
     if (summary && summary.textContent !== summaryText) summary.textContent = summaryText;
+    var complete = value ? "1" : "0";
+    if (gate.getAttribute("data-contour-complete") !== complete) gate.setAttribute("data-contour-complete", complete);
+    var header = gate.querySelector(".contour-section-box__header");
+    var togglable = intakeGateFoldable();
+    if (header && header.classList.contains("contour-section-box__header--togglable") !== togglable) header.classList.toggle("contour-section-box__header--togglable", togglable);
   }
   function chooseIntakeYear(value) {
     var select = q(FIELD_SELECTORS.intakeYear);
@@ -11008,9 +10984,10 @@ var ContourForm1Logic = function () {
       intakeGatePicking = false;
     }
   }
-  // Tiles and form visibility follow the select — the one source of truth —
-  // and every write below is guarded, since this runs from evaluators that
-  // the form's MutationObserver re-fires (see enforceContactTypeLayout).
+  // Tiles, header and form visibility follow the select — the one source of
+  // truth — and every write below is guarded, since this runs from the
+  // section pass and from evaluators the form's MutationObserver re-fires
+  // (see enforceContactTypeLayout).
   function syncIntakeYearGate() {
     if (!formRoot) return;
     var gate = formRoot.querySelector("." + INTAKE_GATE_CLASS);
@@ -11034,21 +11011,27 @@ var ContourForm1Logic = function () {
       if (tile.getAttribute("tabindex") !== tab) tile.setAttribute("tabindex", tab);
     });
     var answered = !!value;
-    updateIntakeGateCompactText(gate, value);
-    if (!answered) {
+    updateIntakeGateHeader(gate, value);
+    var folded = gate.classList.contains(INTAKE_GATE_FOLDED_CLASS);
+    if (!intakeGateFoldable()) {
       intakeGateEditing = false;
-      setIntakeGateFolded(false);
-    } else if (!intakeGateEditing && !gate.classList.contains(INTAKE_GATE_CLASS + "--answered")) {
+      if (folded) setIntakeGateFolded(false);
+    } else if (!intakeGateEditing && !folded && !intakeGateFoldTimer) {
+      // A fold already on the timer is left to it: the section pass that
+      // follows a pick lands here a tick later and would otherwise fold at
+      // once, ahead of the tick and without the hand-off of focus.
       if (intakeGatePicking) {
-        // Long enough for the tick to land and be seen before the tiles
-        // fold; the compact row then takes focus so a keyboard is not left
-        // on a control that has just gone.
+        // A pick with the form already moved on (the visitor came back to
+        // change the year): long enough for the tick to land and be seen
+        // before the card folds, and the header then takes focus so a
+        // keyboard is not left on a control that has just gone.
         if (!intakeGateFoldTimer) intakeGateFoldTimer = setTimeout(function () {
           intakeGateFoldTimer = null;
+          if (!intakeGateFoldable() || intakeGateEditing) return;
           var hadFocus = gate.contains(document.activeElement);
           setIntakeGateFolded(true);
-          var compact = gate.querySelector("." + INTAKE_GATE_CLASS + "__compact");
-          if (hadFocus && compact) focusQuietly(compact);
+          var header = gate.querySelector(".contour-section-box__header");
+          if (hadFocus && header) focusQuietly(header);
         }, prefersReducedMotion() ? 0 : 420);
       } else {
         setIntakeGateFolded(true);
@@ -11179,6 +11162,12 @@ var ContourForm1Logic = function () {
     renderWelcomeConsultation();
     renderSubjectSummary();
     renderUcatIntakeNote();
+    // Last of the init-time stylesheets on purpose. The intake card wears the
+    // section-box classes from first paint, and the cards' rules only win
+    // their ties (the phone widget's pinned real input among them) by coming
+    // after the phone styles injected above — which they did when the first
+    // card was built after init, and must still.
+    injectSectionBoxStyles();
     initDraftCache();
     initPrefetchFromUrl();
   }
