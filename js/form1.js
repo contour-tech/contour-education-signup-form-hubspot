@@ -160,7 +160,11 @@ var ContourForm1Logic = function () {
     // form back until one is picked (Akshay via Amrit, 7 Sep 2026). The
     // native dropdown stays on the form, hidden, and carries the value; off
     // puts the dropdown back in Academic Details. See INTAKE YEAR GATE.
-    intakeYearGate: true
+    intakeYearGate: true,
+    // The navy tick disc on the picked intake tile's top-right corner. Off
+    // by default: the blue fill and the white figure already say "picked"
+    // (Amrit, 8 Sep 2026); on adds the badge for a trial.
+    intakeYearBadge: false
   };
   function featureEnabled(name) {
     var overrides = window.ContourForm1Config;
@@ -10943,11 +10947,13 @@ var ContourForm1Logic = function () {
         hintEl.textContent = hint;
         tile.appendChild(hintEl);
       }
-      var tick = document.createElement("span");
-      tick.className = INTAKE_GATE_CLASS + "__tick";
-      tick.setAttribute("aria-hidden", "true");
-      tick.innerHTML = '<svg viewBox="0 0 24 24" width="13" height="13" focusable="false"><path d="M20 6.5L9 17.5l-5-5" fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-      tile.appendChild(tick);
+      if (featureEnabled("intakeYearBadge")) {
+        var tick = document.createElement("span");
+        tick.className = INTAKE_GATE_CLASS + "__tick";
+        tick.setAttribute("aria-hidden", "true");
+        tick.innerHTML = '<svg viewBox="0 0 24 24" width="13" height="13" focusable="false"><path d="M20 6.5L9 17.5l-5-5" fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+        tile.appendChild(tick);
+      }
       tile.addEventListener("click", function () {
         chooseIntakeYear(option.value);
       });
