@@ -10713,11 +10713,14 @@ var ContourForm1Logic = function () {
              a centre-out wipe was tried first and read as busy). */
       gate + "__art { position: relative; display: block; width: 180px; height: 74px; }" +
       gate + "__art-layer { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; display: block; }" +
-      // 56 of the 150-unit box, and a 3.2 stroke of which the outer 1.6 shows.
-      // At 52 that closed the gap between the hook and the bowl of the 6; the
-      // larger figure gives the line the room (Amrit, 8 Sep 2026).
-      gate + "__art text { font-family: inherit; font-weight: 800; font-size: 56px; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }" +
-      gate + "__art-outline text { fill: #FFF9F1; stroke: #0C3166; stroke-width: 3.2; stroke-linejoin: round; paint-order: stroke fill; }" +
+      // 56 of the 150-unit box at weight 700, and a 3.4 stroke of which the
+      // outer 1.7 shows. The weight is the outline's, not the fill's: only the
+      // edge is drawn, and 700 keeps the gap between the hook and the bowl of
+      // the 6 open where 800 closed it. Judged in Inter, the page's font — the
+      // local test page fell back to a system face until it loaded Inter too,
+      // and that face's 6 shuts at any weight (Amrit, 8 Sep 2026).
+      gate + "__art text { font-family: inherit; font-weight: 700; font-size: 56px; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }" +
+      gate + "__art-outline text { fill: #FFF9F1; stroke: #0C3166; stroke-width: 3.4; stroke-linejoin: round; paint-order: stroke fill; }" +
       // Picked, the outline fades away on the same clock as the white fades
       // in, so the drawn figure becomes the solid one rather than gaining a
       // white edge.
