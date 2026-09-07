@@ -21,6 +21,14 @@
       ./test/serve.sh stop
   -->
 
+  <!-- Inter, as the Webflow page serves it. Without it the body stack below
+       falls back to a system face whose glyphs differ from Inter's — the
+       intake-year figures are drawn from the page font, and their outline and
+       the aperture of the 6 were being judged on the wrong shapes. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
   <link rel="stylesheet" href="../css/form1.css">
 
   <style>
