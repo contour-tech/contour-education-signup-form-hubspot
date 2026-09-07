@@ -7044,7 +7044,9 @@ var ContourForm1Logic = function () {
   // pressed beats anything guessed from focus.
   function withScrollAnchor(fn, preferred) {
     var anchor = preferred && preferred.el && preferred.el.isConnected ? preferred.el : scrollAnchorElement();
-    var before = anchor === (preferred && preferred.el) ? preferred.top : anchor ? anchor.getBoundingClientRect().top : null;
+    // Nothing laid out to hold — every card is still behind the intake-year
+    // gate — leaves both null, and null === null must not read preferred.top.
+    var before = preferred && anchor === preferred.el ? preferred.top : anchor ? anchor.getBoundingClientRect().top : null;
     var changed = fn();
     if (!changed || !anchor || before === null || !anchor.isConnected) return;
     pinScrollAnchor(anchor, before);
