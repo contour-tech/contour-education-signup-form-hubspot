@@ -10604,7 +10604,9 @@ var ContourForm1Logic = function () {
       return parseInt(option.value, 10) === now + 1;
     })[0];
     if (!next) return INTAKE_YEAR_NOTE_TEXT;
-    return "Most new students join the " + next.label + " intake. Many of our programs begin as early as November " + now + " with a two-week free trial.";
+    // Copy from the team (via Amrit, 8 Sep 2026): the pitch is the early
+    // start and the nudge to book, not which year most people pick.
+    return "Many of our " + next.label + " programs start as early as November. Sign up early to save your spot.";
   }
   /* =========================================================
      INTAKE YEAR GATE
