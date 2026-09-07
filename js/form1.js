@@ -153,7 +153,14 @@ var ContourForm1Logic = function () {
     // Asks the email-verify Cloud Function, as each email box is left,
     // whether the address can take mail: real domain, live mail server, not
     // a throwaway inbox. See EMAIL DELIVERABILITY CHECK (Amrit, 5 Sep 2026).
-    emailDeliverabilityCheck: true
+    emailDeliverabilityCheck: true,
+    // Puts "Which year are you interested in tutoring for?" at the very top
+    // of the form as two illustrated-card-sized tiles, 2026 and 2027, in the
+    // Student / Guardian selector's own language, and holds the rest of the
+    // form back until one is picked (Akshay via Amrit, 7 Sep 2026). The
+    // native dropdown stays on the form, hidden, and carries the value; off
+    // puts the dropdown back in Academic Details. See INTAKE YEAR GATE.
+    intakeYearGate: true
   };
   function featureEnabled(name) {
     var overrides = window.ContourForm1Config;
@@ -2618,6 +2625,7 @@ var ContourForm1Logic = function () {
     }
     lastIntakeForYearLevel = intake || null;
     setDisabledHint(yearSelect, intake ? "" : "Pick the year you are interested in tutoring for first.");
+    syncIntakeYearGate();
     var schoolInput = q(FIELD_SELECTORS.schoolText);
     if (schoolInput) {
       var location = getValue(FIELD_SELECTORS.location);
@@ -4043,6 +4051,14 @@ var ContourForm1Logic = function () {
         beginPrefillLinkSession();
         prefetchedTrialSubjectCodes = data.trialSubjectCodes || [];
         prefetchedEnrolledSubjectCodes = data.enrolledSubjectCodes || [];
+        // A student_id link is sent to people already on the books, and the
+        // intake-year option is missing from most of their records — so where
+        // the record does not name a year, the link itself is the answer:
+        // they are here for the coming intake (Amrit, 7 Sep 2026). Written
+        // into the record before applyPrefill so Year Level, which reads
+        // "year level in <intake>", lands on an enabled select in the usual
+        // order rather than being cleared for want of an intake.
+        fillIntakeYearForPrefillRecord(data.contact);
         applyPrefill(data.contact, data.guardian, data.associatedStudent, true);
         // The record filled the whole form in one go, so every card opens and
         // stays open — see revealAllSections. Set here rather than inside
@@ -4080,6 +4096,11 @@ var ContourForm1Logic = function () {
         // was typed on this browser rather than to a blank form.
         initDraftRestore();
       }
+      // The fetch failed or timed out, so the record's own answer is unknown
+      // but the link still says who this is: where the draft did not name a
+      // year either, the coming intake is the answer (see above). A record
+      // the server said is gone is a dud link and gets no default.
+      if (data === null) defaultIntakeYearForPrefillLink();
       // Prefill takes precedence (Guardian/Parent records select Guardian);
       // anything else — no record, unknown contact_type — defaults to Student.
       defaultContactTypeToStudent();
@@ -4917,6 +4938,24 @@ var ContourForm1Logic = function () {
     scheduleDerivedStateRefresh();
     return true;
   }
+  // The visitor has just changed an answer themselves. Reached from the
+  // form-level listeners above once they have ruled the event a real one, and
+  // directly from the intake-year gate, whose tiles are buttons of this
+  // file's own: the select they write to only ever sees a programmatic
+  // change, so the listeners would (rightly) ignore it.
+  function noteVisitorDraftEdit() {
+    if (!draftCacheEnabled()) return;
+    draftUserTouched = true;
+    if (prefillSessionLive) {
+      // The form has just diverged from the record, so the URL must stop
+      // claiming to be it. The draft that starts saving now carries the
+      // prefill context (email locks, trialling codes) — see
+      // draftPrefillMeta — so the refresh this enables loses nothing.
+      prefillSessionLive = false;
+      stripStudentIdFromUrl();
+    }
+    scheduleDraftSave();
+  }
   function initDraftCache() {
     if (!draftCacheEnabled()) return;
     // Only the student's own input starts a draft. Every prefill in this file
@@ -4929,16 +4968,7 @@ var ContourForm1Logic = function () {
       // browser's own input/change events raised by our setCheckboxChecked
       // calling click().
       if (!e.isTrusted || isProgrammaticEdit()) return;
-      draftUserTouched = true;
-      if (prefillSessionLive) {
-        // The form has just diverged from the record, so the URL must stop
-        // claiming to be it. The draft that starts saving now carries the
-        // prefill context (email locks, trialling codes) — see
-        // draftPrefillMeta — so the refresh this enables loses nothing.
-        prefillSessionLive = false;
-        stripStudentIdFromUrl();
-      }
-      scheduleDraftSave();
+      noteVisitorDraftEdit();
     }
     formRoot.addEventListener("input", onUserEdit);
     formRoot.addEventListener("change", onUserEdit);
@@ -6555,6 +6585,10 @@ var ContourForm1Logic = function () {
   function collectSectionNodes(parent, groups, state) {
     Array.prototype.forEach.call(parent.children, function (node) {
       if (node.classList && node.classList.contains(SECTION_HEADER_CLASS)) return;
+      // The intake-year gate is the form's opening question and belongs to no
+      // section: left in the walk it would be filed under Contact Information
+      // and adopted into that card.
+      if (node.classList && node.classList.contains(INTAKE_GATE_CLASS)) return;
       var indices = sectionIndicesIn(node);
       var splittable = node.children && node.children.length > 0 && !(node.classList && node.classList.contains(FIELD_WRAPPER_CLASS));
       if (indices.length > 1 && splittable) {
@@ -10529,13 +10563,293 @@ var ContourForm1Logic = function () {
   function ensureIntakeYearNote() {
     var fieldEl = q(FIELD_SELECTORS.intakeYear);
     if (!fieldEl) return;
-    var wrap = fieldWrapper(fieldEl);
-    if (!wrap) return;
-    if (wrap.querySelector(".contour-intake-year-note")) return;
+    // With the gate on, the dropdown is hidden and the question is asked by
+    // the tiles at the top — the note goes under those instead.
+    var gate = formRoot.querySelector("." + INTAKE_GATE_CLASS);
+    var host = gate || fieldWrapper(fieldEl);
+    if (!host) return;
+    if (host.querySelector(".contour-intake-year-note")) return;
     var note = document.createElement("div");
     note.className = "hs-field-desc contour-intake-year-note";
     note.textContent = INTAKE_YEAR_NOTE_TEXT;
-    wrap.appendChild(note);
+    host.appendChild(note);
+  }
+  /* =========================================================
+     INTAKE YEAR GATE
+     -----------------------------------------------------------
+     "Which year are you interested in tutoring for?" used to sit inside
+     Academic Details as a dropdown, after the visitor had already said who
+     they were and given their details. The whole form is a different form
+     for 2026 than for 2027 — year level, programs, subjects and campuses all
+     read off it — so it is now the first thing asked, ahead of Student /
+     Guardian, as two tiles in that selector's own language, and nothing else
+     is shown until one is picked (Akshay via Amrit, 7 Sep 2026).
+
+     The native <select> is not replaced: HubSpot validates and submits from
+     its own field, and the matrix, the year-level relabel and the draft all
+     read the field by name. Its wrapper is hidden and the tiles write into
+     it through the same programmatic setter the prefill uses, so every
+     evaluator downstream fires exactly as it did when the dropdown changed.
+     The tiles are built from the select's own options, so a third year
+     added in HubSpot appears here without a deploy.
+
+     Two consequences fall out of writing programmatically:
+       - the draft cache and the step logic both discount programmatic
+         changes, so a pick reports itself as the visitor's own act directly
+         (noteVisitorDraftEdit, the step flags);
+       - the reverse direction is a sync, not an event: a draft restore or a
+         pre-fill sets the select first, and the tiles read their state back
+         from it on every intake evaluation.
+     ========================================================= */
+  var INTAKE_GATE_CLASS = "contour-intake-gate";
+  var INTAKE_GATE_PENDING_CLASS = "contour-intake-gate-pending";
+  var INTAKE_GATE_QUESTION_FALLBACK = "Which year are you interested in tutoring for?";
+  // What a student_id link means when the record does not say: the coming
+  // intake. Matched against the select's options before it is used, so a
+  // form that has moved on to 2028 simply gets no default.
+  var PREFILL_DEFAULT_INTAKE_YEAR = "2027";
+  var intakeGateAnswered = null;
+  function intakeYearGateEnabled() {
+    return featureEnabled("intakeYearGate");
+  }
+  function injectIntakeYearGateStyles() {
+    if (document.getElementById("contour-intake-gate-styles")) return;
+    var style = document.createElement("style");
+    style.id = "contour-intake-gate-styles";
+    var gate = ".hs-form ." + INTAKE_GATE_CLASS;
+    var tile = gate + "__tile";
+    style.textContent = "" +
+      // Everything under the gate waits. display rather than visibility so the
+      // page has no phantom height to scroll into; the banners a return visit
+      // puts above the gate stay, they are about the visitor, not the answer.
+      ".hs-form." + INTAKE_GATE_PENDING_CLASS + " > :not(." + INTAKE_GATE_CLASS + "):not(.contour-prefill-banner):not(.contour-restore-banner) { display: none !important; }" +
+      gate + " { margin: 0 0 24px; }" +
+      // Same tier as the section card titles, one step up from the field
+      // labels: it is the form's first line, not one field among many.
+      gate + "__question { display: block; margin: 0 0 14px; font-size: 16px; font-weight: 600; line-height: 1.35; color: #0C3166; }" +
+      gate + "__tiles { display: flex; flex-direction: row; flex-wrap: nowrap; gap: 1.25rem; margin: 0; padding: 0; }" +
+      // The Student / Guardian card, restated as a button: same border, same
+      // radius, same navy fill on selection, same lift on hover. A button
+      // rather than a hidden radio so HubSpot never sees a field it did not
+      // define.
+      tile + " { position: relative; flex: 1 1 0%; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; margin: 0; padding: 26px 16px 22px; border: 1px solid rgba(12, 49, 102, 0.12); border-radius: 1rem; background: #FFFFFF; color: #0C3166; font: inherit; text-align: center; cursor: pointer; appearance: none; -webkit-appearance: none; transition: background-color .2s ease, border-color .2s ease, color .2s ease, transform .15s ease, box-shadow .16s ease; }" +
+      tile + ":hover { background: rgba(12, 49, 102, 0.04); transform: translateY(-1px); }" +
+      tile + ":active { transform: scale(0.985); }" +
+      tile + ":focus { outline: none; }" +
+      tile + ":focus-visible { border-color: #0540F2; box-shadow: 0 0 0 3px rgba(5, 64, 242, 0.18); }" +
+      tile + '[aria-checked="true"] { background: #0C3166; border-color: transparent; color: #FFF9F1; }' +
+      tile + '[aria-checked="true"]:hover { background: #0C3166; transform: none; }' +
+      // The year is the picture on this card. Tabular figures so 2026 and
+      // 2027 sit at exactly the same width and the pair reads as a pair.
+      gate + "__year { display: block; font-size: 38px; font-weight: 700; line-height: 1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }" +
+      gate + "__hint { display: block; font-size: 13.5px; font-weight: 500; line-height: 1.3; color: #6b7280; transition: color .2s ease; }" +
+      tile + '[aria-checked="true"] .' + INTAKE_GATE_CLASS + "__hint { color: rgba(255, 249, 241, 0.78); }" +
+      // The blue disc and white tick — the one confirmation glyph the form
+      // keeps (section cards, subject tiles). Sits in the corner so the year
+      // stays centred whether or not it is there.
+      gate + "__tick { position: absolute; top: 10px; right: 10px; display: none; align-items: center; justify-content: center; width: 22px; height: 22px; box-sizing: border-box; border-radius: 50%; border: 2px solid #FFFFFF; background: #007AFF; color: #FFFFFF; }" +
+      gate + "__tick svg { display: block; }" +
+      tile + '[aria-checked="true"] .' + INTAKE_GATE_CLASS + "__tick { display: flex; }" +
+      "@media (prefers-reduced-motion: no-preference) { " + tile + '[aria-checked="true"] .' + INTAKE_GATE_CLASS + "__tick { animation: contour-badge-in 260ms " + REVEAL_EASE + " both; } }" +
+      "@media (prefers-reduced-motion: reduce) { " + tile + " { transition: none; } }" +
+      // The note under the pair, where the dropdown's helper text used to be.
+      gate + " .contour-intake-year-note { margin-top: 12px; }" +
+      // Phones: the pair shares the row, the way the Student / Guardian cards
+      // do, so the room comes out of the padding and the type.
+      "@media screen and (max-width: 767px) {" +
+      " " + gate + "__tiles { gap: 10px; }" +
+      " " + tile + " { padding: 20px 10px 18px; gap: 5px; border-radius: 14px; }" +
+      " " + gate + "__year { font-size: 32px; }" +
+      " " + gate + "__hint { font-size: 12.5px; }" +
+      "}" +
+      "@media screen and (max-width: 360px) {" +
+      " " + gate + "__tiles { gap: 8px; }" +
+      " " + tile + " { padding: 16px 6px 14px; }" +
+      " " + gate + "__year { font-size: 28px; }" +
+      "}";
+    document.head.appendChild(style);
+  }
+  // The label HubSpot renders for the field, minus its required mark, so the
+  // wording stays whatever the form editor says it is.
+  function intakeYearQuestionText(select) {
+    var wrap = fieldWrapper(select);
+    var label = wrap && wrap.querySelector("label");
+    if (!label) return INTAKE_GATE_QUESTION_FALLBACK;
+    var clone = label.cloneNode(true);
+    var marks = clone.querySelectorAll(".hs-form-required");
+    for (var i = 0; i < marks.length; i++) marks[i].parentNode.removeChild(marks[i]);
+    var text = (clone.textContent || "").replace(/\s+/g, " ").trim();
+    return text || INTAKE_GATE_QUESTION_FALLBACK;
+  }
+  // "This year" / "Next year" read off the clock rather than being written
+  // in, so the pair stays right when the options roll over.
+  function intakeYearHint(value) {
+    var year = parseInt(value, 10);
+    if (!year) return "";
+    var now = new Date().getFullYear();
+    if (year === now) return "This year";
+    if (year === now + 1) return "Next year";
+    if (year < now) return "Current year";
+    return "";
+  }
+  function intakeYearOptions(select) {
+    return Array.prototype.filter.call(select.options, function (opt) {
+      return opt.value !== "";
+    }).map(function (opt) {
+      return { value: opt.value, label: opt.textContent.trim() || opt.value };
+    });
+  }
+  function renderIntakeYearGate() {
+    if (!intakeYearGateEnabled()) return;
+    var select = q(FIELD_SELECTORS.intakeYear);
+    if (!select || formRoot.querySelector("." + INTAKE_GATE_CLASS)) return;
+    var options = intakeYearOptions(select);
+    if (options.length === 0) return;
+    injectIntakeYearGateStyles();
+    var gate = document.createElement("div");
+    gate.className = INTAKE_GATE_CLASS;
+    var questionId = "contour-intake-gate-question";
+    var question = document.createElement("span");
+    question.id = questionId;
+    question.className = INTAKE_GATE_CLASS + "__question";
+    question.textContent = intakeYearQuestionText(select);
+    gate.appendChild(question);
+    var tiles = document.createElement("div");
+    tiles.className = INTAKE_GATE_CLASS + "__tiles";
+    tiles.setAttribute("role", "radiogroup");
+    tiles.setAttribute("aria-labelledby", questionId);
+    options.forEach(function (option) {
+      var tile = document.createElement("button");
+      tile.type = "button";
+      tile.className = INTAKE_GATE_CLASS + "__tile";
+      tile.setAttribute("role", "radio");
+      tile.setAttribute("aria-checked", "false");
+      tile.setAttribute("data-contour-intake-year", option.value);
+      var year = document.createElement("span");
+      year.className = INTAKE_GATE_CLASS + "__year";
+      year.textContent = option.label;
+      tile.appendChild(year);
+      var hint = intakeYearHint(option.value);
+      if (hint) {
+        var hintEl = document.createElement("span");
+        hintEl.className = INTAKE_GATE_CLASS + "__hint";
+        hintEl.textContent = hint;
+        tile.appendChild(hintEl);
+      }
+      var tick = document.createElement("span");
+      tick.className = INTAKE_GATE_CLASS + "__tick";
+      tick.setAttribute("aria-hidden", "true");
+      tick.innerHTML = '<svg viewBox="0 0 24 24" width="11" height="11" focusable="false"><path d="M20 6.5L9 17.5l-5-5" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+      tile.appendChild(tick);
+      tile.addEventListener("click", function () {
+        chooseIntakeYear(option.value);
+      });
+      tiles.appendChild(tile);
+    });
+    // Arrow keys move between the tiles the way they do between radios; the
+    // click handler does the choosing, so Space and Enter come for free.
+    tiles.addEventListener("keydown", function (e) {
+      var keys = { ArrowLeft: -1, ArrowUp: -1, ArrowRight: 1, ArrowDown: 1 };
+      if (!(e.key in keys)) return;
+      var all = Array.prototype.slice.call(tiles.querySelectorAll("." + INTAKE_GATE_CLASS + "__tile"));
+      var at = all.indexOf(document.activeElement);
+      if (at === -1) return;
+      e.preventDefault();
+      var next = all[(at + keys[e.key] + all.length) % all.length];
+      next.focus();
+      chooseIntakeYear(next.getAttribute("data-contour-intake-year"));
+    });
+    gate.appendChild(tiles);
+    formRoot.insertBefore(gate, formRoot.firstChild);
+    syncIntakeYearGate();
+  }
+  function chooseIntakeYear(value) {
+    var select = q(FIELD_SELECTORS.intakeYear);
+    if (!select || select.value === value) return;
+    // Programmatic on purpose: the setter's change event is what runs the
+    // evaluators, and the draft and step logic are told about the visitor's
+    // act directly here rather than through an event they would discount.
+    setSelectOrTextValue(FIELD_SELECTORS.intakeYear, value);
+    stepInteracted = stepUserActed = true;
+    stepPinnedId = null;
+    noteVisitorDraftEdit();
+    syncIntakeYearGate();
+  }
+  // Tiles and form visibility follow the select — the one source of truth —
+  // and every write below is guarded, since this runs from evaluators that
+  // the form's MutationObserver re-fires (see enforceContactTypeLayout).
+  function syncIntakeYearGate() {
+    if (!formRoot) return;
+    var gate = formRoot.querySelector("." + INTAKE_GATE_CLASS);
+    if (!gate) return;
+    var select = q(FIELD_SELECTORS.intakeYear);
+    var value = select ? select.value : "";
+    // The dropdown's wrapper stays hidden through HubSpot's re-renders, which
+    // hand back a fresh, visible node.
+    if (select) {
+      var wrap = fieldWrapper(select);
+      if (wrap && wrap.style.display !== "none") hideFieldWrapper(select);
+    }
+    Array.prototype.forEach.call(gate.querySelectorAll("." + INTAKE_GATE_CLASS + "__tile"), function (tile) {
+      var checked = !!value && tile.getAttribute("data-contour-intake-year") === value;
+      var want = checked ? "true" : "false";
+      if (tile.getAttribute("aria-checked") !== want) tile.setAttribute("aria-checked", want);
+      // Roving tabindex: the chosen tile (or the first, before a choice) is
+      // the group's one tab stop.
+      var stop = checked || (!value && tile === gate.querySelector("." + INTAKE_GATE_CLASS + "__tile"));
+      var tab = stop ? "0" : "-1";
+      if (tile.getAttribute("tabindex") !== tab) tile.setAttribute("tabindex", tab);
+    });
+    var answered = !!value;
+    var pending = formRoot.classList.contains(INTAKE_GATE_PENDING_CLASS);
+    if (!answered && !pending) formRoot.classList.add(INTAKE_GATE_PENDING_CLASS);
+    if (answered && pending) {
+      formRoot.classList.remove(INTAKE_GATE_PENDING_CLASS);
+      // The form arriving under the answer: each top-level piece in turn, the
+      // same cascade a pre-filled return plays. Only for a pick made on the
+      // page — a form that starts answered (draft, pre-fill) has its own
+      // entrance.
+      if (intakeGateAnswered === false) {
+        var delay = 0;
+        Array.prototype.forEach.call(formRoot.children, function (node) {
+          if (node === gate || !node.style || node.style.display === "none") return;
+          playReveal(node, delay);
+          delay += 70;
+        });
+      }
+    }
+    intakeGateAnswered = answered;
+  }
+  function prefillDefaultIntakeYearOffered() {
+    var select = q(FIELD_SELECTORS.intakeYear);
+    return !!select && intakeYearOptions(select).some(function (option) {
+      return option.value === PREFILL_DEFAULT_INTAKE_YEAR;
+    });
+  }
+  // See initPrefetchFromUrl. Fills the record's blank before it is applied;
+  // a year the record does name, even one the form no longer offers, is left
+  // for applyPrefill to handle as it always has.
+  function fillIntakeYearForPrefillRecord(contact) {
+    if (!intakeYearGateEnabled() || !contact) return;
+    if (contact.which_year_are_you_interested_in_tutoring_for_) return;
+    if (!prefillDefaultIntakeYearOffered()) return;
+    contact.which_year_are_you_interested_in_tutoring_for_ = PREFILL_DEFAULT_INTAKE_YEAR;
+  }
+  // The fetch-failed path has no record to fill, so the select is written
+  // directly. Retried the way defaultContactTypeToStudent is: HubSpot's embed
+  // re-renders shortly after the form is ready and can drop a value written
+  // synchronously, so it is checked and re-applied a few times.
+  function defaultIntakeYearForPrefillLink(tries) {
+    if (!intakeYearGateEnabled()) return;
+    if (tries === undefined) tries = 4;
+    var select = q(FIELD_SELECTORS.intakeYear);
+    if (!select || select.value) return;
+    if (!prefillDefaultIntakeYearOffered()) return;
+    setSelectOrTextValue(FIELD_SELECTORS.intakeYear, PREFILL_DEFAULT_INTAKE_YEAR);
+    syncIntakeYearGate();
+    if (tries > 0) setTimeout(function () {
+      defaultIntakeYearForPrefillLink(tries - 1);
+    }, 250);
   }
   function ensureDividerBefore(fieldEl, id) {
     if (!fieldEl) return;
@@ -10565,6 +10879,7 @@ var ContourForm1Logic = function () {
     watchRegionField();
     enhanceCampusLabels();
     initCampusMapHover();
+    renderIntakeYearGate();
     ensureIntakeYearNote();
     ensureDividerBefore(q(FIELD_SELECTORS.programInterest), "contour-divider-program-interest");
     // Sits between the "Your Subjects" summary box and Preferred Campuses —
