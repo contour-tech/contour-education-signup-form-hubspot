@@ -4549,17 +4549,17 @@ var ContourForm1Logic = function () {
     "31": [9, 9],     // NL
     "33": [9, 9],     // FR
     "34": [9, 9],     // ES
-    "44": [10, 10],   // UK
+    "44": [9, 10],    // UK (a few 01xxx areas run to 9)
     "52": [10, 10],   // MX
     "55": [10, 11],   // BR
-    "60": [9, 10],    // MY
+    "60": [8, 10],    // MY (landlines 8–9, mobiles 9–10)
     "61": [9, 9],     // AU
     "62": [9, 12],    // ID
     "63": [10, 10],   // PH
     "64": [8, 10],    // NZ
     "65": [8, 8],     // SG
     "66": [9, 9],     // TH
-    "81": [10, 10],   // JP
+    "81": [9, 10],    // JP (landlines 9, mobiles 10)
     "82": [9, 10],    // KR
     "84": [9, 9],     // VN
     "86": [11, 11],   // CN
@@ -4574,11 +4574,48 @@ var ContourForm1Logic = function () {
     "852": [8, 8],    // HK
     "880": [10, 10],  // BD
     "966": [9, 9],    // SA
-    "971": [9, 9],    // AE
+    "971": [8, 9],    // AE (landlines 8, mobiles 9)
     "977": [10, 10]   // NP
   };
   var PHONE_E164_MAX_DIGITS = 15;
   var PHONE_FALLBACK_MIN_DIGITS = 7;
+  var PHONE_FALLBACK_MAX_DIGITS = 20;
+  /* Countries whose length is enforced as a validation rule, not only used to
+     tell a duplicated code from a genuine number. Agreed with Akshay on Slack
+     (7 Sep 2026): the main demographic — AU, NZ, UK — plus Canada, US,
+     Malaysia, Japan and Dubai; India added the same day (10 digits for both
+     mobiles and landlines with their STD code). Everywhere else keeps the generic 7–20 rule so
+     nobody is turned away on a numbering plan nobody here has checked. No
+     library: the table above is the whole of it. */
+  var PHONE_LENGTH_ENFORCED_DIALS = ["61", "64", "44", "1", "60", "81", "971", "91"];
+  function phoneLengthRule(dial) {
+    if (!dial || PHONE_LENGTH_ENFORCED_DIALS.indexOf(dial) === -1) return null;
+    return PHONE_NATIONAL_LENGTHS[dial] || null;
+  }
+  // national: digits after the country code with the trunk zero already off.
+  function phoneNationalLengthOk(dial, national) {
+    var rule = phoneLengthRule(dial);
+    var min = rule ? rule[0] : PHONE_FALLBACK_MIN_DIGITS;
+    var max = rule ? rule[1] : PHONE_FALLBACK_MAX_DIGITS;
+    return national.length >= min && national.length <= max;
+  }
+  // Says how many digits were expected, so "1111111" under AU (+61) reads as
+  // two short rather than merely wrong.
+  function phoneLengthMessage(dial) {
+    var rule = phoneLengthRule(dial);
+    if (!rule) return "Please enter a valid phone number.";
+    var count = rule[0] === rule[1] ? String(rule[0]) : rule[0] + "–" + rule[1];
+    return "Please enter a valid phone number (" + count + " digits after the country code).";
+  }
+  // The dial code of whichever widget the box belongs to — HubSpot's
+  // .hs-fieldtype-intl-phone for the guardian, the page's .contour-intl-phone
+  // for the student. Both dropdowns carry an ISO or dial value dialCodeForIso
+  // understands.
+  function phoneGroupDial(input) {
+    var group = input && input.closest ? input.closest(".hs-fieldtype-intl-phone, .contour-intl-phone") : null;
+    var select = group ? group.querySelector("select") : null;
+    return select ? dialCodeForIso(select.value) : null;
+  }
   // The national digits with the duplicated code taken off, or null when
   // there is nothing to take off — no code at the front, or the number is a
   // plausible length as it stands, or stripping would not make it one.
@@ -9059,7 +9096,9 @@ var ContourForm1Logic = function () {
     // Dial code and nothing else. HubSpot's own required error owns that state
     // — ours would stack a second line under it saying the same thing twice.
     if (national === "") return true;
-    return national.length >= STUDENT_PHONE_MIN_DIGITS && national.length <= STUDENT_PHONE_MAX_DIGITS;
+    // The trunk zero is dropped before counting, as it is before composing:
+    // "0412 345 678" is nine AU digits, not ten.
+    return phoneNationalLengthOk(phoneGroupDial(input), national.replace(/^0+/, ""));
   }
   // HubSpot runs its own validation on the guardian phone box — required, its
   // own character rule, and an in-range check — and renders each in the same
@@ -9130,7 +9169,20 @@ var ContourForm1Logic = function () {
       clearContourError(input, config.errorClass);
       return;
     }
-    if (allowShow) showContourError(input, config.errorClass);
+    if (!allowShow) return;
+    // The phone message depends on which country is selected, so it is set
+    // each time rather than once at creation.
+    // Written only on change: this runs from the form's MutationObserver, and
+    // an unconditional textContent write is itself a mutation, so the observer
+    // would feed itself and the page would spin (caught in the headless run,
+    // 7 Sep 2026).
+    if (config.kind === "phone") {
+      var list = contourErrorList(input, config.errorClass);
+      var label = list ? list.querySelector(".hs-error-msg") : null;
+      var message = phoneLengthMessage(phoneGroupDial(input));
+      if (label && label.textContent !== message) label.textContent = message;
+    }
+    showContourError(input, config.errorClass);
   }
   function contactFormatTouched(input) {
     return input.getAttribute(CONTACT_FORMAT_TOUCHED_ATTR) === "1";
@@ -9854,8 +9906,6 @@ var ContourForm1Logic = function () {
     document.head.appendChild(style);
   }
   var STUDENT_PHONE_DEFAULT_ISO = "au";
-  var STUDENT_PHONE_MIN_DIGITS = 7;
-  var STUDENT_PHONE_MAX_DIGITS = 20;
   // HubSpot's native intl-phone widget (the guardian/Your Phone field) geo-
   // detects the visitor's country and seeds its box with the dial code
   // ("+91" in India) before this code ever runs. The student widget mirrors
@@ -10074,9 +10124,7 @@ var ContourForm1Logic = function () {
     // Judged on the national digits alone, the same way the guardian phone is
     // (contactFormatIsValid). Counting the dial code in let "+61 41234" through
     // as seven digits when the visitor had typed five (Amrit, 5 Sep 2026).
-    if (national.length < STUDENT_PHONE_MIN_DIGITS || national.length > STUDENT_PHONE_MAX_DIGITS) {
-      return "invalid";
-    }
+    if (!phoneNationalLengthOk(dial, national)) return "invalid";
     return "ok";
   }
   function studentPhoneIsValid() {
@@ -10119,9 +10167,9 @@ var ContourForm1Logic = function () {
     }
     if (!showWhenInvalid) return;
     var errorLabel = errorList.querySelector(".hs-error-msg");
-    if (errorLabel) {
-      errorLabel.textContent = state === "incomplete" ? "Please complete this required field." : "Please enter a valid phone number.";
-    }
+    var message = state === "incomplete" ? "Please complete this required field." : phoneLengthMessage(phoneGroupDial(input));
+    // Same guard as refreshContactFormatError: no write unless the text moves.
+    if (errorLabel && errorLabel.textContent !== message) errorLabel.textContent = message;
     input.classList.add("invalid", "error");
     if (visible !== input) visible.classList.add("invalid", "error");
     showErrorList(errorList);
