@@ -10564,15 +10564,25 @@ var ContourForm1Logic = function () {
     var fieldEl = q(FIELD_SELECTORS.intakeYear);
     if (!fieldEl) return;
     // With the gate on, the dropdown is hidden and the question is asked by
-    // the tiles at the top — the note goes under those instead.
-    var gate = formRoot.querySelector("." + INTAKE_GATE_CLASS);
-    var host = gate || fieldWrapper(fieldEl);
+    // the tiles at the top — the note goes under those instead, and says
+    // what the tile captions leave out: which year a new student should
+    // book for (Amrit, 7 Sep 2026).
+    var gateBody = formRoot.querySelector("." + INTAKE_GATE_CLASS + "__body-inner");
+    var host = gateBody || fieldWrapper(fieldEl);
     if (!host) return;
     if (host.querySelector(".contour-intake-year-note")) return;
     var note = document.createElement("div");
     note.className = "hs-field-desc contour-intake-year-note";
-    note.textContent = INTAKE_YEAR_NOTE_TEXT;
+    note.textContent = gateBody ? intakeYearGateNoteText(fieldEl) : INTAKE_YEAR_NOTE_TEXT;
     host.appendChild(note);
+  }
+  function intakeYearGateNoteText(select) {
+    var now = new Date().getFullYear();
+    var next = intakeYearOptions(select).filter(function (option) {
+      return parseInt(option.value, 10) === now + 1;
+    })[0];
+    if (!next) return INTAKE_YEAR_NOTE_TEXT;
+    return "New students: book for " + next.label + ". Programs begin as early as November " + now + " with a two-week free trial.";
   }
   /* =========================================================
      INTAKE YEAR GATE
@@ -10643,10 +10653,48 @@ var ContourForm1Logic = function () {
       tile + ":focus-visible { border-color: #0540F2; box-shadow: 0 0 0 3px rgba(5, 64, 242, 0.18); }" +
       tile + '[aria-checked="true"] { background: #0C3166; border-color: transparent; color: #FFF9F1; }' +
       tile + '[aria-checked="true"]:hover { background: #0C3166; transform: none; }' +
-      // The year is the picture on this card. Tabular figures so 2026 and
-      // 2027 sit at exactly the same width and the pair reads as a pair.
-      gate + "__year { display: block; font-size: 38px; font-weight: 700; line-height: 1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }" +
+      // The year is the picture on this card, drawn as a misregistered print:
+      // a solid figure behind, tilted one way and pushed down and right, and
+      // an outline in front tilted the other, so the two never quite line up
+      // (Amrit, 7 Sep 2026). Idle, the backdrop is a navy wash and the
+      // outline navy; picked, the backdrop takes the lime and the outline
+      // goes cream — lime fires on the choice, as it does everywhere else on
+      // the form. Both layers are the page's own type via SVG text, so the
+      // figures match the labels around them and there is nothing to host.
+      gate + "__art { display: block; width: 150px; height: 62px; overflow: visible; }" +
+      gate + "__art text { font-family: inherit; font-weight: 800; font-size: 52px; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; transition: fill .2s ease, stroke .2s ease; }" +
+      gate + "__art-back { fill: rgba(12, 49, 102, 0.14); }" +
+      gate + "__art-front { fill: none; stroke: #0C3166; stroke-width: 2.2; stroke-linejoin: round; }" +
+      tile + '[aria-checked="true"] .' + INTAKE_GATE_CLASS + "__art-back { fill: #D7FC3D; }" +
+      tile + '[aria-checked="true"] .' + INTAKE_GATE_CLASS + "__art-front { stroke: #FFF9F1; }" +
+      ".contour-sr-only { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }" +
       gate + "__hint { display: block; font-size: 13.5px; font-weight: 500; line-height: 1.3; color: #6b7280; transition: color .2s ease; }" +
+      // Once answered the question folds to one navy row — the collapsed
+      // section card's own band, tick, title and pencil — and the tiles
+      // come back when the row is pressed. The fold is the cards' 1fr/0fr
+      // squeeze, so the height animates without being measured.
+      gate + "__body { display: grid; grid-template-rows: 1fr; }" +
+      gate + "__body-inner { min-height: 0; min-width: 0; }" +
+      gate + "--answered ." + INTAKE_GATE_CLASS + "__body { grid-template-rows: 0fr; }" +
+      gate + "--answered ." + INTAKE_GATE_CLASS + "__body-inner { overflow: hidden; visibility: hidden; opacity: 0; }" +
+            // visibility is only delayed on the way shut. A transition is read from
+      // the state being entered, so the folded rule carries the delay (the
+      // tiles stay visible while they fade) and the open rule none — the
+      // tiles are visible the instant the row is pressed, which is what lets
+      // the Change handler put focus on one in the same tick.
+      "@media (prefers-reduced-motion: no-preference) { " + gate + "__body { transition: grid-template-rows 0.3s ease; } " + gate + "__body-inner { transition: opacity 0.25s ease; } " + gate + "--answered ." + INTAKE_GATE_CLASS + "__body-inner { transition: visibility 0.3s, opacity 0.25s ease; } }" +
+      gate + "__compact { display: none; align-items: center; gap: 12px; width: 100%; margin: 0; padding: 12px 22px; box-sizing: border-box; border: 0; border-radius: 16px; background: #0C3166; color: #FFFFFF; font: inherit; text-align: left; cursor: pointer; appearance: none; -webkit-appearance: none; transition: background-color .15s ease; }" +
+      gate + "--answered ." + INTAKE_GATE_CLASS + "__compact { display: flex; }" +
+      gate + "__compact:hover { background: #123B73; }" +
+      gate + "__compact:focus { outline: none; }" +
+      gate + "__compact:focus-visible { box-shadow: 0 0 0 3px rgba(5, 64, 242, 0.35); }" +
+      gate + "__compact-status { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; box-sizing: border-box; border-radius: 50%; border: 2px solid #FFFFFF; background: #007AFF; color: #FFFFFF; }" +
+      gate + "__compact-status svg { display: block; }" +
+      gate + "__compact-title { flex: 0 0 auto; font-weight: " + headerFontWeight(700, 600) + "; " + headerCapsCss(12.5, "0.08em", 14.5) + " color: #FFFFFF; }" +
+      gate + "__compact-summary { flex: 1 1 auto; min-width: 0; font-size: 13.5px; font-weight: 500; color: rgba(255, 255, 255, 0.72); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }" +
+      gate + "__compact-action { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; margin-left: auto; border-radius: 50%; color: #FFFFFF; transition: background-color 0.15s ease; }" +
+      gate + "__compact:hover ." + INTAKE_GATE_CLASS + "__compact-action { background: rgba(255, 255, 255, 0.12); }" +
+      gate + "__compact-action svg { display: block; }" +
       tile + '[aria-checked="true"] .' + INTAKE_GATE_CLASS + "__hint { color: rgba(255, 249, 241, 0.78); }" +
       // The blue disc and white tick — the one confirmation glyph the form
       // keeps (section cards, subject tiles). Sits in the corner so the year
@@ -10663,13 +10711,15 @@ var ContourForm1Logic = function () {
       "@media screen and (max-width: 767px) {" +
       " " + gate + "__tiles { gap: 10px; }" +
       " " + tile + " { padding: 20px 10px 18px; gap: 5px; border-radius: 14px; }" +
-      " " + gate + "__year { font-size: 32px; }" +
+      " " + gate + "__art { width: 112px; height: 46px; }" +
       " " + gate + "__hint { font-size: 12.5px; }" +
+      " " + gate + "__compact { padding: 14px 16px; }" +
+      " " + gate + "__compact-summary { display: none; }" +
       "}" +
       "@media screen and (max-width: 360px) {" +
       " " + gate + "__tiles { gap: 8px; }" +
       " " + tile + " { padding: 16px 6px 14px; }" +
-      " " + gate + "__year { font-size: 28px; }" +
+      " " + gate + "__art { width: 96px; height: 40px; }" +
       "}" +
       // With the intake year gone from Academic Details, Year Level was left
       // alone in the right half of its row and Location alone above it. The
@@ -10703,16 +10753,42 @@ var ContourForm1Logic = function () {
     var text = (clone.textContent || "").replace(/\s+/g, " ").trim();
     return text || INTAKE_GATE_QUESTION_FALLBACK;
   }
-  // "This year" / "Next year" read off the clock rather than being written
-  // in, so the pair stays right when the options roll over.
+  // Captions read off the clock rather than being written in, so the pair
+  // stays right when the options roll over. Kept to one short line each of
+  // matching length, so the tiles hold the same height on a phone; the
+  // longer advice lives in the note under the pair (Amrit, 7 Sep 2026).
   function intakeYearHint(value) {
     var year = parseInt(value, 10);
     if (!year) return "";
     var now = new Date().getFullYear();
-    if (year === now) return "This year";
-    if (year === now + 1) return "Next year";
-    if (year < now) return "Current year";
+    if (year === now) return "Join for the rest of this year";
+    if (year === now + 1) return "Early starts from November " + now;
     return "";
+  }
+  function intakeYearArt(label) {
+    var ns = "http://www.w3.org/2000/svg";
+    var svg = document.createElementNS(ns, "svg");
+    svg.setAttribute("class", INTAKE_GATE_CLASS + "__art");
+    svg.setAttribute("viewBox", "0 0 150 62");
+    svg.setAttribute("aria-hidden", "true");
+    svg.setAttribute("focusable", "false");
+    var back = document.createElementNS(ns, "text");
+    back.setAttribute("class", INTAKE_GATE_CLASS + "__art-back");
+    back.setAttribute("x", "79");
+    back.setAttribute("y", "52");
+    back.setAttribute("text-anchor", "middle");
+    back.setAttribute("transform", "rotate(-4 75 31) translate(4 3)");
+    back.textContent = label;
+    var front = document.createElementNS(ns, "text");
+    front.setAttribute("class", INTAKE_GATE_CLASS + "__art-front");
+    front.setAttribute("x", "75");
+    front.setAttribute("y", "50");
+    front.setAttribute("text-anchor", "middle");
+    front.setAttribute("transform", "rotate(1.5 75 31)");
+    front.textContent = label;
+    svg.appendChild(back);
+    svg.appendChild(front);
+    return svg;
   }
   function intakeYearOptions(select) {
     return Array.prototype.filter.call(select.options, function (opt) {
@@ -10730,12 +10806,17 @@ var ContourForm1Logic = function () {
     injectIntakeYearGateStyles();
     var gate = document.createElement("div");
     gate.className = INTAKE_GATE_CLASS;
+    var body = document.createElement("div");
+    body.className = INTAKE_GATE_CLASS + "__body";
+    var bodyInner = document.createElement("div");
+    bodyInner.className = INTAKE_GATE_CLASS + "__body-inner";
+    body.appendChild(bodyInner);
     var questionId = "contour-intake-gate-question";
     var question = document.createElement("span");
     question.id = questionId;
     question.className = INTAKE_GATE_CLASS + "__question";
     question.textContent = intakeYearQuestionText(select);
-    gate.appendChild(question);
+    bodyInner.appendChild(question);
     var tiles = document.createElement("div");
     tiles.className = INTAKE_GATE_CLASS + "__tiles";
     tiles.setAttribute("role", "radiogroup");
@@ -10747,8 +10828,9 @@ var ContourForm1Logic = function () {
       tile.setAttribute("role", "radio");
       tile.setAttribute("aria-checked", "false");
       tile.setAttribute("data-contour-intake-year", option.value);
+      tile.appendChild(intakeYearArt(option.label));
       var year = document.createElement("span");
-      year.className = INTAKE_GATE_CLASS + "__year";
+      year.className = "contour-sr-only";
       year.textContent = option.label;
       tile.appendChild(year);
       var hint = intakeYearHint(option.value);
@@ -10781,10 +10863,55 @@ var ContourForm1Logic = function () {
       next.focus();
       chooseIntakeYear(next.getAttribute("data-contour-intake-year"));
     });
-    gate.appendChild(tiles);
+    bodyInner.appendChild(tiles);
+    gate.appendChild(body);
+    var compact = document.createElement("button");
+    compact.type = "button";
+    compact.className = INTAKE_GATE_CLASS + "__compact";
+    compact.setAttribute("aria-expanded", "false");
+    compact.innerHTML = '<span class="' + INTAKE_GATE_CLASS + '__compact-status" aria-hidden="true"><svg viewBox="0 0 24 24" width="11" height="11" focusable="false"><path d="M20 6.5L9 17.5l-5-5" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>' +
+      '<span class="' + INTAKE_GATE_CLASS + '__compact-title"></span>' +
+      '<span class="' + INTAKE_GATE_CLASS + '__compact-summary"></span>' +
+      '<span class="' + INTAKE_GATE_CLASS + '__compact-action" aria-hidden="true"><svg viewBox="0 0 24 24" width="15" height="15" focusable="false"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>' +
+      '<span class="contour-sr-only">Change</span>';
+    compact.addEventListener("click", function () {
+      intakeGateEditing = true;
+      setIntakeGateFolded(false);
+      var checked = gate.querySelector("." + INTAKE_GATE_CLASS + '__tile[aria-checked="true"]') || gate.querySelector("." + INTAKE_GATE_CLASS + "__tile");
+      if (checked) focusQuietly(checked);
+    });
+    gate.appendChild(compact);
     formRoot.insertBefore(gate, formRoot.firstChild);
     formRoot.classList.add(INTAKE_GATE_ON_CLASS);
     syncIntakeYearGate();
+  }
+  // Pressing Change reopens the tiles; the next pick folds them again.
+  var intakeGateEditing = false;
+  // Set for the length of a tile pick, so the sync can tell a choice made on
+  // the page — which folds after the tick has had its moment — from a value
+  // that arrived with a draft or a pre-fill, which folds at once.
+  var intakeGatePicking = false;
+  var intakeGateFoldTimer = null;
+  function setIntakeGateFolded(folded) {
+    var gate = formRoot && formRoot.querySelector("." + INTAKE_GATE_CLASS);
+    if (!gate) return;
+    if (intakeGateFoldTimer) {
+      clearTimeout(intakeGateFoldTimer);
+      intakeGateFoldTimer = null;
+    }
+    var cls = INTAKE_GATE_CLASS + "--answered";
+    if (gate.classList.contains(cls) !== folded) gate.classList.toggle(cls, folded);
+    var compact = gate.querySelector("." + INTAKE_GATE_CLASS + "__compact");
+    var expanded = folded ? "false" : "true";
+    if (compact && compact.getAttribute("aria-expanded") !== expanded) compact.setAttribute("aria-expanded", expanded);
+  }
+  function updateIntakeGateCompactText(gate, value) {
+    var title = gate.querySelector("." + INTAKE_GATE_CLASS + "__compact-title");
+    var summary = gate.querySelector("." + INTAKE_GATE_CLASS + "__compact-summary");
+    var titleText = value ? "Tutoring for " + value : "";
+    var summaryText = value ? intakeYearHint(value) : "";
+    if (title && title.textContent !== titleText) title.textContent = titleText;
+    if (summary && summary.textContent !== summaryText) summary.textContent = summaryText;
   }
   function chooseIntakeYear(value) {
     var select = q(FIELD_SELECTORS.intakeYear);
@@ -10792,11 +10919,17 @@ var ContourForm1Logic = function () {
     // Programmatic on purpose: the setter's change event is what runs the
     // evaluators, and the draft and step logic are told about the visitor's
     // act directly here rather than through an event they would discount.
-    setSelectOrTextValue(FIELD_SELECTORS.intakeYear, value);
-    stepInteracted = stepUserActed = true;
-    stepPinnedId = null;
-    noteVisitorDraftEdit();
-    syncIntakeYearGate();
+    intakeGateEditing = false;
+    intakeGatePicking = true;
+    try {
+      setSelectOrTextValue(FIELD_SELECTORS.intakeYear, value);
+      stepInteracted = stepUserActed = true;
+      stepPinnedId = null;
+      noteVisitorDraftEdit();
+      syncIntakeYearGate();
+    } finally {
+      intakeGatePicking = false;
+    }
   }
   // Tiles and form visibility follow the select — the one source of truth —
   // and every write below is guarded, since this runs from evaluators that
@@ -10824,6 +10957,26 @@ var ContourForm1Logic = function () {
       if (tile.getAttribute("tabindex") !== tab) tile.setAttribute("tabindex", tab);
     });
     var answered = !!value;
+    updateIntakeGateCompactText(gate, value);
+    if (!answered) {
+      intakeGateEditing = false;
+      setIntakeGateFolded(false);
+    } else if (!intakeGateEditing && !gate.classList.contains(INTAKE_GATE_CLASS + "--answered")) {
+      if (intakeGatePicking) {
+        // Long enough for the tick to land and be seen before the tiles
+        // fold; the compact row then takes focus so a keyboard is not left
+        // on a control that has just gone.
+        if (!intakeGateFoldTimer) intakeGateFoldTimer = setTimeout(function () {
+          intakeGateFoldTimer = null;
+          var hadFocus = gate.contains(document.activeElement);
+          setIntakeGateFolded(true);
+          var compact = gate.querySelector("." + INTAKE_GATE_CLASS + "__compact");
+          if (hadFocus && compact) focusQuietly(compact);
+        }, prefersReducedMotion() ? 0 : 420);
+      } else {
+        setIntakeGateFolded(true);
+      }
+    }
     var pending = formRoot.classList.contains(INTAKE_GATE_PENDING_CLASS);
     if (!answered && !pending) formRoot.classList.add(INTAKE_GATE_PENDING_CLASS);
     if (answered && pending) {
