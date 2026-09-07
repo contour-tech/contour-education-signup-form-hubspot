@@ -10617,6 +10617,8 @@ var ContourForm1Logic = function () {
   // that only holds once the dropdown has left Academic Details.
   var INTAKE_GATE_ON_CLASS = "contour-intake-gate-on";
   var INTAKE_GATE_QUESTION_FALLBACK = "Which year are you interested in tutoring for?";
+  var INTAKE_GATE_RING_NAVY_ID = "contour-intake-gate-ring-navy";
+  var INTAKE_GATE_RING_CREAM_ID = "contour-intake-gate-ring-cream";
   // What a student_id link means when the record does not say: the coming
   // intake. Matched against the select's options before it is used, so a
   // form that has moved on to 2028 simply gets no default.
@@ -10646,8 +10648,11 @@ var ContourForm1Logic = function () {
       // radius, same navy fill on selection, same lift on hover. A button
       // rather than a hidden radio so HubSpot never sees a field it did not
       // define.
-      tile + " { position: relative; flex: 1 1 0%; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; margin: 0; padding: 26px 16px 22px; border: 1px solid rgba(12, 49, 102, 0.12); border-radius: 1rem; background: #FFFFFF; color: #0C3166; font: inherit; text-align: center; cursor: pointer; appearance: none; -webkit-appearance: none; transition: background-color .2s ease, border-color .2s ease, color .2s ease, transform .15s ease, box-shadow .16s ease; }" +
-      tile + ":hover { background: rgba(12, 49, 102, 0.04); transform: translateY(-1px); }" +
+      tile + " { position: relative; flex: 1 1 0%; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; margin: 0; padding: 26px 16px 22px; border: 1px solid rgba(12, 49, 102, 0.12); border-radius: 1rem; background: rgba(12, 49, 102, 0.06); color: #0C3166; font: inherit; text-align: center; cursor: pointer; appearance: none; -webkit-appearance: none; transition: background-color .2s ease, border-color .2s ease, color .2s ease, transform .15s ease, box-shadow .16s ease; }" +
+      // Idle on a wash, white under the pointer while the fill rolls in, navy
+      // once picked (Amrit, 7 Sep 2026). The wash is the section bands' own
+      // tint; on the page's cream a white idle tile had no edge to speak of.
+      tile + ":hover { background: #FFFFFF; border-color: rgba(12, 49, 102, 0.22); transform: translateY(-1px); }" +
       tile + ":active { transform: scale(0.985); }" +
       tile + ":focus { outline: none; }" +
       tile + ":focus-visible { border-color: #0540F2; box-shadow: 0 0 0 3px rgba(5, 64, 242, 0.18); }" +
@@ -10669,14 +10674,26 @@ var ContourForm1Logic = function () {
       // clip-path transition, and Chrome steps clip-path on an SVG text node
       // instead of easing it, while on the SVG element itself (an HTML box,
       // like the cards' logo <img>) it eases as written.
+      // The outline is not a stroke. Stroking type draws every contour of a
+      // glyph, and where a "2" overlaps itself the seams show as a star at
+      // its tail (Amrit, 7 Sep 2026). The ring is taken off the filled shape
+      // instead — dilate the alpha, cut the original out of it — so it
+      // follows the glyph's outer edge only. The ring's colour is fixed by
+      // the filter, so navy and cream are two layers cross-faded.
       gate + "__art { position: relative; display: block; width: 150px; height: 62px; }" +
       gate + "__art-layer { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; display: block; }" +
-      gate + "__art text { font-family: inherit; font-weight: 800; font-size: 52px; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; transition: fill .3s ease, stroke .3s ease; }" +
+      gate + "__art text { font-family: inherit; font-weight: 800; font-size: 52px; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }" +
       gate + "__art-fill { clip-path: inset(-6px 100% -6px -6px); transition: clip-path 0.7s ease; }" +
       gate + "__art-back { fill: #007AFF; }" +
-      gate + "__art-front { fill: none; stroke: #0C3166; stroke-width: 2.2; stroke-linejoin: round; }" +
+      gate + "__art-ring { fill: #000000; }" +
+      gate + "__art-outline--navy text { filter: url(#" + INTAKE_GATE_RING_NAVY_ID + "); }" +
+      gate + "__art-outline--cream text { filter: url(#" + INTAKE_GATE_RING_CREAM_ID + "); }" +
+      gate + "__art-outline { transition: opacity .3s ease; }" +
+      gate + "__art-outline--cream { opacity: 0; }" +
       tile + ":hover ." + INTAKE_GATE_CLASS + "__art-fill, " + tile + ":focus-visible ." + INTAKE_GATE_CLASS + "__art-fill, " + tile + '[aria-checked="true"] .' + INTAKE_GATE_CLASS + "__art-fill { clip-path: inset(-6px -6px -6px -6px); }" +
-      tile + '[aria-checked="true"] .' + INTAKE_GATE_CLASS + "__art-front { stroke: #FFF9F1; }" +
+      tile + '[aria-checked="true"] .' + INTAKE_GATE_CLASS + "__art-outline--navy { opacity: 0; }" +
+      tile + '[aria-checked="true"] .' + INTAKE_GATE_CLASS + "__art-outline--cream { opacity: 1; }" +
+      gate + "__defs { position: absolute; width: 0; height: 0; overflow: hidden; }" +
       "@media (prefers-reduced-motion: reduce) { " + gate + "__art-fill { transition: none; } }" +
       ".contour-sr-only { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }" +
       gate + "__hint { display: block; font-size: 13.5px; font-weight: 500; line-height: 1.3; color: #6b7280; transition: color .2s ease; }" +
@@ -10776,14 +10793,56 @@ var ContourForm1Logic = function () {
     if (year === now + 1) return "Early starts from November " + now;
     return "";
   }
+  var SVG_NS = "http://www.w3.org/2000/svg";
+  // One <defs> for the gate: two ring filters, navy and cream. A filter
+  // referenced from CSS by id resolves anywhere in the document, so the
+  // tiles' own SVGs stay free of it.
+  function intakeYearRingDefs() {
+    var svg = document.createElementNS(SVG_NS, "svg");
+    svg.setAttribute("class", INTAKE_GATE_CLASS + "__defs");
+    svg.setAttribute("aria-hidden", "true");
+    svg.setAttribute("focusable", "false");
+    var defs = document.createElementNS(SVG_NS, "defs");
+    [[INTAKE_GATE_RING_NAVY_ID, [12, 49, 102]], [INTAKE_GATE_RING_CREAM_ID, [255, 249, 241]]].forEach(function (entry) {
+      var filter = document.createElementNS(SVG_NS, "filter");
+      filter.setAttribute("id", entry[0]);
+      filter.setAttribute("x", "-10%");
+      filter.setAttribute("y", "-10%");
+      filter.setAttribute("width", "120%");
+      filter.setAttribute("height", "120%");
+      filter.setAttribute("color-interpolation-filters", "sRGB");
+      var dilate = document.createElementNS(SVG_NS, "feMorphology");
+      dilate.setAttribute("in", "SourceAlpha");
+      dilate.setAttribute("operator", "dilate");
+      dilate.setAttribute("radius", "1.1");
+      dilate.setAttribute("result", "grown");
+      var ring = document.createElementNS(SVG_NS, "feComposite");
+      ring.setAttribute("in", "grown");
+      ring.setAttribute("in2", "SourceAlpha");
+      ring.setAttribute("operator", "out");
+      ring.setAttribute("result", "ring");
+      var colour = document.createElementNS(SVG_NS, "feColorMatrix");
+      colour.setAttribute("in", "ring");
+      colour.setAttribute("type", "matrix");
+      var c = entry[1].map(function (v) { return (v / 255).toFixed(4); });
+      colour.setAttribute("values", "0 0 0 0 " + c[0] + " 0 0 0 0 " + c[1] + " 0 0 0 0 " + c[2] + " 0 0 0 1 0");
+      filter.appendChild(dilate);
+      filter.appendChild(ring);
+      filter.appendChild(colour);
+      defs.appendChild(filter);
+    });
+    svg.appendChild(defs);
+    return svg;
+  }
   function intakeYearArt(label) {
-    var ns = "http://www.w3.org/2000/svg";
-    function layer(layerClass, textClass) {
-      var svg = document.createElementNS(ns, "svg");
-      svg.setAttribute("class", INTAKE_GATE_CLASS + "__art-layer " + INTAKE_GATE_CLASS + "__" + layerClass);
+    function layer(layerClasses, textClass) {
+      var svg = document.createElementNS(SVG_NS, "svg");
+      svg.setAttribute("class", INTAKE_GATE_CLASS + "__art-layer " + layerClasses.map(function (cls) {
+        return INTAKE_GATE_CLASS + "__" + cls;
+      }).join(" "));
       svg.setAttribute("viewBox", "0 0 150 62");
       svg.setAttribute("focusable", "false");
-      var text = document.createElementNS(ns, "text");
+      var text = document.createElementNS(SVG_NS, "text");
       text.setAttribute("class", INTAKE_GATE_CLASS + "__" + textClass);
       text.setAttribute("x", "75");
       text.setAttribute("y", "50");
@@ -10795,9 +10854,10 @@ var ContourForm1Logic = function () {
     var art = document.createElement("span");
     art.className = INTAKE_GATE_CLASS + "__art";
     art.setAttribute("aria-hidden", "true");
-    // Fill under the outline, so the stroke always draws over the blue.
-    art.appendChild(layer("art-fill", "art-back"));
-    art.appendChild(layer("art-outline", "art-front"));
+    // Fill under the rings, so the outline always draws over the blue.
+    art.appendChild(layer(["art-fill"], "art-back"));
+    art.appendChild(layer(["art-outline", "art-outline--navy"], "art-ring"));
+    art.appendChild(layer(["art-outline", "art-outline--cream"], "art-ring"));
     return art;
   }
   function intakeYearOptions(select) {
@@ -10816,6 +10876,7 @@ var ContourForm1Logic = function () {
     injectIntakeYearGateStyles();
     var gate = document.createElement("div");
     gate.className = INTAKE_GATE_CLASS;
+    gate.appendChild(intakeYearRingDefs());
     var body = document.createElement("div");
     body.className = INTAKE_GATE_CLASS + "__body";
     var bodyInner = document.createElement("div");
