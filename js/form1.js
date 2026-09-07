@@ -10696,8 +10696,14 @@ var ContourForm1Logic = function () {
       tile + ":active { transform: scale(0.985); }" +
       tile + ":focus { outline: none; }" +
       tile + ":focus-visible { border-color: #0540F2; box-shadow: 0 0 0 3px rgba(5, 64, 242, 0.18); }" +
-      tile + '[aria-checked="true"] { background: #0C3166; border-color: #0C3166; color: #FFF9F1; }' +
-      tile + '[aria-checked="true"]:hover { box-shadow: none; transform: none; }' +
+      // Picked in the program cards' #005FCC rather than the navy: the card's
+      // own band above, the Contact band below and the picked Student card
+      // under that are all navy, and a navy tile between them made four
+      // navy blocks in a column read as one mass — the same reason the
+      // program cards moved to this blue (Amrit, 8 Sep 2026). Edge and ring
+      // follow the fill as they do there.
+      tile + '[aria-checked="true"] { background: #005FCC; border-color: #005FCC; box-shadow: 0 0 0 2px #005FCC; color: #FFFFFF; }' +
+      tile + '[aria-checked="true"]:hover { box-shadow: 0 0 0 2px #005FCC; transform: none; }' +
       /* The year is the picture on this card. Three copies of the same figure
          in the page's own type, stacked:
            - the outline: the glyph stroked navy with its own fill painted on
@@ -10739,7 +10745,7 @@ var ContourForm1Logic = function () {
       "@media (prefers-reduced-motion: reduce) { " + gate + "__art-feed, " + gate + "__art-outline, " + tile + " { transition: none; } }" +
       ".contour-sr-only { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }" +
       gate + "__hint { display: block; font-size: 13.5px; font-weight: 500; line-height: 1.3; color: #6b7280; transition: color .3s ease; }" +
-      tile + '[aria-checked="true"] .' + INTAKE_GATE_CLASS + "__hint { color: rgba(255, 249, 241, 0.78); }" +
+      tile + '[aria-checked="true"] .' + INTAKE_GATE_CLASS + "__hint { color: rgba(255, 255, 255, 0.78); }" +
       // The blue disc and white tick — the one confirmation glyph the form
       // keeps. Sits in the corner so the year stays centred either way.
       gate + "__tick { position: absolute; top: 10px; right: 10px; display: none; align-items: center; justify-content: center; width: 22px; height: 22px; box-sizing: border-box; border-radius: 50%; border: 2px solid #FFFFFF; background: #007AFF; color: #FFFFFF; }" +
