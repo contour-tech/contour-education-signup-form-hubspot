@@ -10653,20 +10653,31 @@ var ContourForm1Logic = function () {
       tile + ":focus-visible { border-color: #0540F2; box-shadow: 0 0 0 3px rgba(5, 64, 242, 0.18); }" +
       tile + '[aria-checked="true"] { background: #0C3166; border-color: transparent; color: #FFF9F1; }' +
       tile + '[aria-checked="true"]:hover { background: #0C3166; transform: none; }' +
-      // The year is the picture on this card, drawn as a misregistered print:
-      // a solid figure behind, tilted one way and pushed down and right, and
-      // an outline in front tilted the other, so the two never quite line up
-      // (Amrit, 7 Sep 2026). Idle, the backdrop is a navy wash and the
-      // outline navy; picked, the backdrop takes the lime and the outline
-      // goes cream — lime fires on the choice, as it does everywhere else on
-      // the form. Both layers are the page's own type via SVG text, so the
+      // The year is the picture on this card, and it moves the way the
+      // program cards' logos do: an outline figure sits idle, and a solid
+      // Contour-blue copy of it wipes in from the left (clip-path, the same
+      // 0.7s ease as the logo tint) while the pointer is on the tile, filling
+      // the outline like ink. Picked, the wipe completes and holds, the tile
+      // goes navy and the outline flips cream, so the figure reads blue on
+      // navy the way the cards' wordmark reads white on blue. The two layers
+      // are registered exactly — the fill belongs to the outline, it is not a
+      // shadow of it — and there is no lime: the highlighter is the CTAs' and
+      // the chips', and the cards it takes its cue from never use it (Amrit,
+      // 7 Sep 2026). Both layers are the page's own type via SVG text, so the
       // figures match the labels around them and there is nothing to host.
-      gate + "__art { display: block; width: 150px; height: 62px; overflow: visible; }" +
-      gate + "__art text { font-family: inherit; font-weight: 800; font-size: 52px; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; transition: fill .2s ease, stroke .2s ease; }" +
-      gate + "__art-back { fill: rgba(12, 49, 102, 0.14); }" +
+      // Two stacked SVGs rather than two <text> nodes in one: the wipe is a
+      // clip-path transition, and Chrome steps clip-path on an SVG text node
+      // instead of easing it, while on the SVG element itself (an HTML box,
+      // like the cards' logo <img>) it eases as written.
+      gate + "__art { position: relative; display: block; width: 150px; height: 62px; }" +
+      gate + "__art-layer { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; display: block; }" +
+      gate + "__art text { font-family: inherit; font-weight: 800; font-size: 52px; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; transition: fill .3s ease, stroke .3s ease; }" +
+      gate + "__art-fill { clip-path: inset(-6px 100% -6px -6px); transition: clip-path 0.7s ease; }" +
+      gate + "__art-back { fill: #007AFF; }" +
       gate + "__art-front { fill: none; stroke: #0C3166; stroke-width: 2.2; stroke-linejoin: round; }" +
-      tile + '[aria-checked="true"] .' + INTAKE_GATE_CLASS + "__art-back { fill: #D7FC3D; }" +
+      tile + ":hover ." + INTAKE_GATE_CLASS + "__art-fill, " + tile + ":focus-visible ." + INTAKE_GATE_CLASS + "__art-fill, " + tile + '[aria-checked="true"] .' + INTAKE_GATE_CLASS + "__art-fill { clip-path: inset(-6px -6px -6px -6px); }" +
       tile + '[aria-checked="true"] .' + INTAKE_GATE_CLASS + "__art-front { stroke: #FFF9F1; }" +
+      "@media (prefers-reduced-motion: reduce) { " + gate + "__art-fill { transition: none; } }" +
       ".contour-sr-only { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }" +
       gate + "__hint { display: block; font-size: 13.5px; font-weight: 500; line-height: 1.3; color: #6b7280; transition: color .2s ease; }" +
       // Once answered the question folds to one navy row — the collapsed
@@ -10767,28 +10778,27 @@ var ContourForm1Logic = function () {
   }
   function intakeYearArt(label) {
     var ns = "http://www.w3.org/2000/svg";
-    var svg = document.createElementNS(ns, "svg");
-    svg.setAttribute("class", INTAKE_GATE_CLASS + "__art");
-    svg.setAttribute("viewBox", "0 0 150 62");
-    svg.setAttribute("aria-hidden", "true");
-    svg.setAttribute("focusable", "false");
-    var back = document.createElementNS(ns, "text");
-    back.setAttribute("class", INTAKE_GATE_CLASS + "__art-back");
-    back.setAttribute("x", "79");
-    back.setAttribute("y", "52");
-    back.setAttribute("text-anchor", "middle");
-    back.setAttribute("transform", "rotate(-4 75 31) translate(4 3)");
-    back.textContent = label;
-    var front = document.createElementNS(ns, "text");
-    front.setAttribute("class", INTAKE_GATE_CLASS + "__art-front");
-    front.setAttribute("x", "75");
-    front.setAttribute("y", "50");
-    front.setAttribute("text-anchor", "middle");
-    front.setAttribute("transform", "rotate(1.5 75 31)");
-    front.textContent = label;
-    svg.appendChild(back);
-    svg.appendChild(front);
-    return svg;
+    function layer(layerClass, textClass) {
+      var svg = document.createElementNS(ns, "svg");
+      svg.setAttribute("class", INTAKE_GATE_CLASS + "__art-layer " + INTAKE_GATE_CLASS + "__" + layerClass);
+      svg.setAttribute("viewBox", "0 0 150 62");
+      svg.setAttribute("focusable", "false");
+      var text = document.createElementNS(ns, "text");
+      text.setAttribute("class", INTAKE_GATE_CLASS + "__" + textClass);
+      text.setAttribute("x", "75");
+      text.setAttribute("y", "50");
+      text.setAttribute("text-anchor", "middle");
+      text.textContent = label;
+      svg.appendChild(text);
+      return svg;
+    }
+    var art = document.createElement("span");
+    art.className = INTAKE_GATE_CLASS + "__art";
+    art.setAttribute("aria-hidden", "true");
+    // Fill under the outline, so the stroke always draws over the blue.
+    art.appendChild(layer("art-fill", "art-back"));
+    art.appendChild(layer("art-outline", "art-front"));
+    return art;
   }
   function intakeYearOptions(select) {
     return Array.prototype.filter.call(select.options, function (opt) {
