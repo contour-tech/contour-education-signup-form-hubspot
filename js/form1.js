@@ -934,7 +934,7 @@ var ContourForm1Logic = function () {
       // Inset 3px on three sides so the rounded button stays inside the
       // card's own corner radius, which belongs to Webflow and can change
       // without this script hearing about it.
-      ".contour-campus-map-pin { --contour-campus-card-bg: #FFF9F1; position: absolute; top: 3px; right: 3px; bottom: 3px; width: 66px; box-sizing: border-box; display: flex; align-items: center; justify-content: flex-end; padding-right: 12px; border-radius: 8px; color: #0C3166; opacity: 0; cursor: pointer; transition: opacity 0.18s ease; }" +
+      ".contour-campus-map-pin { --contour-campus-card-bg: #FFF9F1; position: absolute; top: 3px; right: 3px; bottom: 3px; width: 66px; box-sizing: border-box; display: flex; align-items: center; justify-content: flex-end; padding-right: 12px; border-radius: 8px; color: #0C3166; opacity: 0; transition: opacity 0.18s ease; pointer-events: none; }" +
       // The scrim runs 28px further left than the button so a long address
       // dissolves into the card just before it reaches the glyph, instead of
       // colliding with it — Glen Waverley's "Kingsway" was still legible
@@ -946,7 +946,14 @@ var ContourForm1Logic = function () {
       // pointer-events off: the scrim is paint, not target. Left hoverable it
       // would open the map from halfway across the address line.
       ".contour-campus-map-pin::before { content: \"\"; position: absolute; top: 0; right: 0; bottom: 0; left: -28px; border-radius: inherit; pointer-events: none; background: linear-gradient(to right, transparent, var(--contour-campus-card-bg) 55%, var(--contour-campus-card-bg)); }" +
-      ".contour-campus-map-pin__glyph { position: relative; display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 10px; transition: background-color 0.15s ease, transform 0.15s ease; }" +
+      // Only the glyph hit-tests. The box around it is as tall as the card
+      // and 66px wide because that is what the scrim needs to cover, and
+      // while it was the target the map opened from anywhere in that strip —
+      // above the glyph, below it, or well to its left (Amrit, 8 Sep 2026).
+      // Hovering the glyph still puts the box in :hover, since :hover applies
+      // up the ancestor chain of whatever was hit, so the rules below keep
+      // working off .contour-campus-map-pin:hover.
+      ".contour-campus-map-pin__glyph { position: relative; display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 10px; cursor: pointer; pointer-events: auto; transition: background-color 0.15s ease, transform 0.15s ease; }" +
       ".contour-campus-map-pin svg { display: block; width: 24px; height: 24px; }" +
       // Invisible until the pointer reaches the card, so the grid at rest is
       // just the campus names. The active class keeps it lit while its own
@@ -1192,13 +1199,15 @@ var ContourForm1Logic = function () {
       var host = wrap.querySelector("label.hs-form-checkbox-display") || wrap.querySelector("label") || wrap;
       var pin = document.createElement("span");
       pin.className = "contour-campus-map-pin";
-      pin.title = "See this campus on the map";
       // Decorative: the address it points at is already read out in the label.
       pin.setAttribute("aria-hidden", "true");
       // The hover wash lives on this inner pill rather than the button, so it
       // never has to guess the card's corner radius to avoid spilling past it.
       var glyph = document.createElement("span");
       glyph.className = "contour-campus-map-pin__glyph";
+      // On the glyph, not the box: the box does not hit-test, so a title
+      // there would never surface.
+      glyph.title = "See this campus on the map";
       glyph.innerHTML = CAMPUS_MAP_PIN_SVG;
       pin.appendChild(glyph);
       host.appendChild(pin);
