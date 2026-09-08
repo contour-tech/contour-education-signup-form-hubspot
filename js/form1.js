@@ -92,6 +92,15 @@ var ContourForm1Logic = function () {
     personLabelOutline: true,
     personLabelFill: false,
     personLabelMarker: false,
+    // Holds the Student segment back until the guardian rows are answered,
+    // the way the Guardian flow behaved until 8 Sep 2026. Off: picking
+    // Guardian brings both bands in a beat apart, so the card shows
+    // everything it still wants before the visitor starts typing (Angad,
+    // 8 Sep 2026 — the Student rows arriving only after the guardian rows
+    // were done made the form look finished when it wasn't). On restores
+    // the gate; the reveal is then the Student band alone, on the beat the
+    // guardian rows complete.
+    studentSegmentAwaitsGuardian: false,
     // Renders the Interested Subjects checkboxes as selectable tiles in the
     // program-card language — navy fill and a blue tick when picked. Off
     // restores the plain native checkboxes (Angad's "dopeify" round, 22 Aug
@@ -934,7 +943,7 @@ var ContourForm1Logic = function () {
       // Inset 3px on three sides so the rounded button stays inside the
       // card's own corner radius, which belongs to Webflow and can change
       // without this script hearing about it.
-      ".contour-campus-map-pin { --contour-campus-card-bg: #FFF9F1; position: absolute; top: 3px; right: 3px; bottom: 3px; width: 66px; box-sizing: border-box; display: flex; align-items: center; justify-content: flex-end; padding-right: 12px; border-radius: 8px; color: #0C3166; opacity: 0; transition: opacity 0.18s ease; pointer-events: none; }" +
+      ".contour-campus-map-pin { --contour-campus-card-bg: #FFF9F1; position: absolute; top: 3px; right: 3px; bottom: 3px; width: 66px; box-sizing: border-box; display: flex; align-items: center; justify-content: flex-end; padding-right: 12px; border-radius: 8px; color: rgba(12, 49, 102, 0.62); opacity: 0; transition: opacity 0.18s ease, color 0.15s ease; pointer-events: none; }" +
       // The scrim runs 28px further left than the button so a long address
       // dissolves into the card just before it reaches the glyph, instead of
       // colliding with it — Glen Waverley's "Kingsway" was still legible
@@ -969,12 +978,14 @@ var ContourForm1Logic = function () {
       // The active stage doubles its own class so it outranks nothing by
       // accident and stays predictable against the selected-card rules below.
       ".hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display .contour-campus-map-pin:hover .contour-campus-map-pin__glyph, .hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display .contour-campus-map-pin.contour-campus-map-pin--active .contour-campus-map-pin__glyph { background: rgba(12, 49, 102, 0.14); }" +
+      ".hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display .contour-campus-map-pin:hover, .hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display .contour-campus-map-pin.contour-campus-map-pin--active { color: #0C3166; }" +
       "@media (prefers-reduced-motion: no-preference) { .hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display .contour-campus-map-pin:hover .contour-campus-map-pin__glyph, .hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display .contour-campus-map-pin.contour-campus-map-pin--active .contour-campus-map-pin__glyph { transform: scale(1.06); } }" +
       // On the selected card the navy-on-cream pair would sink into the
       // #005FCC fill, so it flips to white on white washes — and the scrim
       // has to fade to that fill instead of the cream.
-      ".hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display:has(input:checked) .contour-campus-map-pin { --contour-campus-card-bg: #005FCC; color: #FFFFFF; }" +
+      ".hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display:has(input:checked) .contour-campus-map-pin { --contour-campus-card-bg: #005FCC; color: rgba(255, 255, 255, 0.78); }" +
       ".hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display:has(input:checked) .contour-campus-map-pin:hover .contour-campus-map-pin__glyph, .hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display:has(input:checked) .contour-campus-map-pin.contour-campus-map-pin--active .contour-campus-map-pin__glyph { background: rgba(255, 255, 255, 0.28); }" +
+      ".hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display:has(input:checked) .contour-campus-map-pin:hover, .hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display:has(input:checked) .contour-campus-map-pin.contour-campus-map-pin--active { color: #FFFFFF; }" +
       "@media (prefers-reduced-motion: reduce) { .contour-campus-map-pin, .contour-campus-map-pin__glyph { transition: none; } }" +
       // Header wears the section-header navy — tried the selected-card
       // #005FCC and went back; the navy is the form's header theme
@@ -1153,26 +1164,27 @@ var ContourForm1Logic = function () {
       campusMapTabsEl.appendChild(btn);
     });
   }
-  // Material Symbols "location_on" (filled, 24px), shipped as its path rather
+  // Material Symbols "map_search" (filled, 24px), shipped as its path rather
   // than pulled from the icon font or a CDN: it is one 24px glyph inside an
   // embedded form, and a font request that is slow or blocked would leave
   // the button empty with nothing to fall back to. Hence the icon set's own
   // 0 -960 960 960 viewBox rather than a redrawn one.
   //
-  // Eight were compared at this size (Amrit, 8 Sep 2026), and the two things
-  // the glyph has to do pulled against each other for most of them: mean
-  // "see where this is", and hold together with no box around it at rest.
-  // "map" filled does both but says "a map" rather than "a place".
-  // "pin_road" says exactly what the popover shows and won while the glyph
-  // still sat in a box, but it is road-left/pin-right and reads as two marks
-  // unaided. "distance" is a single mark but it is the measure-between-two-
-  // points icon — a pin inside a second arc, which reads as a halo, and
-  // weights 500 to 700 only made the ambiguity denser. A filled pin is both:
-  // one solid silhouette, unmistakably a place, and with no stroke there is
-  // no weight left to tune. Drawn in currentColor so the button's own rules
-  // pick the colour: deep navy on the cream card, white on the selected one.
+  // Chosen from every location glyph in the set (Amrit, 8 Sep 2026). A map
+  // sheet with a pin stuck in it does not exist in Material Symbols; this is
+  // the nearest, and a magnifier over a map says "look at the map", which is
+  // what hovering it does. The ones tried before it each failed on one axis:
+  // "location_on" and "map" are clean but generic, "pin_road" is two marks
+  // without a box around it, "distance" is the measure-between-two-points
+  // icon and reads as a halo, "globe_location_pin" muddies at this size.
+  //
+  // Drawn in currentColor, and the colour carries the two stages with the
+  // box: muted while merely revealed, full strength once the pointer is on
+  // it. At full navy throughout it matched the campus name's colour and
+  // weight exactly and read as a peer of the heading rather than as the
+  // small secondary control it is.
   var CAMPUS_MAP_PIN_SVG = '<svg viewBox="0 -960 960 960" aria-hidden="true" focusable="false">' +
-    '<path d="M529.5-510.59q20.5-20.59 20.5-49.5t-20.59-49.41q-20.59-20.5-49.5-20.5t-49.41 20.59q-20.5 20.59-20.5 49.5t20.59 49.41q20.59 20.5 49.5 20.5t49.41-20.59ZM480-80Q319-217 239.5-334.5T160-552q0-150 96.5-239T480-880q127 0 223.5 89T800-552q0 100-79.5 217.5T480-80Z" fill="currentColor"/></svg>';
+    '<path d="M170-142q-17 9-33.5-1T120-173v-558q0-13 7.5-23t19.5-15l202-71 263 92 178-71q17-8 33.5 1.5T840-788v388q-28-54-78.5-83T654-512q-19 0-38 3t-38 11v-202l-196-66v540l-212 84Zm672 62L741-180q-19 14-40.5 21t-46.5 7q-62 0-106-44t-44-106q0-63 44-106.5T654-452q63 0 106.5 43.5T804-302q0 23-6.5 44T779-219l101 101-38 38ZM718-238q26-26 26-64t-26-64q-26-26-64-26t-64 26q-26 26-26 64t26 64q26 26 64 26t64-26Z" fill="currentColor"/></svg>';
   // One map button per mappable campus, overlaying the card's right edge and
   // revealed only while the pointer is on that card. On the card's vertical
   // centre line, so it shares the label's axis rather than introducing one.
