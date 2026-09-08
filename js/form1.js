@@ -1398,7 +1398,13 @@ var ContourForm1Logic = function () {
     style.id = "contour-program-card-accent-styles";
     style.textContent = "" +
       // overflow stays visible so the corner badge can straddle the outline.
-      ".hs-form .contour-program-card { position: relative; }" +
+      // Cream, not the white it inherited from the section body: every other
+      // option in the form sits on #FFF9F1 — the subject pills, the campus
+      // cards, the year tiles — and the program cards were the only ones
+      // reading as white cut-outs against them (Amrit, 9 Sep 2026). The
+      // selected fill and the hover tint both live on ::before, which covers
+      // this, so neither state changes.
+      ".hs-form .contour-program-card { position: relative; background-color: #FFF9F1; }" +
       // Breathing room between the "Select all that apply" helper and the
       // card row (Angad) — the helper's own 8px margin was too tight.
       ".hs-form .hs-form-field ul.contour-program-card-list { margin-top: 16px; }" +
