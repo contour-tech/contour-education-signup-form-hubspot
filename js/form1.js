@@ -911,6 +911,56 @@ var ContourForm1Logic = function () {
       // it 480x380 always fits (Amrit, 4 Sep 2026).
       ".contour-campus-map-popover { position: fixed; z-index: 2147483000; width: 480px; background: #fff; border: 1px solid rgba(12, 49, 102, 0.10); border-radius: 14px; box-shadow: 0 16px 40px rgba(12, 49, 102, 0.18), 0 2px 8px rgba(12, 49, 102, 0.10); overflow: hidden; opacity: 0; visibility: hidden; transform: translateY(4px); pointer-events: none; transition: opacity 0.18s ease, transform 0.18s ease, visibility 0s linear 0.18s; }" +
       ".contour-campus-map-popover--open { opacity: 1; visibility: visible; transform: none; pointer-events: auto; transition-delay: 0s; }" +
+      // The map button is the whole hover target. Webflow owns the page
+      // stylesheet, so the positioning context it hangs off has to be
+      // established here alongside the button itself.
+      ".hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display { position: relative; }" +
+      // Nothing is reserved in the layout, which is the whole point. An
+      // earlier build cut a 46px strip out of the label's text block and
+      // broke Glen Waverley: its address wants 340.5px of the 399px the
+      // card offers, so it has 58.5px of slack where every other campus has
+      // 190px or more, and it dropped to two lines. Even 30px only survived
+      // at the form's 880px cap. Overlaying costs no width at any viewport,
+      // so no card can be re-wrapped by this feature (Amrit, 8 Sep 2026).
+      //
+      // Inset 3px on three sides so the rounded button stays inside the
+      // card's own corner radius, which belongs to Webflow and can change
+      // without this script hearing about it.
+      ".contour-campus-map-pin { --contour-campus-card-bg: #FFF9F1; position: absolute; top: 3px; right: 3px; bottom: 3px; width: 66px; box-sizing: border-box; display: flex; align-items: center; justify-content: flex-end; padding-right: 12px; border-radius: 8px; color: #0C3166; opacity: 0; cursor: pointer; transition: opacity 0.18s ease; }" +
+      // The scrim runs 56px further left than the button so a long address
+      // dissolves into the card well before it reaches the glyph, instead of
+      // colliding with it — Glen Waverley's "Kingsway" was still legible
+      // straight through the icon (Amrit, 8 Sep 2026). It reaches the card's
+      // own colour at 48%, so the glyph always sits on flat ground.
+      //
+      // pointer-events off: the scrim is paint, not target. Left hoverable it
+      // would open the map from halfway across the address line.
+      ".contour-campus-map-pin::before { content: \"\"; position: absolute; top: 0; right: 0; bottom: 0; left: -56px; border-radius: inherit; pointer-events: none; background: linear-gradient(to right, transparent, var(--contour-campus-card-bg) 48%, var(--contour-campus-card-bg)); }" +
+      ".contour-campus-map-pin__glyph { position: relative; display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 10px; transition: background-color 0.15s ease, transform 0.15s ease; }" +
+      ".contour-campus-map-pin svg { display: block; width: 24px; height: 24px; }" +
+      // Invisible until the pointer reaches the card, so the grid at rest is
+      // just the campus names. The active class keeps it lit while its own
+      // popover is open — walking the grace gap into the map used to make the
+      // button vanish, leaving nothing pointing at what opened it.
+      ".hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display:hover .contour-campus-map-pin, .contour-campus-map-pin:hover, .contour-campus-map-pin--active { opacity: 1; }" +
+      // Two stages, so arriving at the card and arriving at the button are
+      // told apart: revealing paints the pill faintly, and landing on it (or
+      // holding the popover open from it) presses the tint deeper.
+      //
+      // Both stages carry the full card scope, and the active stage doubles
+      // its own class, so stage 2 matches stage 1's specificity and wins on
+      // order. Written short, stage 2 silently lost to stage 1 whenever the
+      // card was hovered — which is every time it is on screen.
+      ".hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display:hover .contour-campus-map-pin .contour-campus-map-pin__glyph { background: rgba(12, 49, 102, 0.07); }" +
+      ".hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display .contour-campus-map-pin:hover .contour-campus-map-pin__glyph, .hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display .contour-campus-map-pin.contour-campus-map-pin--active .contour-campus-map-pin__glyph { background: rgba(12, 49, 102, 0.14); }" +
+      "@media (prefers-reduced-motion: no-preference) { .hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display .contour-campus-map-pin:hover .contour-campus-map-pin__glyph, .hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display .contour-campus-map-pin.contour-campus-map-pin--active .contour-campus-map-pin__glyph { transform: scale(1.06); } }" +
+      // On the selected card the navy-on-cream pair would sink into the
+      // #005FCC fill, so it flips to white on white washes — and the scrim
+      // has to fade to that fill instead of the cream.
+      ".hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display:has(input:checked) .contour-campus-map-pin { --contour-campus-card-bg: #005FCC; color: #FFFFFF; }" +
+      ".hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display:has(input:checked):hover .contour-campus-map-pin .contour-campus-map-pin__glyph { background: rgba(255, 255, 255, 0.16); }" +
+      ".hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display:has(input:checked) .contour-campus-map-pin:hover .contour-campus-map-pin__glyph, .hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display:has(input:checked) .contour-campus-map-pin.contour-campus-map-pin--active .contour-campus-map-pin__glyph { background: rgba(255, 255, 255, 0.28); }" +
+      "@media (prefers-reduced-motion: reduce) { .contour-campus-map-pin, .contour-campus-map-pin__glyph { transition: none; } }" +
       // Header wears the section-header navy — tried the selected-card
       // #005FCC and went back; the navy is the form's header theme
       // (Amrit, 2 Sep 2026).
@@ -929,7 +979,7 @@ var ContourForm1Logic = function () {
       "@keyframes contour-campus-map-spin { to { transform: rotate(360deg); } }" +
       "@media (prefers-reduced-motion: reduce) { .contour-campus-map-loader::before { animation: none; } }" +
       // Belt and braces alongside the matchMedia gate: never on touch/narrow.
-      "@media (hover: none), (pointer: coarse), (max-width: 767px) { .contour-campus-map-popover { display: none !important; } }";
+      "@media (hover: none), (pointer: coarse), (max-width: 767px) { .contour-campus-map-popover, .contour-campus-map-pin { display: none !important; } }";
     document.head.appendChild(style);
   }
   function ensureCampusMapPopover() {
@@ -1088,6 +1138,63 @@ var ContourForm1Logic = function () {
       campusMapTabsEl.appendChild(btn);
     });
   }
+  // Material Symbols "pin_road" (outlined, 24px), shipped as its path rather
+  // than pulled from the icon font or a CDN: it is one 24px glyph inside an
+  // embedded form, and a font request that is slow or blocked would leave
+  // the button empty with nothing to fall back to. Hence the icon set's own
+  // 0 -960 960 960 viewBox rather than a redrawn one.
+  //
+  // Three were compared at this size (Amrit, 8 Sep 2026). "distance" is the
+  // calmest but its pin-inside-a-ring reads as an ambiguous halo rather than
+  // a map; "route" implies a journey rather than a place; "map" filled is the
+  // most instantly legible but the least specific. This one says "this place,
+  // on a road", which is what the popover actually shows — it needs the full
+  // 24px to resolve, which the pill now gives it. Drawn in currentColor so
+  // the button's own rules pick the colour: deep navy on the cream card,
+  // white on the selected one.
+  var CAMPUS_MAP_PIN_SVG = '<svg viewBox="0 -960 960 960" aria-hidden="true" focusable="false">' +
+    '<path d="M333-120v-143h60v143h-60Zm0-289v-143h60v143h-60Zm0-289v-142h60v142h-60ZM61-120l110-720h59L121-120H61Zm618.5-3.5Q674-127 671-132l-3.97-9q-22.86-48-63.59-82.5Q562.7-258 533.89-302 517-328 508.5-356.5T500-416q0-78 57-130.5T693-599q78 0 132.5 56T880-408q0 29-8 56t-24 50q-29 45-70 78.5t-63 82.34l-4 9.16q-3 5-8.5 8.5T691-120q-6 0-11.5-3.5Zm67-230Q770-377 770-410t-23.5-56.5Q723-490 690-490t-56.5 23.5Q610-443 610-410t23.5 56.5Q657-330 690-330t56.5-23.5ZM531-605l-36-235h60l31 201q-15 6.84-28.5 14.92T531-605Z" fill="currentColor"/></svg>';
+  // One map button per mappable campus, overlaying the card's right edge and
+  // revealed only while the pointer is on that card. On the card's vertical
+  // centre line, so it shares the label's axis rather than introducing one.
+  //
+  // Three earlier placements are worth not repeating (all Amrit, 8 Sep 2026).
+  // Inline after the campus name, the icon fought the text baseline and the
+  // two-line label's height and read as punctuation. Floated in the top-right
+  // corner, it hung off an axis of its own while the label stayed centred, and
+  // eight tinted dots turned the grid noisy. As a full-height strip with a
+  // hairline divider it looked like a control at last, but it had to take
+  // 46px out of the label to sit beside the text, and that broke the one card
+  // with no width to give — see the note in injectCampusMapStyles(). Revealing
+  // it on hover instead costs no layout at all and leaves the resting grid as
+  // just the campus names.
+  //
+  // campusMapInfo() is the same gate the popover uses, so "(Coming Soon)",
+  // "(Live & Recorded)", bracketless labels (Adelaide) and the ONLINE code
+  // get no button and no map.
+  function injectCampusMapPins() {
+    injectCampusMapStyles();
+    qAll(FIELD_SELECTORS.campus).forEach(function (opt) {
+      var wrap = optionWrapper(opt);
+      if (!wrap || wrap.querySelector(".contour-campus-map-pin")) return;
+      if (!campusMapInfo(opt)) return;
+      // The label is the visible card, so the button anchors to that rather
+      // than the li — the li carries the grid gap, the label the rounded box.
+      var host = wrap.querySelector("label.hs-form-checkbox-display") || wrap.querySelector("label") || wrap;
+      var pin = document.createElement("span");
+      pin.className = "contour-campus-map-pin";
+      pin.title = "See this campus on the map";
+      // Decorative: the address it points at is already read out in the label.
+      pin.setAttribute("aria-hidden", "true");
+      // The hover wash lives on this inner pill rather than the button, so it
+      // never has to guess the card's corner radius to avoid spilling past it.
+      var glyph = document.createElement("span");
+      glyph.className = "contour-campus-map-pin__glyph";
+      glyph.innerHTML = CAMPUS_MAP_PIN_SVG;
+      pin.appendChild(glyph);
+      host.appendChild(pin);
+    });
+  }
   function openCampusMap(wrap, info) {
     ensureCampusMapPopover();
     // A close queued by leaving the previous card must not fire after this
@@ -1139,6 +1246,7 @@ var ContourForm1Logic = function () {
   function initCampusMapHover() {
     if (!featureEnabled("campusMapHover")) return;
     if (!window.matchMedia || !document.body) return;
+    injectCampusMapPins();
     // Delegated on the form root (mouseover bubbles, mouseenter doesn't) so
     // the wiring survives HubSpot re-rendering the campus field's DOM.
     formRoot.addEventListener("mouseover", function (e) {
