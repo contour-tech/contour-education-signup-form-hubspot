@@ -1153,23 +1153,26 @@ var ContourForm1Logic = function () {
       campusMapTabsEl.appendChild(btn);
     });
   }
-  // Material Symbols "distance" (outlined, 24px), shipped as its path rather
+  // Material Symbols "location_on" (filled, 24px), shipped as its path rather
   // than pulled from the icon font or a CDN: it is one 24px glyph inside an
   // embedded form, and a font request that is slow or blocked would leave
   // the button empty with nothing to fall back to. Hence the icon set's own
   // 0 -960 960 960 viewBox rather than a redrawn one.
   //
-  // Four were compared at this size (Amrit, 8 Sep 2026). "map" filled is the
-  // most instantly legible but the least specific; "route" implies a journey
-  // rather than a place; "pin_road" says exactly what the popover shows and
-  // won while the glyph sat in a tinted box, but it is a two-part asymmetric
-  // shape — road left, pin right — and once the box only appears on hover it
-  // reads as two marks instead of one icon. This one is a single centred
-  // silhouette that holds together unaided. Drawn in currentColor so the
-  // button's own rules pick the colour: deep navy on the cream card, white
-  // on the selected one.
+  // Eight were compared at this size (Amrit, 8 Sep 2026), and the two things
+  // the glyph has to do pulled against each other for most of them: mean
+  // "see where this is", and hold together with no box around it at rest.
+  // "map" filled does both but says "a map" rather than "a place".
+  // "pin_road" says exactly what the popover shows and won while the glyph
+  // still sat in a box, but it is road-left/pin-right and reads as two marks
+  // unaided. "distance" is a single mark but it is the measure-between-two-
+  // points icon — a pin inside a second arc, which reads as a halo, and
+  // weights 500 to 700 only made the ambiguity denser. A filled pin is both:
+  // one solid silhouette, unmistakably a place, and with no stroke there is
+  // no weight left to tune. Drawn in currentColor so the button's own rules
+  // pick the colour: deep navy on the cream card, white on the selected one.
   var CAMPUS_MAP_PIN_SVG = '<svg viewBox="0 -960 960 960" aria-hidden="true" focusable="false">' +
-    '<path d="M307-111q-67-31-67-79 0-26 23-49.5t63-38.5l45 42q-20 5-39 18.5T299-190q17 20 70.5 35T480-140q57 0 111-15t71-35q-14-15-35-28t-41-18l46-42q42 15 65 38.5t23 49.5q0 48-67 79T480-80q-106 0-173-31Zm174-164q109-81 164-164t55-155q0-112-71-169t-149-57q-77 0-148.5 57T260-594q0 73 55 152t166 167Zm-1 75Q340-304 270-402t-70-192q0-71 25.5-124.5t66-89.5q40.5-36 90-54t98.5-18q49 0 99 18t90 54q40 36 65.5 89.5T760-594q0 94-69.5 192T480-200Zm0-320q33 0 56.5-23.5T560-600q0-33-23.5-56.5T480-680q-33 0-56.5 23.5T400-600q0 33 23.5 56.5T480-520Zm0-80Z" fill="currentColor"/></svg>';
+    '<path d="M529.5-510.59q20.5-20.59 20.5-49.5t-20.59-49.41q-20.59-20.5-49.5-20.5t-49.41 20.59q-20.5 20.59-20.5 49.5t20.59 49.41q20.59 20.5 49.5 20.5t49.41-20.59ZM480-80Q319-217 239.5-334.5T160-552q0-150 96.5-239T480-880q127 0 223.5 89T800-552q0 100-79.5 217.5T480-80Z" fill="currentColor"/></svg>';
   // One map button per mappable campus, overlaying the card's right edge and
   // revealed only while the pointer is on that card. On the card's vertical
   // centre line, so it shares the label's axis rather than introducing one.
@@ -8033,13 +8036,21 @@ var ContourForm1Logic = function () {
     }
     return "";
   }
-  /* On the Guardian flow the card opens on the Guardian segment alone — the
-     visitor leads with their own details — and the Student band and rows
-     slide in once the guardian rows are answered — the same cascade the
-     sections play, one level down (order flipped with the segments, Amrit,
-     1 Sep 2026). Reveal-once, like sections: emptying a guardian field
-     later never yanks filled student rows off the screen. */
+  /* On the Guardian flow both segments arrive on the pick, a beat apart:
+     the Guardian band leads — the visitor leads with their own details —
+     and the Student band and rows follow 90ms later, while the guardian
+     beat is still travelling. One after the other, not one waiting on the
+     other (Angad, 8 Sep 2026: the Student rows never showing up until the
+     guardian rows were answered read as the form having nothing more to
+     ask). studentSegmentAwaitsGuardian restores the older gate.
+
+     Reveal-once, like sections: emptying a guardian field later never
+     yanks filled student rows off the screen. */
   var studentSegmentRevealed = false;
+  // The beat between the two bands, and the one evaluateSections puts
+  // between two sections opening at once — the cascade is the same idea a
+  // level down, so it keeps the same tempo.
+  var PERSON_SEG_BEAT_MS = 90;
   var STUDENT_SEG_HIDDEN_CLASS = "contour-student-seg-hidden";
   function studentSegmentNodes() {
     var nodes = qAll('[data-contour-person-static="student"]');
@@ -8090,21 +8101,47 @@ var ContourForm1Logic = function () {
       });
       return;
     }
-    // Everything shows at once when disclosure is off, for staff, and after
-    // anything that reveals the whole form (submit attempt, prefill).
-    var show = studentSegmentRevealed || !sectionFlowActive() || isInternalMode() || studentSegmentHasAnswer() || guardianSegmentComplete();
-    nodes.forEach(function (node) {
-      if (!show) {
+    // Mid-render the static band can be standing before the dependent rows
+    // land. Marking the segment revealed off the band alone would spend the
+    // one animation this gets on a header with nothing under it, so the pass
+    // waits for the rows — the MutationObserver runs it again.
+    if (personGroupRows(PERSON_GROUPS[0]).length === 0) return;
+    // Default: the pick shows both bands, so the gate is only the flow being
+    // on. With studentSegmentAwaitsGuardian the Student band waits for the
+    // guardian rows again. Either way it shows at once when disclosure is
+    // off, for staff, and after anything that reveals the whole form (submit
+    // attempt, prefill).
+    var awaitsGuardian = featureEnabled("studentSegmentAwaitsGuardian");
+    var show = studentSegmentRevealed || !sectionFlowActive() || isInternalMode() || studentSegmentHasAnswer() || !awaitsGuardian || guardianSegmentComplete();
+    if (!show) {
+      nodes.forEach(function (node) {
         node.classList.add(STUDENT_SEG_HIDDEN_CLASS);
-        return;
-      }
-      if (!node.classList.contains(STUDENT_SEG_HIDDEN_CLASS)) return;
+      });
+      return;
+    }
+    // One animation per flow, and the flag owns it rather than the class the
+    // nodes happen to be carrying: on the default path nothing was ever
+    // hidden, so there is no hidden class to read the transition off.
+    var play = !studentSegmentRevealed;
+    // The Guardian band is new to the visitor on this pass too, so it takes
+    // the leading beat. Its rows are not touched: they were on screen before
+    // the pick under "Your ..." labels, and re-sliding fields that never left
+    // reads as a glitch rather than a reveal. Under the older gate the
+    // guardian segment has been settled for a while — only the Student band
+    // arrives, and it arrives without a delay in front of it.
+    if (play && !awaitsGuardian) {
+      qAll('[data-contour-person-static="guardian"]').forEach(function (band) {
+        playReveal(band);
+      });
+    }
+    var delay = awaitsGuardian ? 0 : PERSON_SEG_BEAT_MS;
+    nodes.forEach(function (node) {
       node.classList.remove(STUDENT_SEG_HIDDEN_CLASS);
-      if (studentSegmentRevealed) return;
-      playReveal(node);
+      if (play) playReveal(node, delay);
     });
-    if (show) studentSegmentRevealed = true;
+    studentSegmentRevealed = true;
   }
+
   // "Started" = any visible field in the group holds an answer. Auto-collapse
   // waits for a later section to be started, not merely revealed — revealing
   // is the form's doing, an answer is the student's, and only the second one
