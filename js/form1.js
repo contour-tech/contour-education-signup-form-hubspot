@@ -1164,7 +1164,10 @@ var ContourForm1Logic = function () {
   }
   // Remix Icon "road-map-fill" — a folded map with a pin standing on it,
   // which is the shape Amrit asked for and the one Material Symbols does not
-  // have at all. Shipped as its path rather than pulled from an icon font or
+  // have at all. The circle in the pin's head is ours: a subpath appended to
+  // Remix's own, punched through by fill-rule evenodd, which leaves the map's
+  // fold lines intact. Without it the pin is a solid teardrop that merges
+  // into the map below it (Amrit, 8 Sep 2026). Shipped as its path rather than pulled from an icon font or
   // a CDN: it is one 24px glyph inside an embedded form, and a font request
   // that is slow or blocked would leave the button empty with nothing to
   // fall back to.
@@ -1188,7 +1191,7 @@ var ContourForm1Logic = function () {
   // preferred it at full navy throughout, with the box as the only thing the
   // hover changes.
   var CAMPUS_MAP_PIN_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
-    '<path d="M16.9497 11.9497C18.7347 10.1648 19.3542 7.65558 18.8081 5.36796L21.303 4.2987C21.5569 4.18992 21.8508 4.30749 21.9596 4.56131C21.9862 4.62355 22 4.69056 22 4.75827V19L15 22L9 19L2.69696 21.7013C2.44314 21.8101 2.14921 21.6925 2.04043 21.4387C2.01375 21.3765 2 21.3094 2 21.2417V7L5.12892 5.65904C4.70023 7.86632 5.34067 10.2402 7.05025 11.9497L12 16.8995L16.9497 11.9497ZM15.5355 10.5355L12 14.0711L8.46447 10.5355C6.51184 8.58291 6.51184 5.41709 8.46447 3.46447C10.4171 1.51184 13.5829 1.51184 15.5355 3.46447C17.4882 5.41709 17.4882 8.58291 15.5355 10.5355Z" fill="currentColor"/></svg>';
+    '<path fill-rule="evenodd" d="M16.9497 11.9497C18.7347 10.1648 19.3542 7.65558 18.8081 5.36796L21.303 4.2987C21.5569 4.18992 21.8508 4.30749 21.9596 4.56131C21.9862 4.62355 22 4.69056 22 4.75827V19L15 22L9 19L2.69696 21.7013C2.44314 21.8101 2.14921 21.6925 2.04043 21.4387C2.01375 21.3765 2 21.3094 2 21.2417V7L5.12892 5.65904C4.70023 7.86632 5.34067 10.2402 7.05025 11.9497L12 16.8995L16.9497 11.9497ZM15.5355 10.5355L12 14.0711L8.46447 10.5355C6.51184 8.58291 6.51184 5.41709 8.46447 3.46447C10.4171 1.51184 13.5829 1.51184 15.5355 3.46447C17.4882 5.41709 17.4882 8.58291 15.5355 10.5355ZM12 4.75a2.15 2.15 0 1 0 0 4.3a2.15 2.15 0 1 0 0-4.3Z" fill="currentColor"/></svg>';
   // One map button per mappable campus, overlaying the card's right edge and
   // revealed only while the pointer is on that card. On the card's vertical
   // centre line, so it shares the label's axis rather than introducing one.
