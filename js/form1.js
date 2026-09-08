@@ -1162,37 +1162,42 @@ var ContourForm1Logic = function () {
       campusMapTabsEl.appendChild(btn);
     });
   }
-  // Remix Icon "road-map-fill" — a folded map with a pin on it, which is the
-  // subject Amrit wanted and the one Material Symbols does not have at all.
-  // Apache-2.0, so nothing to attribute on the page. The circle in the pin's
-  // head is ours: a subpath appended to Remix's own, punched through with
-  // fill-rule evenodd, which leaves the map's fold lines intact.
+  // A filled map card with a road across it and a pin in the corner, from
+  // SVG Repo (Amrit found it, 8 Sep 2026). Stripped of that site's wrapper
+  // groups and its hardcoded #000000 so the fills follow currentColor.
   //
-  // Its pin sits lower than ideal, and it cannot be raised: Remix carves the
-  // pin's silhouette out of the map path itself, so moving the pin means
-  // redrawing the carve. A hand-drawn replacement was built to fix exactly
-  // that — map plus a generated teardrop, with the gap punched as a real hole
-  // so the pin's height became a parameter — and it looked better at 58px and
-  // worse at 24px, which is the only size that matters. A tapered teardrop
-  // renders as a long V at 24px and fights the map's fold, and a 1.2-unit gap
-  // is barely one physical pixel. Remix's pin is compact — round head, no
-  // tail — which is why it survives the size. Judge this glyph at 24px on a
-  // magnified raster, never at 58px (Amrit, 8 Sep 2026).
+  // LICENCE: SVG Repo mixes per-icon terms and some of its icons require
+  // attribution. Confirm this one's licence before release. If it turns out
+  // to be attribution-bound it has to go, the same way Flaticon's original
+  // and Font Awesome's map-location-dot did — a signup form is not the place
+  // to carry an icon credit. The shape is simple enough to redraw in-house
+  // if so: a rounded square, a diagonal, and a pin with an aperture.
   //
-  // Every stock alternative was tried too: location_on and map are clean but
-  // generic, pin_road is two marks with no box to bind them, distance is the
-  // measure-between-two-points icon and reads as a halo, map_search says
-  // "search a map". The Flaticon original and Font Awesome's map-location-dot
-  // are the right shape but both demand visible attribution, not worth
-  // carrying on a signup form.
+  // Chosen because it is the only candidate that survives 24px, which is the
+  // only size that matters here and the thing that decided every earlier
+  // round. Judge any replacement the same way: render at 24px with
+  // device_scale_factor 1 and magnify the raster, never eyeball it at 56px.
+  // What that test rejected: line-art versions of this same subject turn to
+  // mud at 1.5 stroke; a hand-drawn map-plus-teardrop was tuned at 58px and
+  // smeared into a blob, its tapered tail reading as a long V against the
+  // map fold and its 1.2-unit gap landing under one physical pixel; Remix's
+  // road-map-fill holds up but its map wings sit heavy. Material Symbols was
+  // exhausted first and has no pin-on-a-map at all: location_on and map are
+  // clean but generic, pin_road is two marks, distance is the
+  // measure-between-two-points glyph and reads as a halo, map_search says
+  // "search a map".
   //
-  // Shipped as a path rather than an icon font or a CDN call: this glyph does
-  // not exist in any icon font, and a font request that is slow or blocked
-  // would leave the button empty with nothing to fall back to. Drawn in
+  // Shipped as paths rather than an icon font or a CDN call: no icon font
+  // carries this glyph, and a font request that is slow or blocked would
+  // leave the button empty with nothing to fall back to. Drawn in
   // currentColor so the button's own rules pick the colour: deep navy on the
   // cream card, white on the selected one.
   var CAMPUS_MAP_PIN_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
-    '<path fill-rule="evenodd" d="M16.9497 11.9497C18.7347 10.1648 19.3542 7.65558 18.8081 5.36796L21.303 4.2987C21.5569 4.18992 21.8508 4.30749 21.9596 4.56131C21.9862 4.62355 22 4.69056 22 4.75827V19L15 22L9 19L2.69696 21.7013C2.44314 21.8101 2.14921 21.6925 2.04043 21.4387C2.01375 21.3765 2 21.3094 2 21.2417V7L5.12892 5.65904C4.70023 7.86632 5.34067 10.2402 7.05025 11.9497L12 16.8995L16.9497 11.9497ZM15.5355 10.5355L12 14.0711L8.46447 10.5355C6.51184 8.58291 6.51184 5.41709 8.46447 3.46447C10.4171 1.51184 13.5829 1.51184 15.5355 3.46447C17.4882 5.41709 17.4882 8.58291 15.5355 10.5355ZM12 4.75a2.15 2.15 0 1 0 0 4.3a2.15 2.15 0 1 0 0-4.3Z" fill="currentColor"/></svg>';
+    '<path d="M9.14844 7.48828C8.58844 7.48828 8.14844 7.93828 8.14844 8.48828C8.14844 9.03828 8.59844 9.48828 9.14844 9.48828C9.69844 9.48828 10.1484 9.03828 10.1484 8.48828C10.1484 7.93828 9.69844 7.48828 9.14844 7.48828Z" fill="currentColor"/>' +
+    '<path d="M21.46 5.04C20.62 3.09 18.77 2 16.19 2H7.81C4.6 2 2 4.6 2 7.81V16.19C2 18.77 3.09 20.62 5.04 21.46C5.23 21.54 5.45 21.49 5.59 21.35L21.35 5.59C21.5 5.44 21.55 5.22 21.46 5.04ZM10.53 12.24C10.14 12.62 9.63 12.8 9.12 12.8C8.61 12.8 8.1 12.61 7.71 12.24C6.69 11.28 5.57 9.75 6 7.93C6.38 6.28 7.84 5.54 9.12 5.54C10.4 5.54 11.86 6.28 12.24 7.94C12.66 9.75 11.54 11.28 10.53 12.24Z" fill="currentColor"/>' +
+    '<path d="M19.4689 20.5295C19.6889 20.7495 19.6589 21.1095 19.3889 21.2595C18.5089 21.7495 17.4389 21.9995 16.1889 21.9995H7.80892C7.51892 21.9995 7.39892 21.6595 7.59892 21.4595L13.6389 15.4195C13.8389 15.2195 14.1489 15.2195 14.3489 15.4195L19.4689 20.5295Z" fill="currentColor"/>' +
+    '<path d="M22.0017 7.80892V16.1889C22.0017 17.4389 21.7517 18.5189 21.2617 19.3889C21.1117 19.6589 20.7517 19.6789 20.5317 19.4689L15.4117 14.3489C15.2117 14.1489 15.2117 13.8389 15.4117 13.6389L21.4517 7.59892C21.6617 7.39892 22.0017 7.51892 22.0017 7.80892Z" fill="currentColor"/>' +
+    '</svg>';
   // One map button per mappable campus, overlaying the card's right edge and
   // revealed only while the pointer is on that card. On the card's vertical
   // centre line, so it shares the label's axis rather than introducing one.
