@@ -935,15 +935,17 @@ var ContourForm1Logic = function () {
       // card's own corner radius, which belongs to Webflow and can change
       // without this script hearing about it.
       ".contour-campus-map-pin { --contour-campus-card-bg: #FFF9F1; position: absolute; top: 3px; right: 3px; bottom: 3px; width: 66px; box-sizing: border-box; display: flex; align-items: center; justify-content: flex-end; padding-right: 12px; border-radius: 8px; color: #0C3166; opacity: 0; cursor: pointer; transition: opacity 0.18s ease; }" +
-      // The scrim runs 56px further left than the button so a long address
-      // dissolves into the card well before it reaches the glyph, instead of
+      // The scrim runs 28px further left than the button so a long address
+      // dissolves into the card just before it reaches the glyph, instead of
       // colliding with it — Glen Waverley's "Kingsway" was still legible
-      // straight through the icon (Amrit, 8 Sep 2026). It reaches the card's
-      // own colour at 48%, so the glyph always sits on flat ground.
+      // straight through the icon (Amrit, 8 Sep 2026). Held as tight as it
+      // can be: it started at 56px and lost half of that to keep more of the
+      // address readable, and it reaches the card's own colour at 55%, so the
+      // glyph still sits on flat ground.
       //
       // pointer-events off: the scrim is paint, not target. Left hoverable it
       // would open the map from halfway across the address line.
-      ".contour-campus-map-pin::before { content: \"\"; position: absolute; top: 0; right: 0; bottom: 0; left: -56px; border-radius: inherit; pointer-events: none; background: linear-gradient(to right, transparent, var(--contour-campus-card-bg) 48%, var(--contour-campus-card-bg)); }" +
+      ".contour-campus-map-pin::before { content: \"\"; position: absolute; top: 0; right: 0; bottom: 0; left: -28px; border-radius: inherit; pointer-events: none; background: linear-gradient(to right, transparent, var(--contour-campus-card-bg) 55%, var(--contour-campus-card-bg)); }" +
       ".contour-campus-map-pin__glyph { position: relative; display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 10px; transition: background-color 0.15s ease, transform 0.15s ease; }" +
       ".contour-campus-map-pin svg { display: block; width: 24px; height: 24px; }" +
       // Invisible until the pointer reaches the card, so the grid at rest is
