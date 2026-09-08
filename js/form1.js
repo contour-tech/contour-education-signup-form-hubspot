@@ -10745,14 +10745,21 @@ var ContourForm1Logic = function () {
       // with a hair of tracking and a 3.6 stroke of which the outer 1.8
       // shows.
       gate + "__art text { font-family: 'Polysans Bulky', Inter, Arial, sans-serif; font-weight: 700; font-size: 58px; letter-spacing: 0.01em; }" +
-      gate + "__art-outline text { fill: #FFF9F1; stroke: #0C3166; stroke-width: 3.6; stroke-linejoin: round; paint-order: stroke fill; transition: stroke .15s ease; }" +
+      gate + "__art-outline text { fill: #FFF9F1; stroke: #0C3166; stroke-width: 3.6; stroke-linejoin: round; paint-order: stroke fill; transition: stroke .15s ease, stroke-width .15s ease; }" +
       // Picked, the outline snaps to white first, then the white fill takes
       // its time filling it in — the drawn figure is white from the first
       // frame and the ink arrives after (Amrit, 8 Sep 2026). With the edge
       // settled before the fill moves, every frame of the fade stays crisp.
       // The outer half of the white stroke is what keeps the solid year from
-      // reading thin.
-      tile + '[aria-checked="true"] .' + INTAKE_GATE_CLASS + "__art-outline text { stroke: #FFFFFF; }" +
+      // reading thin, but it does not need the idle figure's 3.6 to do it:
+      // white on blue blooms, and the stroke sits under a fill of the same
+      // white, so every unit of it is added mass and nothing else. At 3.6 the
+      // picked year closed its own counters — the 0 and the 2's tail choked
+      // (Amrit, 8 Sep 2026). At 2 the outer 1 still shows, which holds the
+      // figure at very near the idle one's footprint (outer 1.8 of navy) so
+      // the pair keep the same size side by side. The width eases with the
+      // colour rather than snapping with it.
+      tile + '[aria-checked="true"] .' + INTAKE_GATE_CLASS + "__art-outline text { stroke: #FFFFFF; stroke-width: 2; }" +
       // Three ways for the fill to arrive, chosen by the animationStyle
       // setting (a class on the card). Each style states its own resting and
       // arrived values, so switching never leaves a property behind.
