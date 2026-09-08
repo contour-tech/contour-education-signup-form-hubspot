@@ -1405,6 +1405,13 @@ var ContourForm1Logic = function () {
       // selected fill and the hover tint both live on ::before, which covers
       // this, so neither state changes.
       ".hs-form .contour-program-card { position: relative; background-color: #FFF9F1; }" +
+      // The coverage error ("select a Med School Entry subject, or deselect
+      // the program") renders in the program field's wrap, under the card
+      // row, and had no margin of its own. Measured, its top sat 3px ABOVE
+      // the lowest card's bottom edge — overlapping the cards, not merely
+      // touching them. 12px here nets about 9px of clearance, in line with
+      // the 8px the subjects list gives its own errors (Amrit, 9 Sep 2026).
+      ".hs-form .contour-program-coverage-error { margin-top: 12px !important; }" +
       // Breathing room between the "Select all that apply" helper and the
       // card row (Angad) — the helper's own 8px margin was too tight.
       ".hs-form .hs-form-field ul.contour-program-card-list { margin-top: 16px; }" +
