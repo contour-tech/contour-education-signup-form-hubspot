@@ -587,8 +587,31 @@ var ContourForm1Logic = function () {
       // with isTrusted true, indistinguishable from a real tick without the
       // counter above.
       asProgrammaticEdit(function () {
-        inputEl.click();
+        clickWithoutMovingPage(inputEl);
       });
+    }
+  }
+  /* Activation focuses whatever it activated, and focusing something off
+     screen scrolls the page to it. So a tick the form makes for itself — the
+     default Student radio, a campus forced online — moved the page under the
+     visitor: on the Interviews page, where the form sits 19,000px down, page
+     load jumped straight to it a quarter-second after the embed hydrated.
+     The click still has to happen (HubSpot's own listeners want the trusted
+     input and change events out of it), so put the caret and the scroll back
+     where they were instead. */
+  function clickWithoutMovingPage(inputEl) {
+    var previous = document.activeElement;
+    var x = window.scrollX || window.pageXOffset || 0;
+    var y = window.scrollY || window.pageYOffset || 0;
+    inputEl.click();
+    if (document.activeElement === inputEl && previous !== inputEl) {
+      // Handing focus back to the body would be a focus() on an element that
+      // may not take one; the radio giving it up is enough.
+      if (previous && previous !== document.body && previous.focus) focusQuietly(previous);
+      else if (inputEl.blur) inputEl.blur();
+    }
+    if ((window.scrollX || window.pageXOffset || 0) !== x || (window.scrollY || window.pageYOffset || 0) !== y) {
+      window.scrollTo(x, y);
     }
   }
   function optionWrapper(inputEl) {
