@@ -7231,7 +7231,14 @@ var ContourForm1Logic = function () {
       // The header is a slim band in the person-tabs voice — small caps on a
       // faint navy wash — so it reads as the section's chrome, one tier above
       // the field labels inside, rather than a second bold label.
-      box + "__header { display: flex; align-items: center; gap: 12px; width: 100%; margin: 0; padding: 12px 22px; background: rgba(12, 49, 102, 0.045); border: 0; border-bottom: 1px solid rgba(12, 49, 102, 0.07); text-align: left; font: inherit; color: inherit; cursor: default; border-radius: 16px 16px 0 0; }" +
+      // The band holds one height whatever is in it. The pencil, the dash and
+      // the tick disc are all taller than the title's line box and each of
+      // them comes and goes with the card's state, so a band sized by its
+      // contents grew the moment the dash appeared — the intake card, which
+      // only earns its dash once a year is picked, visibly stepped down as
+      // the visitor answered it (Amrit, 8 Sep 2026). min-height is the
+      // tallest of them plus the band's own padding and rule.
+      box + "__header { display: flex; align-items: center; gap: 12px; box-sizing: border-box; width: 100%; min-height: 53px; margin: 0; padding: 12px 22px; background: rgba(12, 49, 102, 0.045); border: 0; border-bottom: 1px solid rgba(12, 49, 102, 0.07); text-align: left; font: inherit; color: inherit; cursor: default; border-radius: 16px 16px 0 0; }" +
       box + "--collapsed .contour-section-box__header { border-radius: 16px; border-bottom-color: transparent; }" +
       box + "__header--togglable { cursor: pointer; }" +
       box + "--collapsed .contour-section-box__header:hover { background: rgba(12, 49, 102, 0.08); }" +
@@ -7551,7 +7558,7 @@ var ContourForm1Logic = function () {
       // shortCountryLabel), so a third of the row fits it. The :not() chain
       // is the page rule's own, repeated so this wins the cascade against
       // it — both carry !important, so it comes down to specificity.
-      "@media (max-width: 767px) { " + box + "__header { padding: 14px 16px; } " + box + "__content-inner { padding: 14px 16px 18px; } " + box + ' .hs-fieldtype-intl-phone.hs-input:not([type="checkbox"]):not([type="radio"]):not([type="file"]) { flex-direction: row !important; } ' + box + " .contour-intl-phone { flex-direction: row !important; } }";
+      "@media (max-width: 767px) { " + box + "__header { min-height: 57px; padding: 14px 16px; } " + box + "__content-inner { padding: 14px 16px 18px; } " + box + ' .hs-fieldtype-intl-phone.hs-input:not([type="checkbox"]):not([type="radio"]):not([type="file"]) { flex-direction: row !important; } ' + box + " .contour-intl-phone { flex-direction: row !important; } }";
     document.head.appendChild(style);
   }
   function ensureSectionBox(def, firstNode) {
