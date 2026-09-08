@@ -952,21 +952,19 @@ var ContourForm1Logic = function () {
       // button vanish, leaving nothing pointing at what opened it.
       ".hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display:hover .contour-campus-map-pin, .contour-campus-map-pin:hover, .contour-campus-map-pin--active { opacity: 1; }" +
       // Two stages, so arriving at the card and arriving at the button are
-      // told apart: revealing paints the pill faintly, and landing on it (or
-      // holding the popover open from it) presses the tint deeper.
+      // told apart: revealing shows the bare glyph, and landing on it (or
+      // holding the popover open from it) forms the box underneath. At rest
+      // a tinted box plus a glyph was two shapes announcing one action; the
+      // box only earns its place as hover feedback (Amrit, 8 Sep 2026).
       //
-      // Both stages carry the full card scope, and the active stage doubles
-      // its own class, so stage 2 matches stage 1's specificity and wins on
-      // order. Written short, stage 2 silently lost to stage 1 whenever the
-      // card was hovered — which is every time it is on screen.
-      ".hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display:hover .contour-campus-map-pin .contour-campus-map-pin__glyph { background: rgba(12, 49, 102, 0.07); }" +
+      // The active stage doubles its own class so it outranks nothing by
+      // accident and stays predictable against the selected-card rules below.
       ".hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display .contour-campus-map-pin:hover .contour-campus-map-pin__glyph, .hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display .contour-campus-map-pin.contour-campus-map-pin--active .contour-campus-map-pin__glyph { background: rgba(12, 49, 102, 0.14); }" +
       "@media (prefers-reduced-motion: no-preference) { .hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display .contour-campus-map-pin:hover .contour-campus-map-pin__glyph, .hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display .contour-campus-map-pin.contour-campus-map-pin--active .contour-campus-map-pin__glyph { transform: scale(1.06); } }" +
       // On the selected card the navy-on-cream pair would sink into the
       // #005FCC fill, so it flips to white on white washes — and the scrim
       // has to fade to that fill instead of the cream.
       ".hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display:has(input:checked) .contour-campus-map-pin { --contour-campus-card-bg: #005FCC; color: #FFFFFF; }" +
-      ".hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display:has(input:checked):hover .contour-campus-map-pin .contour-campus-map-pin__glyph { background: rgba(255, 255, 255, 0.16); }" +
       ".hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display:has(input:checked) .contour-campus-map-pin:hover .contour-campus-map-pin__glyph, .hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display:has(input:checked) .contour-campus-map-pin.contour-campus-map-pin--active .contour-campus-map-pin__glyph { background: rgba(255, 255, 255, 0.28); }" +
       "@media (prefers-reduced-motion: reduce) { .contour-campus-map-pin, .contour-campus-map-pin__glyph { transition: none; } }" +
       // Header wears the section-header navy — tried the selected-card
