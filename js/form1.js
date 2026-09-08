@@ -1163,33 +1163,43 @@ var ContourForm1Logic = function () {
     });
   }
   // Drawn here rather than taken whole from an icon set, because none of
-  // them has this composition. The map is a plain folded band along the
-  // bottom, ours; the pin standing on it is Google's Material "place" path,
-  // Apache-2.0, scaled to 0.8 and lifted so it occupies the top two-thirds of
-  // the box. Its circular hole comes with that path.
+  // them has this composition: a folded map filling the box, with a pin
+  // standing on it, separated from it by a gap in the map itself.
+  //
+  // Two paths, both fill-rule evenodd. The first is the map with the pin's
+  // silhouette — enlarged by 1.2 units — punched out of it; that gap is the
+  // "white edge". The second is the pin sitting in the gap, with a circle
+  // punched through its head. The gap is a real hole rather than a white
+  // shape on purpose: filled white it merged with the pin on the selected
+  // card, where the pin is also white. As a hole it shows whichever colour
+  // the card is, cream or #005FCC (Amrit, 8 Sep 2026).
+  //
+  // The pin is generated rather than borrowed so its height is a parameter.
+  // Remix Icon's road-map-fill is this same subject and shipped for a while,
+  // but it carves the pin out of the map path itself, so the pin sat low and
+  // could not be raised without redrawing the carve — which is what made it
+  // look squat. Here the head sits at y=7 of 24, high on the map with the
+  // fold still reading beneath it.
   //
   // Every stock option was tried first (Amrit, 8 Sep 2026). Material Symbols
   // has maps and it has pins but never a pin on a map: location_on and map
   // are clean but generic, pin_road is two marks with no box to bind them,
   // distance is the measure-between-two-points icon and reads as a halo,
-  // map_search says "search a map". Remix's road-map-fill is the right
-  // subject, and shipped for a while, but it carves the pin's silhouette out
-  // of the map path itself, so the pin sits low and cannot be raised without
-  // redrawing the carve — which is what made it look squat. The Flaticon
-  // original and Font Awesome's map-location-dot are the right shape but
-  // both demand visible attribution, not worth carrying on a signup form.
+  // map_search says "search a map". The Flaticon original and Font Awesome's
+  // map-location-dot are the right shape but both demand visible
+  // attribution, not worth carrying on a signup form.
   //
-  // The map stays plain on purpose: fold gaps between panels fragment into
-  // separate blocks at 24px, and a route line drawn across it turns to mud.
-  // Both read fine at 56px, which is not the size this ships at.
+  // The map stays plain: fold gaps between panels fragment into separate
+  // blocks at 24px and a route line across it turns to mud. Both read fine
+  // at 58px, which is not the size this ships at.
   //
   // Shipped as paths rather than an icon font or a CDN call: a font request
   // that is slow or blocked would leave the button empty with nothing to
   // fall back to. Drawn in currentColor so the button's own rules pick the
   // colour: deep navy on the cream card, white on the selected one.
   var CAMPUS_MAP_PIN_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
-    '<path d="M2 16.2 8.5 13.5 15.5 16.2 22 13.5 22 18.8 15.5 21.5 8.5 18.8 2 21.5Z" fill="currentColor"/>' +
-    '<g transform="translate(2.4 -1.6) scale(0.8)"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="currentColor"/></g></svg>';
+    '<path fill-rule="evenodd" d="M2 7.6 8.5 4.9 15.5 7.6 22 4.9 22 19.1 15.5 21.8 8.5 19.1 2 21.8Z M6.60 7.00A5.40 5.40 0 1 1 17.40 7.00Q16.43 11.82 12.00 17.72Q7.57 11.82 6.60 7.00Z" fill="currentColor"/>' +
+    '<path fill-rule="evenodd" d="M7.80 7.00A4.20 4.20 0 1 1 16.20 7.00Q15.44 11.23 12.00 16.40Q8.56 11.23 7.80 7.00Z M12.00 5.24a1.76 1.76 0 1 0 0 3.53a1.76 1.76 0 1 0 0 -3.53Z" fill="currentColor"/></svg>';
   // One map button per mappable campus, overlaying the card's right edge and
   // revealed only while the pointer is on that card. On the card's vertical
   // centre line, so it shares the label's axis rather than introducing one.
