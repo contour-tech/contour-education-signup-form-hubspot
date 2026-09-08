@@ -1146,22 +1146,23 @@ var ContourForm1Logic = function () {
       campusMapTabsEl.appendChild(btn);
     });
   }
-  // Material Symbols "pin_road" (outlined, 24px), shipped as its path rather
+  // Material Symbols "distance" (outlined, 24px), shipped as its path rather
   // than pulled from the icon font or a CDN: it is one 24px glyph inside an
   // embedded form, and a font request that is slow or blocked would leave
   // the button empty with nothing to fall back to. Hence the icon set's own
   // 0 -960 960 960 viewBox rather than a redrawn one.
   //
-  // Three were compared at this size (Amrit, 8 Sep 2026). "distance" is the
-  // calmest but its pin-inside-a-ring reads as an ambiguous halo rather than
-  // a map; "route" implies a journey rather than a place; "map" filled is the
-  // most instantly legible but the least specific. This one says "this place,
-  // on a road", which is what the popover actually shows — it needs the full
-  // 24px to resolve, which the pill now gives it. Drawn in currentColor so
-  // the button's own rules pick the colour: deep navy on the cream card,
-  // white on the selected one.
+  // Four were compared at this size (Amrit, 8 Sep 2026). "map" filled is the
+  // most instantly legible but the least specific; "route" implies a journey
+  // rather than a place; "pin_road" says exactly what the popover shows and
+  // won while the glyph sat in a tinted box, but it is a two-part asymmetric
+  // shape — road left, pin right — and once the box only appears on hover it
+  // reads as two marks instead of one icon. This one is a single centred
+  // silhouette that holds together unaided. Drawn in currentColor so the
+  // button's own rules pick the colour: deep navy on the cream card, white
+  // on the selected one.
   var CAMPUS_MAP_PIN_SVG = '<svg viewBox="0 -960 960 960" aria-hidden="true" focusable="false">' +
-    '<path d="M333-120v-143h60v143h-60Zm0-289v-143h60v143h-60Zm0-289v-142h60v142h-60ZM61-120l110-720h59L121-120H61Zm618.5-3.5Q674-127 671-132l-3.97-9q-22.86-48-63.59-82.5Q562.7-258 533.89-302 517-328 508.5-356.5T500-416q0-78 57-130.5T693-599q78 0 132.5 56T880-408q0 29-8 56t-24 50q-29 45-70 78.5t-63 82.34l-4 9.16q-3 5-8.5 8.5T691-120q-6 0-11.5-3.5Zm67-230Q770-377 770-410t-23.5-56.5Q723-490 690-490t-56.5 23.5Q610-443 610-410t23.5 56.5Q657-330 690-330t56.5-23.5ZM531-605l-36-235h60l31 201q-15 6.84-28.5 14.92T531-605Z" fill="currentColor"/></svg>';
+    '<path d="M307-111q-67-31-67-79 0-26 23-49.5t63-38.5l45 42q-20 5-39 18.5T299-190q17 20 70.5 35T480-140q57 0 111-15t71-35q-14-15-35-28t-41-18l46-42q42 15 65 38.5t23 49.5q0 48-67 79T480-80q-106 0-173-31Zm174-164q109-81 164-164t55-155q0-112-71-169t-149-57q-77 0-148.5 57T260-594q0 73 55 152t166 167Zm-1 75Q340-304 270-402t-70-192q0-71 25.5-124.5t66-89.5q40.5-36 90-54t98.5-18q49 0 99 18t90 54q40 36 65.5 89.5T760-594q0 94-69.5 192T480-200Zm0-320q33 0 56.5-23.5T560-600q0-33-23.5-56.5T480-680q-33 0-56.5 23.5T400-600q0 33 23.5 56.5T480-520Zm0-80Z" fill="currentColor"/></svg>';
   // One map button per mappable campus, overlaying the card's right edge and
   // revealed only while the pointer is on that card. On the card's vertical
   // centre line, so it shares the label's axis rather than introducing one.
