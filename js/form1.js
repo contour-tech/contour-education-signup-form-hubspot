@@ -943,7 +943,7 @@ var ContourForm1Logic = function () {
       // Inset 3px on three sides so the rounded button stays inside the
       // card's own corner radius, which belongs to Webflow and can change
       // without this script hearing about it.
-      ".contour-campus-map-pin { --contour-campus-card-bg: #FFF9F1; position: absolute; top: 3px; right: 3px; bottom: 3px; width: 66px; box-sizing: border-box; display: flex; align-items: center; justify-content: flex-end; padding-right: 12px; border-radius: 8px; color: #0540F2; opacity: 0; transition: opacity 0.18s ease; pointer-events: none; }" +
+      ".contour-campus-map-pin { --contour-campus-card-bg: #FFF9F1; position: absolute; top: 3px; right: 3px; bottom: 3px; width: 66px; box-sizing: border-box; display: flex; align-items: center; justify-content: flex-end; padding-right: 12px; border-radius: 8px; color: #007AFF; opacity: 0; transition: opacity 0.18s ease; pointer-events: none; }" +
       // The scrim runs 28px further left than the button so a long address
       // dissolves into the card just before it reaches the glyph, instead of
       // colliding with it — Glen Waverley's "Kingsway" was still legible
@@ -977,7 +977,7 @@ var ContourForm1Logic = function () {
       //
       // The active stage doubles its own class so it outranks nothing by
       // accident and stays predictable against the selected-card rules below.
-      ".hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display .contour-campus-map-pin:hover .contour-campus-map-pin__glyph, .hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display .contour-campus-map-pin.contour-campus-map-pin--active .contour-campus-map-pin__glyph { background: rgba(5, 64, 242, 0.12); }" +
+      ".hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display .contour-campus-map-pin:hover .contour-campus-map-pin__glyph, .hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display .contour-campus-map-pin.contour-campus-map-pin--active .contour-campus-map-pin__glyph { background: rgba(0, 122, 255, 0.12); }" +
       "@media (prefers-reduced-motion: no-preference) { .hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display .contour-campus-map-pin:hover .contour-campus-map-pin__glyph, .hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display .contour-campus-map-pin.contour-campus-map-pin--active .contour-campus-map-pin__glyph { transform: scale(1.06); } }" +
       // On the selected card the navy-on-cream pair would sink into the
       // #005FCC fill, so it flips to white on white washes — and the scrim
@@ -1190,16 +1190,16 @@ var ContourForm1Logic = function () {
   // Shipped as paths rather than an icon font or a CDN call: no icon font
   // carries this glyph, and a font request that is slow or blocked would
   // leave the button empty with nothing to fall back to. Drawn in
-  // currentColor so the button's own rules pick the colour: OG Blue #0540F2
-  // on the cream card, white on the selected one. Two blues were tried and
-  // dropped first (Amrit, 9 Sep 2026). Navy #0C3166 is the campus name's
-  // exact colour, so the icon read as a peer of the heading rather than a
-  // control. #005FCC is this file's own medium blue for a picked campus card,
-  // not the brand blue — #0540F2 is the one the form already uses for focus
-  // rings, links and accent-color, so the button joins a vocabulary that
-  // exists instead of introducing a shade. Separating the icon from the
-  // heading by hue does the job that muting it was reaching for, without
-  // looking tentative on a control that is hidden until you approach it.
+  // currentColor so the button's own rules pick the colour: OG Blue #007AFF
+  // on the cream card, white on the selected one. That is the brand blue, as
+  // used by the prefill banner's badge and the blue subject chips. Three
+  // other blues were tried and dropped first (Amrit, 9 Sep 2026): navy
+  // #0C3166 is the campus name's exact colour, so the icon read as a peer of
+  // the heading rather than a control; #005FCC is this file's own medium blue
+  // for a picked campus card; #0540F2 is the focus-ring and link blue, close
+  // but not the brand one. Separating the icon from the heading by hue does
+  // the job that muting it was reaching for, without looking tentative on a
+  // control that is hidden until you approach it.
   var CAMPUS_MAP_PIN_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
     '<path d="M9.14844 7.48828C8.58844 7.48828 8.14844 7.93828 8.14844 8.48828C8.14844 9.03828 8.59844 9.48828 9.14844 9.48828C9.69844 9.48828 10.1484 9.03828 10.1484 8.48828C10.1484 7.93828 9.69844 7.48828 9.14844 7.48828Z" fill="currentColor"/>' +
     '<path d="M21.46 5.04C20.62 3.09 18.77 2 16.19 2H7.81C4.6 2 2 4.6 2 7.81V16.19C2 18.77 3.09 20.62 5.04 21.46C5.23 21.54 5.45 21.49 5.59 21.35L21.35 5.59C21.5 5.44 21.55 5.22 21.46 5.04ZM10.53 12.24C10.14 12.62 9.63 12.8 9.12 12.8C8.61 12.8 8.1 12.61 7.71 12.24C6.69 11.28 5.57 9.75 6 7.93C6.38 6.28 7.84 5.54 9.12 5.54C10.4 5.54 11.86 6.28 12.24 7.94C12.66 9.75 11.54 11.28 10.53 12.24Z" fill="currentColor"/>' +
