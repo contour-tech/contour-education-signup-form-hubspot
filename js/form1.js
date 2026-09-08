@@ -1203,8 +1203,21 @@ var ContourForm1Logic = function () {
       host.appendChild(pin);
     });
   }
+  // The button is revealed by hovering its card, so walking the grace gap
+  // into the popover used to make it vanish — the map stayed up with nothing
+  // left pointing at what opened it. This keeps it lit, at its deeper stage,
+  // for as long as its own popover is open (Amrit, 8 Sep 2026).
+  function setCampusMapPinActive(wrap, active) {
+    if (!wrap || !wrap.querySelector) return;
+    var pin = wrap.querySelector(".contour-campus-map-pin");
+    if (!pin) return;
+    if (active) pin.classList.add("contour-campus-map-pin--active");
+    else pin.classList.remove("contour-campus-map-pin--active");
+  }
   function openCampusMap(wrap, info) {
     ensureCampusMapPopover();
+    // Swapping straight from another campus leaves that button lit otherwise.
+    if (campusMapActiveWrap && campusMapActiveWrap !== wrap) setCampusMapPinActive(campusMapActiveWrap, false);
     // A close queued by leaving the previous card must not fire after this
     // popover re-opens for the new one — the swap already did the closing.
     if (campusMapCloseTimer) {
@@ -1213,6 +1226,7 @@ var ContourForm1Logic = function () {
     }
     clearCampusMapLoadTimer();
     campusMapActiveWrap = wrap;
+    setCampusMapPinActive(wrap, true);
     campusMapActiveInfo = info;
     // "Glen Waverley Campus", not the bare suburb — unless a future option
     // is already named with it.
@@ -1239,6 +1253,7 @@ var ContourForm1Logic = function () {
       campusMapCloseTimer = null;
     }
     clearCampusMapLoadTimer();
+    setCampusMapPinActive(campusMapActiveWrap, false);
     campusMapActiveWrap = null;
     campusMapActiveInfo = null;
     campusMapActiveKey = null;
