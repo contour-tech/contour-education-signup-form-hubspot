@@ -943,7 +943,7 @@ var ContourForm1Logic = function () {
       // Inset 3px on three sides so the rounded button stays inside the
       // card's own corner radius, which belongs to Webflow and can change
       // without this script hearing about it.
-      ".contour-campus-map-pin { --contour-campus-card-bg: #FFF9F1; position: absolute; top: 3px; right: 3px; bottom: 3px; width: 66px; box-sizing: border-box; display: flex; align-items: center; justify-content: flex-end; padding-right: 12px; border-radius: 8px; color: rgba(12, 49, 102, 0.62); opacity: 0; transition: opacity 0.18s ease, color 0.15s ease; pointer-events: none; }" +
+      ".contour-campus-map-pin { --contour-campus-card-bg: #FFF9F1; position: absolute; top: 3px; right: 3px; bottom: 3px; width: 66px; box-sizing: border-box; display: flex; align-items: center; justify-content: flex-end; padding-right: 12px; border-radius: 8px; color: #0C3166; opacity: 0; transition: opacity 0.18s ease; pointer-events: none; }" +
       // The scrim runs 28px further left than the button so a long address
       // dissolves into the card just before it reaches the glyph, instead of
       // colliding with it — Glen Waverley's "Kingsway" was still legible
@@ -978,14 +978,12 @@ var ContourForm1Logic = function () {
       // The active stage doubles its own class so it outranks nothing by
       // accident and stays predictable against the selected-card rules below.
       ".hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display .contour-campus-map-pin:hover .contour-campus-map-pin__glyph, .hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display .contour-campus-map-pin.contour-campus-map-pin--active .contour-campus-map-pin__glyph { background: rgba(12, 49, 102, 0.14); }" +
-      ".hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display .contour-campus-map-pin:hover, .hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display .contour-campus-map-pin.contour-campus-map-pin--active { color: #0C3166; }" +
       "@media (prefers-reduced-motion: no-preference) { .hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display .contour-campus-map-pin:hover .contour-campus-map-pin__glyph, .hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display .contour-campus-map-pin.contour-campus-map-pin--active .contour-campus-map-pin__glyph { transform: scale(1.06); } }" +
       // On the selected card the navy-on-cream pair would sink into the
       // #005FCC fill, so it flips to white on white washes — and the scrim
       // has to fade to that fill instead of the cream.
-      ".hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display:has(input:checked) .contour-campus-map-pin { --contour-campus-card-bg: #005FCC; color: rgba(255, 255, 255, 0.78); }" +
+      ".hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display:has(input:checked) .contour-campus-map-pin { --contour-campus-card-bg: #005FCC; color: #FFFFFF; }" +
       ".hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display:has(input:checked) .contour-campus-map-pin:hover .contour-campus-map-pin__glyph, .hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display:has(input:checked) .contour-campus-map-pin.contour-campus-map-pin--active .contour-campus-map-pin__glyph { background: rgba(255, 255, 255, 0.28); }" +
-      ".hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display:has(input:checked) .contour-campus-map-pin:hover, .hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display:has(input:checked) .contour-campus-map-pin.contour-campus-map-pin--active { color: #FFFFFF; }" +
       "@media (prefers-reduced-motion: reduce) { .contour-campus-map-pin, .contour-campus-map-pin__glyph { transition: none; } }" +
       // Header wears the section-header navy — tried the selected-card
       // #005FCC and went back; the navy is the form's header theme
@@ -1178,11 +1176,11 @@ var ContourForm1Logic = function () {
   // without a box around it, "distance" is the measure-between-two-points
   // icon and reads as a halo, "globe_location_pin" muddies at this size.
   //
-  // Drawn in currentColor, and the colour carries the two stages with the
-  // box: muted while merely revealed, full strength once the pointer is on
-  // it. At full navy throughout it matched the campus name's colour and
-  // weight exactly and read as a peer of the heading rather than as the
-  // small secondary control it is.
+  // Drawn in currentColor so the button's own rules pick the colour: deep
+  // navy on the cream card, white on the selected one. Muting it at rest and
+  // bringing it to full strength on hover was tried and dropped — Amrit
+  // preferred it at full navy throughout, with the box as the only thing the
+  // hover changes.
   var CAMPUS_MAP_PIN_SVG = '<svg viewBox="0 -960 960 960" aria-hidden="true" focusable="false">' +
     '<path d="M170-142q-17 9-33.5-1T120-173v-558q0-13 7.5-23t19.5-15l202-71 263 92 178-71q17-8 33.5 1.5T840-788v388q-28-54-78.5-83T654-512q-19 0-38 3t-38 11v-202l-196-66v540l-212 84Zm672 62L741-180q-19 14-40.5 21t-46.5 7q-62 0-106-44t-44-106q0-63 44-106.5T654-452q63 0 106.5 43.5T804-302q0 23-6.5 44T779-219l101 101-38 38ZM718-238q26-26 26-64t-26-64q-26-26-64-26t-64 26q-26 26-26 64t26 64q26 26 64 26t64-26Z" fill="currentColor"/></svg>';
   // One map button per mappable campus, overlaying the card's right edge and
