@@ -1162,27 +1162,33 @@ var ContourForm1Logic = function () {
       campusMapTabsEl.appendChild(btn);
     });
   }
-  // Material Symbols "map_search" (filled, 24px), shipped as its path rather
-  // than pulled from the icon font or a CDN: it is one 24px glyph inside an
-  // embedded form, and a font request that is slow or blocked would leave
-  // the button empty with nothing to fall back to. Hence the icon set's own
-  // 0 -960 960 960 viewBox rather than a redrawn one.
+  // Remix Icon "road-map-fill" — a folded map with a pin standing on it,
+  // which is the shape Amrit asked for and the one Material Symbols does not
+  // have at all. Shipped as its path rather than pulled from an icon font or
+  // a CDN: it is one 24px glyph inside an embedded form, and a font request
+  // that is slow or blocked would leave the button empty with nothing to
+  // fall back to.
   //
-  // Chosen from every location glyph in the set (Amrit, 8 Sep 2026). A map
-  // sheet with a pin stuck in it does not exist in Material Symbols; this is
-  // the nearest, and a magnifier over a map says "look at the map", which is
-  // what hovering it does. The ones tried before it each failed on one axis:
-  // "location_on" and "map" are clean but generic, "pin_road" is two marks
-  // without a box around it, "distance" is the measure-between-two-points
-  // icon and reads as a halo, "globe_location_pin" muddies at this size.
+  // Remix Icon is Apache-2.0, so this needs no attribution on the page. That
+  // ruled the alternatives out rather than taste did: the Flaticon original
+  // Amrit found and Font Awesome's map-location-dot are the same shape but
+  // both require visible attribution (Flaticon's own terms, CC-BY-4.0
+  // respectively), which is not worth carrying on a signup form.
+  //
+  // Six Material Symbols glyphs were tried before landing here (Amrit, 8 Sep
+  // 2026) and each missed on one axis: location_on and map are clean but
+  // generic, pin_road is two marks with no box to bind them, distance is the
+  // measure-between-two-points icon and reads as a halo, globe_location_pin
+  // muddies at this size, map_search says "search a map" rather than "here
+  // is the place".
   //
   // Drawn in currentColor so the button's own rules pick the colour: deep
   // navy on the cream card, white on the selected one. Muting it at rest and
   // bringing it to full strength on hover was tried and dropped — Amrit
   // preferred it at full navy throughout, with the box as the only thing the
   // hover changes.
-  var CAMPUS_MAP_PIN_SVG = '<svg viewBox="0 -960 960 960" aria-hidden="true" focusable="false">' +
-    '<path d="M170-142q-17 9-33.5-1T120-173v-558q0-13 7.5-23t19.5-15l202-71 263 92 178-71q17-8 33.5 1.5T840-788v388q-28-54-78.5-83T654-512q-19 0-38 3t-38 11v-202l-196-66v540l-212 84Zm672 62L741-180q-19 14-40.5 21t-46.5 7q-62 0-106-44t-44-106q0-63 44-106.5T654-452q63 0 106.5 43.5T804-302q0 23-6.5 44T779-219l101 101-38 38ZM718-238q26-26 26-64t-26-64q-26-26-64-26t-64 26q-26 26-26 64t26 64q26 26 64 26t64-26Z" fill="currentColor"/></svg>';
+  var CAMPUS_MAP_PIN_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
+    '<path d="M16.9497 11.9497C18.7347 10.1648 19.3542 7.65558 18.8081 5.36796L21.303 4.2987C21.5569 4.18992 21.8508 4.30749 21.9596 4.56131C21.9862 4.62355 22 4.69056 22 4.75827V19L15 22L9 19L2.69696 21.7013C2.44314 21.8101 2.14921 21.6925 2.04043 21.4387C2.01375 21.3765 2 21.3094 2 21.2417V7L5.12892 5.65904C4.70023 7.86632 5.34067 10.2402 7.05025 11.9497L12 16.8995L16.9497 11.9497ZM15.5355 10.5355L12 14.0711L8.46447 10.5355C6.51184 8.58291 6.51184 5.41709 8.46447 3.46447C10.4171 1.51184 13.5829 1.51184 15.5355 3.46447C17.4882 5.41709 17.4882 8.58291 15.5355 10.5355Z" fill="currentColor"/></svg>';
   // One map button per mappable campus, overlaying the card's right edge and
   // revealed only while the pointer is on that card. On the card's vertical
   // centre line, so it shares the label's axis rather than introducing one.
