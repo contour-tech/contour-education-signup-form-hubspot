@@ -692,11 +692,16 @@ var ContourForm1Logic = function () {
   /* =========================================================================
      CAMPUS MAP HOVER PREVIEW
      -------------------------------------------------------------------------
-     Hovering a campus card on desktop opens a floating popover with an
-     interactive Google Map (Maps Embed API, place mode) pinned to that
-     campus's street address. Google geocodes the query itself and drops a
-     clickable pin — clicking it opens the place card with photos/reviews and
-     a link out to full Google Maps, and the embed pans/zooms natively.
+     Hovering a campus card's map button on desktop opens a floating popover
+     with an interactive Google Map (Maps Embed API, place mode) pinned to
+     that campus's street address. Google geocodes the query itself and drops
+     a clickable pin — clicking it opens the place card with photos/reviews
+     and a link out to full Google Maps, and the embed pans/zooms natively.
+
+     The button is the hover target, not the card. Hovering anywhere on the
+     card meant sweeping the grid to read the labels flung the popover from
+     option to option, and it covered the campuses next to the one under the
+     cursor (Yatta, 7 Sep 2026).
 
      Which options qualify is decided from the label, so campus changes in the
      HubSpot form editor need no code here: a bracketed address means a map,
@@ -745,10 +750,13 @@ var ContourForm1Logic = function () {
   };
   var CAMPUS_MAP_AREA_ZOOM = 13;
   // The popover opens as good as immediately — the tiny delay only filters
-  // out a cursor passing straight through a card on its way elsewhere. The
-  // map's own loading state lives inside the popover (spinner over the body),
-  // so there is nothing to wait for before showing it (Amrit, 2 Sep 2026).
-  var CAMPUS_MAP_OPEN_DELAY_MS = 100;
+  // out a cursor passing straight through the button on its way elsewhere.
+  // The map's own loading state lives inside the popover (spinner over the
+  // body), so there is nothing to wait for before showing it (Amrit, 2 Sep
+  // 2026). Nudged up from 100ms when the hover target shrank from the whole
+  // card to the button: reaching a button is deliberate, so a longer filter
+  // costs nothing (Amrit, 8 Sep 2026).
+  var CAMPUS_MAP_OPEN_DELAY_MS = 180;
   var CAMPUS_MAP_CLOSE_DELAY_MS = 150;
   var CAMPUS_MAP_LOAD_TIMEOUT_MS = 8000;
   var CAMPUS_MAP_SUPPRESS_KEY = "contour_form1_campus_map_unavailable";
@@ -1253,7 +1261,9 @@ var ContourForm1Logic = function () {
       if (!campusMapOnDesktop()) return;
       var target = e.target;
       if (!target || !target.closest) return;
-      var wrap = target.closest("li");
+      var pin = target.closest(".contour-campus-map-pin");
+      if (!pin) return;
+      var wrap = pin.closest("li");
       if (!wrap) return;
       var input = wrap.querySelector(FIELD_SELECTORS.campus);
       if (!input) return;
@@ -1280,10 +1290,13 @@ var ContourForm1Logic = function () {
     formRoot.addEventListener("mouseout", function (e) {
       var target = e.target;
       if (!target || !target.closest) return;
-      var wrap = target.closest("li");
+      var pin = target.closest(".contour-campus-map-pin");
+      if (!pin) return;
+      var wrap = pin.closest("li");
       if (!wrap) return;
       var to = e.relatedTarget;
-      if (to && wrap.contains(to)) return;
+      // Crossing between the button's own children is not a leave.
+      if (to && pin.contains(to)) return;
       if (campusMapPendingWrap === wrap) cancelCampusMapPending();
       if (campusMapActiveWrap === wrap) {
         if (to && campusMapPopover && campusMapPopover.contains(to)) return;
