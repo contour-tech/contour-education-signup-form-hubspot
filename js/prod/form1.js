@@ -92,6 +92,15 @@ var ContourForm1Logic = function () {
     personLabelOutline: true,
     personLabelFill: false,
     personLabelMarker: false,
+    // Holds the Student segment back until the guardian rows are answered,
+    // the way the Guardian flow behaved until 8 Sep 2026. Off: picking
+    // Guardian brings both bands in a beat apart, so the card shows
+    // everything it still wants before the visitor starts typing (Angad,
+    // 8 Sep 2026 — the Student rows arriving only after the guardian rows
+    // were done made the form look finished when it wasn't). On restores
+    // the gate; the reveal is then the Student band alone, on the beat the
+    // guardian rows complete.
+    studentSegmentAwaitsGuardian: false,
     // Renders the Interested Subjects checkboxes as selectable tiles in the
     // program-card language — navy fill and a blue tick when picked. Off
     // restores the plain native checkboxes (Angad's "dopeify" round, 22 Aug
@@ -153,12 +162,38 @@ var ContourForm1Logic = function () {
     // Asks the email-verify Cloud Function, as each email box is left,
     // whether the address can take mail: real domain, live mail server, not
     // a throwaway inbox. See EMAIL DELIVERABILITY CHECK (Amrit, 5 Sep 2026).
-    emailDeliverabilityCheck: true
+    emailDeliverabilityCheck: true,
+    // Puts "Which year are you interested in tutoring for?" at the very top
+    // of the form as two illustrated-card-sized tiles, 2026 and 2027, in the
+    // Student / Guardian selector's own language, and holds the rest of the
+    // form back until one is picked (Akshay via Amrit, 7 Sep 2026). The
+    // native dropdown stays on the form, hidden, and carries the value; off
+    // puts the dropdown back in Academic Details. See INTAKE YEAR GATE.
+    intakeYearGate: true,
+    // The navy tick disc on the picked intake tile's top-right corner. Off
+    // by default: the blue fill and the white figure already say "picked"
+    // (Amrit, 8 Sep 2026); on adds the badge for a trial.
+    intakeYearBadge: false
   };
   function featureEnabled(name) {
     var overrides = window.ContourForm1Config;
     if (overrides && Object.prototype.hasOwnProperty.call(overrides, name)) return !!overrides[name];
     return !!FEATURE_DEFAULTS[name];
+  }
+  // Settings with a value rather than a switch, overridden the same way:
+  //   <script>window.ContourForm1Config = { animationStyle: "wipe-radial" };</script>
+  var SETTING_DEFAULTS = {
+    // How the intake-year figures fill under the pointer and on the pick.
+    //   "fade"        — the fill fades in, slowly (default; Amrit, 8 Sep 2026)
+    //   "wipe-radial" — a circle grows out from the centre until it covers
+    //   "wipe-left"   — the fill sweeps in from the left, the program cards'
+    //                   logo-tint wipe
+    animationStyle: "fade"
+  };
+  function settingValue(name) {
+    var overrides = window.ContourForm1Config;
+    if (overrides && Object.prototype.hasOwnProperty.call(overrides, name) && overrides[name] != null) return String(overrides[name]);
+    return SETTING_DEFAULTS[name];
   }
   /* =========================================================
      HEADER CASE
@@ -299,7 +334,11 @@ var ContourForm1Logic = function () {
   // this file learns about it). 2027 comes from the Curriculum Planning
   // Matrix tab; 2026 was generated from the 2026 option tokens on
   // 2026-08-21 so behaviour stayed identical — edit the grid, not tokens.
-  var SUBJECT_MATRIX = { "2026": { "VIC": { "Year 6": ["VIC-MA07", "VSE-FOEN", "VSE-FOMA", "VSE-FOWR"], "Year 7": ["VIC-MA07", "VIC-MA08", "VSE-COEN", "VSE-COMA", "VSE-COWR"], "Year 8": ["VIC-MA08", "VIC-MA09", "VSE-MAEN", "VSE-MAMA", "VSE-MAWR"], "Year 9": ["VIC-MA09", "VIC-MA10", "VIC-MA1A"], "Year 10": ["MD-INT", "UCAT-ANZ-CORE", "VCE-BI12", "VCE-CH12", "VCE-EL12", "VCE-EN12", "VCE-MM12", "VCE-PH12", "VCE-SM12", "VIC-MA10", "VIC-MA1A"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE", "VCE-BI12", "VCE-BI34", "VCE-CH12", "VCE-CH34", "VCE-EL12", "VCE-EL34", "VCE-EN12", "VCE-EN34", "VCE-MM12", "VCE-MM34", "VCE-PH12", "VCE-PH34", "VCE-SM12", "VCE-SM34"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST", "VCE-BI34", "VCE-CH34", "VCE-EL34", "VCE-EN34", "VCE-MM34", "VCE-PH34", "VCE-SM34"], "Year 13": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["MD-INT", "UCAT-ANZ-MAST"] }, "QLD": { "Year 6": ["QLD-MA07"], "Year 7": ["QLD-MA07", "QLD-MA08"], "Year 8": ["QLD-MA08", "QLD-MA09"], "Year 9": ["QLD-MA09", "QLD-MA1A"], "Year 10": ["MD-INT", "QCE-BI12", "QCE-CH12", "QCE-MM12", "QCE-PH12", "QCE-SM12", "QLD-MA1A", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "QCE-BI12", "QCE-BI34", "QCE-CH12", "QCE-CH34", "QCE-MM12", "QCE-MM34", "QCE-PH12", "QCE-PH34", "QCE-SM12", "QCE-SM34", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "QCE-BI34", "QCE-CH34", "QCE-MM34", "QCE-PH34", "QCE-SM34", "UCAT-ANZ-MAST"], "Year 13": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["MD-INT", "UCAT-ANZ-MAST"] }, "WA": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Year 13": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["MD-INT", "UCAT-ANZ-MAST"] }, "SA": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Year 13": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["MD-INT", "UCAT-ANZ-MAST"] }, "NSW": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Year 13": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["MD-INT", "UCAT-ANZ-MAST"] }, "TAS": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Year 13": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["MD-INT", "UCAT-ANZ-MAST"] }, "ACT": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Year 13": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["MD-INT", "UCAT-ANZ-MAST"] }, "NT": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Year 13": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["MD-INT", "UCAT-ANZ-MAST"] }, "NZ": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Year 13": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["MD-INT", "UCAT-ANZ-MAST"] }, "UK": { "Year 10": ["MD-INT", "UCAT-UK-CORE"], "Year 11": ["MD-INT", "UCAT-UK-CORE"], "Year 12": ["MD-INT", "UCAT-UK-MAST"], "Year 13": ["MD-INT", "UCAT-UK-MAST"], "Graduated": ["MD-INT", "UCAT-UK-MAST"] }, "INTERNATIONAL": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Year 13": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["MD-INT", "UCAT-ANZ-MAST"] } }, "2027": { "VIC": { "Year 5": ["VSC-EN05", "VSC-MA05", "VSC-WR05"], "Year 6": ["VIC-EN07", "VIC-EN08", "VIC-MA07", "VIC-MA08", "VIC-SC07", "VIC-SC08", "VSE-EN06", "VSE-MA06", "VSE-WR06"], "Year 7": ["VIC-EN07", "VIC-EN08", "VIC-EN09", "VIC-MA07", "VIC-MA08", "VIC-MA9A", "VIC-SC07", "VIC-SC08", "VIC-SC09", "VSE-EN07", "VSE-MA07", "VSE-WR07"], "Year 8": ["VIC-EN08", "VIC-EN09", "VIC-EN10", "VIC-MA08", "VIC-MA1A", "VIC-MA9A", "VIC-SC08", "VIC-SC09", "VIC-SC10", "VSE-EN08", "VSE-MA08", "VSE-WR08"], "Year 9": ["VCE-BI12", "VCE-CH12", "VCE-EL12", "VCE-EN12", "VCE-MM12", "VCE-PH12", "VCE-SM12", "VIC-EN09", "VIC-EN10", "VIC-MA1A", "VIC-MA9A", "VIC-SC09", "VIC-SC10"], "Year 10": ["MD-INT", "UCAT-ANZ-CORE", "VCE-BI12", "VCE-BI34", "VCE-CH12", "VCE-CH34", "VCE-EL12", "VCE-EL34", "VCE-EN12", "VCE-EN34", "VCE-MM12", "VCE-MM34", "VCE-PH12", "VCE-PH34", "VCE-SM12", "VCE-SM34", "VIC-EN10", "VIC-MA1A", "VIC-SC10"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE", "VCE-BI12", "VCE-BI34", "VCE-CH12", "VCE-CH34", "VCE-EL12", "VCE-EL34", "VCE-EN12", "VCE-EN34", "VCE-MM12", "VCE-MM34", "VCE-PH12", "VCE-PH34", "VCE-SM12", "VCE-SM34"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST", "VCE-BI34", "VCE-CH34", "VCE-EL34", "VCE-EN34", "VCE-MM34", "VCE-PH34", "VCE-SM34"], "Graduated": ["GAMSAT", "MD-INT", "UCAT-ANZ-MAST"] }, "QLD": { "Year 6": ["QLD-EN07", "QLD-EN08", "QLD-MA07", "QLD-MA08", "QLD-SC07", "QLD-SC08"], "Year 7": ["QLD-EN07", "QLD-EN08", "QLD-EN09", "QLD-MA07", "QLD-MA08", "QLD-MA09", "QLD-SC07", "QLD-SC08", "QLD-SC09"], "Year 8": ["QLD-EN08", "QLD-EN09", "QLD-EN10", "QLD-MA08", "QLD-MA09", "QLD-MA1A", "QLD-SC08", "QLD-SC09", "QLD-SC10"], "Year 9": ["QCE-BI12", "QCE-CH12", "QCE-MM12", "QCE-PH12", "QCE-SM12", "QLD-EN09", "QLD-EN10", "QLD-MA09", "QLD-MA1A", "QLD-SC09", "QLD-SC10"], "Year 10": ["MD-INT", "QCE-BI12", "QCE-BI34", "QCE-CH12", "QCE-CH34", "QCE-MM12", "QCE-MM34", "QCE-PH12", "QCE-PH34", "QCE-SM12", "QCE-SM34", "QLD-EN10", "QLD-MA1A", "QLD-SC10", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "QCE-BI12", "QCE-BI34", "QCE-CH12", "QCE-CH34", "QCE-MM12", "QCE-MM34", "QCE-PH12", "QCE-PH34", "QCE-SM12", "QCE-SM34", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "QCE-BI34", "QCE-CH34", "QCE-MM34", "QCE-PH34", "QCE-SM34", "UCAT-ANZ-MAST"], "Graduated": ["GAMSAT", "MD-INT", "UCAT-ANZ-MAST"] }, "WA": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["GAMSAT", "MD-INT", "UCAT-ANZ-MAST"] }, "SA": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["GAMSAT", "MD-INT", "UCAT-ANZ-MAST"] }, "NSW": { "Year 6": ["NSW-EN07", "NSW-EN08", "NSW-MA07", "NSW-MA08", "NSW-SC07", "NSW-SC08"], "Year 7": ["NSW-EN07", "NSW-EN08", "NSW-EN09", "NSW-MA07", "NSW-MA08", "NSW-MA09", "NSW-SC07", "NSW-SC08", "NSW-SC09"], "Year 8": ["NSW-EN08", "NSW-EN09", "NSW-EN10", "NSW-MA08", "NSW-MA09", "NSW-MA10", "NSW-SC08", "NSW-SC09", "NSW-SC10"], "Year 9": ["NSW-EN09", "NSW-EN10", "NSW-MA09", "NSW-MA10", "NSW-SC09", "NSW-SC10", "PRE-BIOL", "PRE-CHEM", "PRE-MADV", "PRE-MAE1", "PRE-PHYS"], "Year 10": ["HSC-BIOL", "HSC-CHEM", "HSC-MADV", "HSC-MAE1", "HSC-MAE2", "HSC-PHYS", "MD-INT", "NSW-EN10", "NSW-MA10", "NSW-SC10", "PRE-BIOL", "PRE-CHEM", "PRE-MADV", "PRE-MAE1", "PRE-PHYS", "UCAT-ANZ-CORE"], "Year 11": ["HSC-BIOL", "HSC-CHEM", "HSC-MADV", "HSC-MAE1", "HSC-MAE2", "HSC-PHYS", "MD-INT", "PRE-BIOL", "PRE-CHEM", "PRE-MADV", "PRE-MAE1", "PRE-PHYS", "UCAT-ANZ-CORE"], "Year 12": ["HSC-BIOL", "HSC-CHEM", "HSC-MADV", "HSC-MAE1", "HSC-MAE2", "HSC-PHYS", "MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["GAMSAT", "MD-INT", "UCAT-ANZ-MAST"] }, "TAS": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["GAMSAT", "MD-INT", "UCAT-ANZ-MAST"] }, "ACT": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["GAMSAT", "MD-INT", "UCAT-ANZ-MAST"] }, "NT": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["GAMSAT", "MD-INT", "UCAT-ANZ-MAST"] }, "NZ": { "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-CORE"], "Year 13": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["GAMSAT", "MD-INT", "UCAT-ANZ-MAST"] }, "UK": { "Year 10": ["MD-INT", "UCAT-UK-MAST"], "Year 11": ["MD-INT", "UCAT-UK-MAST"], "Year 12": ["MD-INT", "UCAT-UK-MAST"], "Year 13": ["MD-INT", "UCAT-UK-MAST"], "Graduated": ["GAMSAT", "MD-INT", "UCAT-UK-MAST"] }, "INTERNATIONAL": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Year 13": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["GAMSAT", "MD-INT", "UCAT-ANZ-MAST"] } } };
+  // VIC-MA10 (plain "Year 10 Maths") was dropped from the 2026 VIC Year 9/10
+  // cells on 8 Sep 2026: it was a legacy HubSpot option swept in by that
+  // generation, is in no Planning Matrix tab, and is not taught — only
+  // Year 10 Advanced (VIC-MA1A) is (Aidann/Yatta, #sales-group-tech).
+  var SUBJECT_MATRIX = { "2026": { "VIC": { "Year 6": ["VIC-MA07", "VSE-FOEN", "VSE-FOMA", "VSE-FOWR"], "Year 7": ["VIC-MA07", "VIC-MA08", "VSE-COEN", "VSE-COMA", "VSE-COWR"], "Year 8": ["VIC-MA08", "VIC-MA09", "VSE-MAEN", "VSE-MAMA", "VSE-MAWR"], "Year 9": ["VIC-MA09", "VIC-MA1A"], "Year 10": ["MD-INT", "UCAT-ANZ-CORE", "VCE-BI12", "VCE-CH12", "VCE-EL12", "VCE-EN12", "VCE-MM12", "VCE-PH12", "VCE-SM12", "VIC-MA1A"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE", "VCE-BI12", "VCE-BI34", "VCE-CH12", "VCE-CH34", "VCE-EL12", "VCE-EL34", "VCE-EN12", "VCE-EN34", "VCE-MM12", "VCE-MM34", "VCE-PH12", "VCE-PH34", "VCE-SM12", "VCE-SM34"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST", "VCE-BI34", "VCE-CH34", "VCE-EL34", "VCE-EN34", "VCE-MM34", "VCE-PH34", "VCE-SM34"], "Year 13": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["MD-INT", "UCAT-ANZ-MAST"] }, "QLD": { "Year 6": ["QLD-MA07"], "Year 7": ["QLD-MA07", "QLD-MA08"], "Year 8": ["QLD-MA08", "QLD-MA09"], "Year 9": ["QLD-MA09", "QLD-MA1A"], "Year 10": ["MD-INT", "QCE-BI12", "QCE-CH12", "QCE-MM12", "QCE-PH12", "QCE-SM12", "QLD-MA1A", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "QCE-BI12", "QCE-BI34", "QCE-CH12", "QCE-CH34", "QCE-MM12", "QCE-MM34", "QCE-PH12", "QCE-PH34", "QCE-SM12", "QCE-SM34", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "QCE-BI34", "QCE-CH34", "QCE-MM34", "QCE-PH34", "QCE-SM34", "UCAT-ANZ-MAST"], "Year 13": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["MD-INT", "UCAT-ANZ-MAST"] }, "WA": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Year 13": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["MD-INT", "UCAT-ANZ-MAST"] }, "SA": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Year 13": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["MD-INT", "UCAT-ANZ-MAST"] }, "NSW": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Year 13": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["MD-INT", "UCAT-ANZ-MAST"] }, "TAS": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Year 13": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["MD-INT", "UCAT-ANZ-MAST"] }, "ACT": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Year 13": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["MD-INT", "UCAT-ANZ-MAST"] }, "NT": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Year 13": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["MD-INT", "UCAT-ANZ-MAST"] }, "NZ": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Year 13": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["MD-INT", "UCAT-ANZ-MAST"] }, "UK": { "Year 10": ["MD-INT", "UCAT-UK-CORE"], "Year 11": ["MD-INT", "UCAT-UK-CORE"], "Year 12": ["MD-INT", "UCAT-UK-MAST"], "Year 13": ["MD-INT", "UCAT-UK-MAST"], "Graduated": ["MD-INT", "UCAT-UK-MAST"] }, "INTERNATIONAL": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Year 13": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["MD-INT", "UCAT-ANZ-MAST"] } }, "2027": { "VIC": { "Year 5": ["VSC-EN05", "VSC-MA05", "VSC-WR05"], "Year 6": ["VIC-EN07", "VIC-EN08", "VIC-MA07", "VIC-MA08", "VIC-SC07", "VIC-SC08", "VSE-EN06", "VSE-MA06", "VSE-WR06"], "Year 7": ["VIC-EN07", "VIC-EN08", "VIC-EN09", "VIC-MA07", "VIC-MA08", "VIC-MA9A", "VIC-SC07", "VIC-SC08", "VIC-SC09", "VSE-EN07", "VSE-MA07", "VSE-WR07"], "Year 8": ["VIC-EN08", "VIC-EN09", "VIC-EN10", "VIC-MA08", "VIC-MA1A", "VIC-MA9A", "VIC-SC08", "VIC-SC09", "VIC-SC10", "VSE-EN08", "VSE-MA08", "VSE-WR08"], "Year 9": ["VCE-BI12", "VCE-CH12", "VCE-EL12", "VCE-EN12", "VCE-MM12", "VCE-PH12", "VCE-SM12", "VIC-EN09", "VIC-EN10", "VIC-MA1A", "VIC-MA9A", "VIC-SC09", "VIC-SC10"], "Year 10": ["MD-INT", "UCAT-ANZ-CORE", "VCE-BI12", "VCE-BI34", "VCE-CH12", "VCE-CH34", "VCE-EL12", "VCE-EL34", "VCE-EN12", "VCE-EN34", "VCE-MM12", "VCE-MM34", "VCE-PH12", "VCE-PH34", "VCE-SM12", "VCE-SM34", "VIC-EN10", "VIC-MA1A", "VIC-SC10"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE", "VCE-BI12", "VCE-BI34", "VCE-CH12", "VCE-CH34", "VCE-EL12", "VCE-EL34", "VCE-EN12", "VCE-EN34", "VCE-MM12", "VCE-MM34", "VCE-PH12", "VCE-PH34", "VCE-SM12", "VCE-SM34"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST", "VCE-BI34", "VCE-CH34", "VCE-EL34", "VCE-EN34", "VCE-MM34", "VCE-PH34", "VCE-SM34"], "Graduated": ["GAMSAT", "MD-INT", "UCAT-ANZ-MAST"] }, "QLD": { "Year 6": ["QLD-EN07", "QLD-EN08", "QLD-MA07", "QLD-MA08", "QLD-SC07", "QLD-SC08"], "Year 7": ["QLD-EN07", "QLD-EN08", "QLD-EN09", "QLD-MA07", "QLD-MA08", "QLD-MA09", "QLD-SC07", "QLD-SC08", "QLD-SC09"], "Year 8": ["QLD-EN08", "QLD-EN09", "QLD-EN10", "QLD-MA08", "QLD-MA09", "QLD-MA1A", "QLD-SC08", "QLD-SC09", "QLD-SC10"], "Year 9": ["QCE-BI12", "QCE-CH12", "QCE-MM12", "QCE-PH12", "QCE-SM12", "QLD-EN09", "QLD-EN10", "QLD-MA09", "QLD-MA1A", "QLD-SC09", "QLD-SC10"], "Year 10": ["MD-INT", "QCE-BI12", "QCE-BI34", "QCE-CH12", "QCE-CH34", "QCE-MM12", "QCE-MM34", "QCE-PH12", "QCE-PH34", "QCE-SM12", "QCE-SM34", "QLD-EN10", "QLD-MA1A", "QLD-SC10", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "QCE-BI12", "QCE-BI34", "QCE-CH12", "QCE-CH34", "QCE-MM12", "QCE-MM34", "QCE-PH12", "QCE-PH34", "QCE-SM12", "QCE-SM34", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "QCE-BI34", "QCE-CH34", "QCE-MM34", "QCE-PH34", "QCE-SM34", "UCAT-ANZ-MAST"], "Graduated": ["GAMSAT", "MD-INT", "UCAT-ANZ-MAST"] }, "WA": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["GAMSAT", "MD-INT", "UCAT-ANZ-MAST"] }, "SA": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["GAMSAT", "MD-INT", "UCAT-ANZ-MAST"] }, "NSW": { "Year 6": ["NSW-EN07", "NSW-EN08", "NSW-MA07", "NSW-MA08", "NSW-SC07", "NSW-SC08"], "Year 7": ["NSW-EN07", "NSW-EN08", "NSW-EN09", "NSW-MA07", "NSW-MA08", "NSW-MA09", "NSW-SC07", "NSW-SC08", "NSW-SC09"], "Year 8": ["NSW-EN08", "NSW-EN09", "NSW-EN10", "NSW-MA08", "NSW-MA09", "NSW-MA10", "NSW-SC08", "NSW-SC09", "NSW-SC10"], "Year 9": ["NSW-EN09", "NSW-EN10", "NSW-MA09", "NSW-MA10", "NSW-SC09", "NSW-SC10", "PRE-BIOL", "PRE-CHEM", "PRE-MADV", "PRE-MAE1", "PRE-PHYS"], "Year 10": ["HSC-BIOL", "HSC-CHEM", "HSC-MADV", "HSC-MAE1", "HSC-MAE2", "HSC-PHYS", "MD-INT", "NSW-EN10", "NSW-MA10", "NSW-SC10", "PRE-BIOL", "PRE-CHEM", "PRE-MADV", "PRE-MAE1", "PRE-PHYS", "UCAT-ANZ-CORE"], "Year 11": ["HSC-BIOL", "HSC-CHEM", "HSC-MADV", "HSC-MAE1", "HSC-MAE2", "HSC-PHYS", "MD-INT", "PRE-BIOL", "PRE-CHEM", "PRE-MADV", "PRE-MAE1", "PRE-PHYS", "UCAT-ANZ-CORE"], "Year 12": ["HSC-BIOL", "HSC-CHEM", "HSC-MADV", "HSC-MAE1", "HSC-MAE2", "HSC-PHYS", "MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["GAMSAT", "MD-INT", "UCAT-ANZ-MAST"] }, "TAS": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["GAMSAT", "MD-INT", "UCAT-ANZ-MAST"] }, "ACT": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["GAMSAT", "MD-INT", "UCAT-ANZ-MAST"] }, "NT": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["GAMSAT", "MD-INT", "UCAT-ANZ-MAST"] }, "NZ": { "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-CORE"], "Year 13": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["GAMSAT", "MD-INT", "UCAT-ANZ-MAST"] }, "UK": { "Year 10": ["MD-INT", "UCAT-UK-MAST"], "Year 11": ["MD-INT", "UCAT-UK-MAST"], "Year 12": ["MD-INT", "UCAT-UK-MAST"], "Year 13": ["MD-INT", "UCAT-UK-MAST"], "Graduated": ["GAMSAT", "MD-INT", "UCAT-UK-MAST"] }, "INTERNATIONAL": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Year 13": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["GAMSAT", "MD-INT", "UCAT-ANZ-MAST"] } } };
   // UCAT enrolments are closed until later in September 2026 (Ramodh via Luke,
   // 12 Aug 2026). While closed, the Welcome Consultation scheduler is hidden
   // for UCAT students. Flip UCAT_ENROLMENTS_OPEN back to true when enrolments
@@ -662,11 +701,16 @@ var ContourForm1Logic = function () {
   /* =========================================================================
      CAMPUS MAP HOVER PREVIEW
      -------------------------------------------------------------------------
-     Hovering a campus card on desktop opens a floating popover with an
-     interactive Google Map (Maps Embed API, place mode) pinned to that
-     campus's street address. Google geocodes the query itself and drops a
-     clickable pin — clicking it opens the place card with photos/reviews and
-     a link out to full Google Maps, and the embed pans/zooms natively.
+     Hovering a campus card's map button on desktop opens a floating popover
+     with an interactive Google Map (Maps Embed API, place mode) pinned to
+     that campus's street address. Google geocodes the query itself and drops
+     a clickable pin — clicking it opens the place card with photos/reviews
+     and a link out to full Google Maps, and the embed pans/zooms natively.
+
+     The button is the hover target, not the card. Hovering anywhere on the
+     card meant sweeping the grid to read the labels flung the popover from
+     option to option, and it covered the campuses next to the one under the
+     cursor (Yatta, 7 Sep 2026).
 
      Which options qualify is decided from the label, so campus changes in the
      HubSpot form editor need no code here: a bracketed address means a map,
@@ -715,10 +759,13 @@ var ContourForm1Logic = function () {
   };
   var CAMPUS_MAP_AREA_ZOOM = 13;
   // The popover opens as good as immediately — the tiny delay only filters
-  // out a cursor passing straight through a card on its way elsewhere. The
-  // map's own loading state lives inside the popover (spinner over the body),
-  // so there is nothing to wait for before showing it (Amrit, 2 Sep 2026).
-  var CAMPUS_MAP_OPEN_DELAY_MS = 100;
+  // out a cursor passing straight through the button on its way elsewhere.
+  // The map's own loading state lives inside the popover (spinner over the
+  // body), so there is nothing to wait for before showing it (Amrit, 2 Sep
+  // 2026). Nudged up from 100ms when the hover target shrank from the whole
+  // card to the button: reaching a button is deliberate, so a longer filter
+  // costs nothing (Amrit, 8 Sep 2026).
+  var CAMPUS_MAP_OPEN_DELAY_MS = 180;
   var CAMPUS_MAP_CLOSE_DELAY_MS = 150;
   var CAMPUS_MAP_LOAD_TIMEOUT_MS = 8000;
   var CAMPUS_MAP_SUPPRESS_KEY = "contour_form1_campus_map_unavailable";
@@ -881,6 +928,63 @@ var ContourForm1Logic = function () {
       // it 480x380 always fits (Amrit, 4 Sep 2026).
       ".contour-campus-map-popover { position: fixed; z-index: 2147483000; width: 480px; background: #fff; border: 1px solid rgba(12, 49, 102, 0.10); border-radius: 14px; box-shadow: 0 16px 40px rgba(12, 49, 102, 0.18), 0 2px 8px rgba(12, 49, 102, 0.10); overflow: hidden; opacity: 0; visibility: hidden; transform: translateY(4px); pointer-events: none; transition: opacity 0.18s ease, transform 0.18s ease, visibility 0s linear 0.18s; }" +
       ".contour-campus-map-popover--open { opacity: 1; visibility: visible; transform: none; pointer-events: auto; transition-delay: 0s; }" +
+      // The map button is the whole hover target. Webflow owns the page
+      // stylesheet, so the positioning context it hangs off has to be
+      // established here alongside the button itself.
+      ".hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display { position: relative; }" +
+      // Nothing is reserved in the layout, which is the whole point. An
+      // earlier build cut a 46px strip out of the label's text block and
+      // broke Glen Waverley: its address wants 340.5px of the 399px the
+      // card offers, so it has 58.5px of slack where every other campus has
+      // 190px or more, and it dropped to two lines. Even 30px only survived
+      // at the form's 880px cap. Overlaying costs no width at any viewport,
+      // so no card can be re-wrapped by this feature (Amrit, 8 Sep 2026).
+      //
+      // Inset 3px on three sides so the rounded button stays inside the
+      // card's own corner radius, which belongs to Webflow and can change
+      // without this script hearing about it.
+      ".contour-campus-map-pin { --contour-campus-card-bg: #FFF9F1; position: absolute; top: 3px; right: 3px; bottom: 3px; width: 66px; box-sizing: border-box; display: flex; align-items: center; justify-content: flex-end; padding-right: 12px; border-radius: 8px; color: #007AFF; opacity: 0; transition: opacity 0.18s ease; pointer-events: none; }" +
+      // The scrim runs 28px further left than the button so a long address
+      // dissolves into the card just before it reaches the glyph, instead of
+      // colliding with it — Glen Waverley's "Kingsway" was still legible
+      // straight through the icon (Amrit, 8 Sep 2026). Held as tight as it
+      // can be: it started at 56px and lost half of that to keep more of the
+      // address readable, and it reaches the card's own colour at 55%, so the
+      // glyph still sits on flat ground.
+      //
+      // pointer-events off: the scrim is paint, not target. Left hoverable it
+      // would open the map from halfway across the address line.
+      ".contour-campus-map-pin::before { content: \"\"; position: absolute; top: 0; right: 0; bottom: 0; left: -28px; border-radius: inherit; pointer-events: none; background: linear-gradient(to right, transparent, var(--contour-campus-card-bg) 55%, var(--contour-campus-card-bg)); }" +
+      // Only the glyph hit-tests. The box around it is as tall as the card
+      // and 66px wide because that is what the scrim needs to cover, and
+      // while it was the target the map opened from anywhere in that strip —
+      // above the glyph, below it, or well to its left (Amrit, 8 Sep 2026).
+      // Hovering the glyph still puts the box in :hover, since :hover applies
+      // up the ancestor chain of whatever was hit, so the rules below keep
+      // working off .contour-campus-map-pin:hover.
+      ".contour-campus-map-pin__glyph { position: relative; display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 10px; cursor: pointer; pointer-events: auto; transition: background-color 0.15s ease, transform 0.15s ease; }" +
+      ".contour-campus-map-pin svg { display: block; width: 24px; height: 24px; }" +
+      // Invisible until the pointer reaches the card, so the grid at rest is
+      // just the campus names. The active class keeps it lit while its own
+      // popover is open — walking the grace gap into the map used to make the
+      // button vanish, leaving nothing pointing at what opened it.
+      ".hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display:hover .contour-campus-map-pin, .contour-campus-map-pin:hover, .contour-campus-map-pin--active { opacity: 1; }" +
+      // Two stages, so arriving at the card and arriving at the button are
+      // told apart: revealing shows the bare glyph, and landing on it (or
+      // holding the popover open from it) forms the box underneath. At rest
+      // a tinted box plus a glyph was two shapes announcing one action; the
+      // box only earns its place as hover feedback (Amrit, 8 Sep 2026).
+      //
+      // The active stage doubles its own class so it outranks nothing by
+      // accident and stays predictable against the selected-card rules below.
+      ".hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display .contour-campus-map-pin:hover .contour-campus-map-pin__glyph, .hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display .contour-campus-map-pin.contour-campus-map-pin--active .contour-campus-map-pin__glyph { background: rgba(0, 122, 255, 0.12); }" +
+      "@media (prefers-reduced-motion: no-preference) { .hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display .contour-campus-map-pin:hover .contour-campus-map-pin__glyph, .hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display .contour-campus-map-pin.contour-campus-map-pin--active .contour-campus-map-pin__glyph { transform: scale(1.06); } }" +
+      // On the selected card the navy-on-cream pair would sink into the
+      // #005FCC fill, so it flips to white on white washes — and the scrim
+      // has to fade to that fill instead of the cream.
+      ".hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display:has(input:checked) .contour-campus-map-pin { --contour-campus-card-bg: #005FCC; color: #FFFFFF; }" +
+      ".hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display:has(input:checked) .contour-campus-map-pin:hover .contour-campus-map-pin__glyph, .hs_web_form__preferred_campuses li.hs-form-checkbox label.hs-form-checkbox-display:has(input:checked) .contour-campus-map-pin.contour-campus-map-pin--active .contour-campus-map-pin__glyph { background: rgba(255, 255, 255, 0.28); }" +
+      "@media (prefers-reduced-motion: reduce) { .contour-campus-map-pin, .contour-campus-map-pin__glyph { transition: none; } }" +
       // Header wears the section-header navy — tried the selected-card
       // #005FCC and went back; the navy is the form's header theme
       // (Amrit, 2 Sep 2026).
@@ -899,7 +1003,7 @@ var ContourForm1Logic = function () {
       "@keyframes contour-campus-map-spin { to { transform: rotate(360deg); } }" +
       "@media (prefers-reduced-motion: reduce) { .contour-campus-map-loader::before { animation: none; } }" +
       // Belt and braces alongside the matchMedia gate: never on touch/narrow.
-      "@media (hover: none), (pointer: coarse), (max-width: 767px) { .contour-campus-map-popover { display: none !important; } }";
+      "@media (hover: none), (pointer: coarse), (max-width: 767px) { .contour-campus-map-popover, .contour-campus-map-pin { display: none !important; } }";
     document.head.appendChild(style);
   }
   function ensureCampusMapPopover() {
@@ -1058,8 +1162,108 @@ var ContourForm1Logic = function () {
       campusMapTabsEl.appendChild(btn);
     });
   }
+  // A filled map card with a road across it and a pin in the corner, from
+  // SVG Repo (Amrit found it, 8 Sep 2026). Stripped of that site's wrapper
+  // groups and its hardcoded #000000 so the fills follow currentColor.
+  //
+  // LICENCE: SVG Repo mixes per-icon terms and some of its icons require
+  // attribution. Confirm this one's licence before release. If it turns out
+  // to be attribution-bound it has to go, the same way Flaticon's original
+  // and Font Awesome's map-location-dot did — a signup form is not the place
+  // to carry an icon credit. The shape is simple enough to redraw in-house
+  // if so: a rounded square, a diagonal, and a pin with an aperture.
+  //
+  // Chosen because it is the only candidate that survives 24px, which is the
+  // only size that matters here and the thing that decided every earlier
+  // round. Judge any replacement the same way: render at 24px with
+  // device_scale_factor 1 and magnify the raster, never eyeball it at 56px.
+  // What that test rejected: line-art versions of this same subject turn to
+  // mud at 1.5 stroke; a hand-drawn map-plus-teardrop was tuned at 58px and
+  // smeared into a blob, its tapered tail reading as a long V against the
+  // map fold and its 1.2-unit gap landing under one physical pixel; Remix's
+  // road-map-fill holds up but its map wings sit heavy. Material Symbols was
+  // exhausted first and has no pin-on-a-map at all: location_on and map are
+  // clean but generic, pin_road is two marks, distance is the
+  // measure-between-two-points glyph and reads as a halo, map_search says
+  // "search a map".
+  //
+  // Shipped as paths rather than an icon font or a CDN call: no icon font
+  // carries this glyph, and a font request that is slow or blocked would
+  // leave the button empty with nothing to fall back to. Drawn in
+  // currentColor so the button's own rules pick the colour: OG Blue #007AFF
+  // on the cream card, white on the selected one. That is the brand blue, as
+  // used by the prefill banner's badge and the blue subject chips. Three
+  // other blues were tried and dropped first (Amrit, 9 Sep 2026): navy
+  // #0C3166 is the campus name's exact colour, so the icon read as a peer of
+  // the heading rather than a control; #005FCC is this file's own medium blue
+  // for a picked campus card; #0540F2 is the focus-ring and link blue, close
+  // but not the brand one. Separating the icon from the heading by hue does
+  // the job that muting it was reaching for, without looking tentative on a
+  // control that is hidden until you approach it.
+  var CAMPUS_MAP_PIN_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
+    '<path d="M9.14844 7.48828C8.58844 7.48828 8.14844 7.93828 8.14844 8.48828C8.14844 9.03828 8.59844 9.48828 9.14844 9.48828C9.69844 9.48828 10.1484 9.03828 10.1484 8.48828C10.1484 7.93828 9.69844 7.48828 9.14844 7.48828Z" fill="currentColor"/>' +
+    '<path d="M21.46 5.04C20.62 3.09 18.77 2 16.19 2H7.81C4.6 2 2 4.6 2 7.81V16.19C2 18.77 3.09 20.62 5.04 21.46C5.23 21.54 5.45 21.49 5.59 21.35L21.35 5.59C21.5 5.44 21.55 5.22 21.46 5.04ZM10.53 12.24C10.14 12.62 9.63 12.8 9.12 12.8C8.61 12.8 8.1 12.61 7.71 12.24C6.69 11.28 5.57 9.75 6 7.93C6.38 6.28 7.84 5.54 9.12 5.54C10.4 5.54 11.86 6.28 12.24 7.94C12.66 9.75 11.54 11.28 10.53 12.24Z" fill="currentColor"/>' +
+    '<path d="M19.4689 20.5295C19.6889 20.7495 19.6589 21.1095 19.3889 21.2595C18.5089 21.7495 17.4389 21.9995 16.1889 21.9995H7.80892C7.51892 21.9995 7.39892 21.6595 7.59892 21.4595L13.6389 15.4195C13.8389 15.2195 14.1489 15.2195 14.3489 15.4195L19.4689 20.5295Z" fill="currentColor"/>' +
+    '<path d="M22.0017 7.80892V16.1889C22.0017 17.4389 21.7517 18.5189 21.2617 19.3889C21.1117 19.6589 20.7517 19.6789 20.5317 19.4689L15.4117 14.3489C15.2117 14.1489 15.2117 13.8389 15.4117 13.6389L21.4517 7.59892C21.6617 7.39892 22.0017 7.51892 22.0017 7.80892Z" fill="currentColor"/>' +
+    '</svg>';
+  // One map button per mappable campus, overlaying the card's right edge and
+  // revealed only while the pointer is on that card. On the card's vertical
+  // centre line, so it shares the label's axis rather than introducing one.
+  //
+  // Three earlier placements are worth not repeating (all Amrit, 8 Sep 2026).
+  // Inline after the campus name, the icon fought the text baseline and the
+  // two-line label's height and read as punctuation. Floated in the top-right
+  // corner, it hung off an axis of its own while the label stayed centred, and
+  // eight tinted dots turned the grid noisy. As a full-height strip with a
+  // hairline divider it looked like a control at last, but it had to take
+  // 46px out of the label to sit beside the text, and that broke the one card
+  // with no width to give — see the note in injectCampusMapStyles(). Revealing
+  // it on hover instead costs no layout at all and leaves the resting grid as
+  // just the campus names.
+  //
+  // campusMapInfo() is the same gate the popover uses, so "(Coming Soon)",
+  // "(Live & Recorded)", bracketless labels (Adelaide) and the ONLINE code
+  // get no button and no map.
+  function injectCampusMapPins() {
+    injectCampusMapStyles();
+    qAll(FIELD_SELECTORS.campus).forEach(function (opt) {
+      var wrap = optionWrapper(opt);
+      if (!wrap || wrap.querySelector(".contour-campus-map-pin")) return;
+      if (!campusMapInfo(opt)) return;
+      // The label is the visible card, so the button anchors to that rather
+      // than the li — the li carries the grid gap, the label the rounded box.
+      var host = wrap.querySelector("label.hs-form-checkbox-display") || wrap.querySelector("label") || wrap;
+      var pin = document.createElement("span");
+      pin.className = "contour-campus-map-pin";
+      // Decorative: the address it points at is already read out in the label.
+      pin.setAttribute("aria-hidden", "true");
+      // The hover wash lives on this inner pill rather than the button, so it
+      // never has to guess the card's corner radius to avoid spilling past it.
+      var glyph = document.createElement("span");
+      glyph.className = "contour-campus-map-pin__glyph";
+      // On the glyph, not the box: the box does not hit-test, so a title
+      // there would never surface.
+      glyph.title = "See this campus on the map";
+      glyph.innerHTML = CAMPUS_MAP_PIN_SVG;
+      pin.appendChild(glyph);
+      host.appendChild(pin);
+    });
+  }
+  // The button is revealed by hovering its card, so walking the grace gap
+  // into the popover used to make it vanish — the map stayed up with nothing
+  // left pointing at what opened it. This keeps it lit, at its deeper stage,
+  // for as long as its own popover is open (Amrit, 8 Sep 2026).
+  function setCampusMapPinActive(wrap, active) {
+    if (!wrap || !wrap.querySelector) return;
+    var pin = wrap.querySelector(".contour-campus-map-pin");
+    if (!pin) return;
+    if (active) pin.classList.add("contour-campus-map-pin--active");
+    else pin.classList.remove("contour-campus-map-pin--active");
+  }
   function openCampusMap(wrap, info) {
     ensureCampusMapPopover();
+    // Swapping straight from another campus leaves that button lit otherwise.
+    if (campusMapActiveWrap && campusMapActiveWrap !== wrap) setCampusMapPinActive(campusMapActiveWrap, false);
     // A close queued by leaving the previous card must not fire after this
     // popover re-opens for the new one — the swap already did the closing.
     if (campusMapCloseTimer) {
@@ -1068,6 +1272,7 @@ var ContourForm1Logic = function () {
     }
     clearCampusMapLoadTimer();
     campusMapActiveWrap = wrap;
+    setCampusMapPinActive(wrap, true);
     campusMapActiveInfo = info;
     // "Glen Waverley Campus", not the bare suburb — unless a future option
     // is already named with it.
@@ -1094,6 +1299,7 @@ var ContourForm1Logic = function () {
       campusMapCloseTimer = null;
     }
     clearCampusMapLoadTimer();
+    setCampusMapPinActive(campusMapActiveWrap, false);
     campusMapActiveWrap = null;
     campusMapActiveInfo = null;
     campusMapActiveKey = null;
@@ -1109,13 +1315,16 @@ var ContourForm1Logic = function () {
   function initCampusMapHover() {
     if (!featureEnabled("campusMapHover")) return;
     if (!window.matchMedia || !document.body) return;
+    injectCampusMapPins();
     // Delegated on the form root (mouseover bubbles, mouseenter doesn't) so
     // the wiring survives HubSpot re-rendering the campus field's DOM.
     formRoot.addEventListener("mouseover", function (e) {
       if (!campusMapOnDesktop()) return;
       var target = e.target;
       if (!target || !target.closest) return;
-      var wrap = target.closest("li");
+      var pin = target.closest(".contour-campus-map-pin");
+      if (!pin) return;
+      var wrap = pin.closest("li");
       if (!wrap) return;
       var input = wrap.querySelector(FIELD_SELECTORS.campus);
       if (!input) return;
@@ -1142,10 +1351,13 @@ var ContourForm1Logic = function () {
     formRoot.addEventListener("mouseout", function (e) {
       var target = e.target;
       if (!target || !target.closest) return;
-      var wrap = target.closest("li");
+      var pin = target.closest(".contour-campus-map-pin");
+      if (!pin) return;
+      var wrap = pin.closest("li");
       if (!wrap) return;
       var to = e.relatedTarget;
-      if (to && wrap.contains(to)) return;
+      // Crossing between the button's own children is not a leave.
+      if (to && pin.contains(to)) return;
       if (campusMapPendingWrap === wrap) cancelCampusMapPending();
       if (campusMapActiveWrap === wrap) {
         if (to && campusMapPopover && campusMapPopover.contains(to)) return;
@@ -1186,7 +1398,20 @@ var ContourForm1Logic = function () {
     style.id = "contour-program-card-accent-styles";
     style.textContent = "" +
       // overflow stays visible so the corner badge can straddle the outline.
-      ".hs-form .contour-program-card { position: relative; }" +
+      // Cream, not the white it inherited from the section body: every other
+      // option in the form sits on #FFF9F1 — the subject pills, the campus
+      // cards, the year tiles — and the program cards were the only ones
+      // reading as white cut-outs against them (Amrit, 9 Sep 2026). The
+      // selected fill and the hover tint both live on ::before, which covers
+      // this, so neither state changes.
+      ".hs-form .contour-program-card { position: relative; background-color: #FFF9F1; }" +
+      // The coverage error ("select a Med School Entry subject, or deselect
+      // the program") renders in the program field's wrap, under the card
+      // row, and had no margin of its own. Measured, its top sat 3px ABOVE
+      // the lowest card's bottom edge — overlapping the cards, not merely
+      // touching them. 12px here nets about 9px of clearance, in line with
+      // the 8px the subjects list gives its own errors (Amrit, 9 Sep 2026).
+      ".hs-form .contour-program-coverage-error { margin-top: 12px !important; }" +
       // Breathing room between the "Select all that apply" helper and the
       // card row (Angad) — the helper's own 8px margin was too tight.
       ".hs-form .hs-form-field ul.contour-program-card-list { margin-top: 16px; }" +
@@ -2641,6 +2866,7 @@ var ContourForm1Logic = function () {
     }
     lastIntakeForYearLevel = intake || null;
     setDisabledHint(yearSelect, intake ? "" : "Pick the year you are interested in tutoring for first.");
+    syncIntakeYearGate();
     var schoolInput = q(FIELD_SELECTORS.schoolText);
     if (schoolInput) {
       var location = getValue(FIELD_SELECTORS.location);
@@ -4066,6 +4292,14 @@ var ContourForm1Logic = function () {
         beginPrefillLinkSession();
         prefetchedTrialSubjectCodes = data.trialSubjectCodes || [];
         prefetchedEnrolledSubjectCodes = data.enrolledSubjectCodes || [];
+        // A student_id link is sent to people already on the books, and the
+        // intake-year option is missing from most of their records — so where
+        // the record does not name a year, the link itself is the answer:
+        // they are here for the coming intake (Amrit, 7 Sep 2026). Written
+        // into the record before applyPrefill so Year Level, which reads
+        // "year level in <intake>", lands on an enabled select in the usual
+        // order rather than being cleared for want of an intake.
+        fillIntakeYearForPrefillRecord(data.contact);
         applyPrefill(data.contact, data.guardian, data.associatedStudent, true);
         // The record filled the whole form in one go, so every card opens and
         // stays open — see revealAllSections. Set here rather than inside
@@ -4103,6 +4337,11 @@ var ContourForm1Logic = function () {
         // was typed on this browser rather than to a blank form.
         initDraftRestore();
       }
+      // The fetch failed or timed out, so the record's own answer is unknown
+      // but the link still says who this is: where the draft did not name a
+      // year either, the coming intake is the answer (see above). A record
+      // the server said is gone is a dud link and gets no default.
+      if (data === null) defaultIntakeYearForPrefillLink();
       // Prefill takes precedence (Guardian/Parent records select Guardian);
       // anything else — no record, unknown contact_type — defaults to Student.
       defaultContactTypeToStudent();
@@ -4940,6 +5179,24 @@ var ContourForm1Logic = function () {
     scheduleDerivedStateRefresh();
     return true;
   }
+  // The visitor has just changed an answer themselves. Reached from the
+  // form-level listeners above once they have ruled the event a real one, and
+  // directly from the intake-year gate, whose tiles are buttons of this
+  // file's own: the select they write to only ever sees a programmatic
+  // change, so the listeners would (rightly) ignore it.
+  function noteVisitorDraftEdit() {
+    if (!draftCacheEnabled()) return;
+    draftUserTouched = true;
+    if (prefillSessionLive) {
+      // The form has just diverged from the record, so the URL must stop
+      // claiming to be it. The draft that starts saving now carries the
+      // prefill context (email locks, trialling codes) — see
+      // draftPrefillMeta — so the refresh this enables loses nothing.
+      prefillSessionLive = false;
+      stripStudentIdFromUrl();
+    }
+    scheduleDraftSave();
+  }
   function initDraftCache() {
     if (!draftCacheEnabled()) return;
     // Only the student's own input starts a draft. Every prefill in this file
@@ -4952,16 +5209,7 @@ var ContourForm1Logic = function () {
       // browser's own input/change events raised by our setCheckboxChecked
       // calling click().
       if (!e.isTrusted || isProgrammaticEdit()) return;
-      draftUserTouched = true;
-      if (prefillSessionLive) {
-        // The form has just diverged from the record, so the URL must stop
-        // claiming to be it. The draft that starts saving now carries the
-        // prefill context (email locks, trialling codes) — see
-        // draftPrefillMeta — so the refresh this enables loses nothing.
-        prefillSessionLive = false;
-        stripStudentIdFromUrl();
-      }
-      scheduleDraftSave();
+      noteVisitorDraftEdit();
     }
     formRoot.addEventListener("input", onUserEdit);
     formRoot.addEventListener("change", onUserEdit);
@@ -6578,6 +6826,10 @@ var ContourForm1Logic = function () {
   function collectSectionNodes(parent, groups, state) {
     Array.prototype.forEach.call(parent.children, function (node) {
       if (node.classList && node.classList.contains(SECTION_HEADER_CLASS)) return;
+      // The intake-year gate is the form's opening question and belongs to no
+      // section: left in the walk it would be filed under Contact Information
+      // and adopted into that card.
+      if (node.classList && node.classList.contains(INTAKE_GATE_CLASS)) return;
       var indices = sectionIndicesIn(node);
       var splittable = node.children && node.children.length > 0 && !(node.classList && node.classList.contains(FIELD_WRAPPER_CLASS));
       if (indices.length > 1 && splittable) {
@@ -6772,6 +7024,9 @@ var ContourForm1Logic = function () {
     });
     updateSectionBoxStates(groups);
     updateStudentSegmentCascade();
+    // The intake card folds when Academic Details unlocks, which this pass
+    // has just decided.
+    syncIntakeYearGate();
     if (initial || revealedNow.length === 0) return;
     revealedNow.forEach(function (entry, i) {
       // Several sections open at once only on a prefilled return, where a
@@ -7067,7 +7322,9 @@ var ContourForm1Logic = function () {
   // pressed beats anything guessed from focus.
   function withScrollAnchor(fn, preferred) {
     var anchor = preferred && preferred.el && preferred.el.isConnected ? preferred.el : scrollAnchorElement();
-    var before = anchor === (preferred && preferred.el) ? preferred.top : anchor ? anchor.getBoundingClientRect().top : null;
+    // Nothing laid out to hold — every card is still behind the intake-year
+    // gate — leaves both null, and null === null must not read preferred.top.
+    var before = preferred && anchor === preferred.el ? preferred.top : anchor ? anchor.getBoundingClientRect().top : null;
     var changed = fn();
     if (!changed || !anchor || before === null || !anchor.isConnected) return;
     pinScrollAnchor(anchor, before);
@@ -7196,7 +7453,14 @@ var ContourForm1Logic = function () {
       // The header is a slim band in the person-tabs voice — small caps on a
       // faint navy wash — so it reads as the section's chrome, one tier above
       // the field labels inside, rather than a second bold label.
-      box + "__header { display: flex; align-items: center; gap: 12px; width: 100%; margin: 0; padding: 12px 22px; background: rgba(12, 49, 102, 0.045); border: 0; border-bottom: 1px solid rgba(12, 49, 102, 0.07); text-align: left; font: inherit; color: inherit; cursor: default; border-radius: 16px 16px 0 0; }" +
+      // The band holds one height whatever is in it. The pencil, the dash and
+      // the tick disc are all taller than the title's line box and each of
+      // them comes and goes with the card's state, so a band sized by its
+      // contents grew the moment the dash appeared — the intake card, which
+      // only earns its dash once a year is picked, visibly stepped down as
+      // the visitor answered it (Amrit, 8 Sep 2026). min-height is the
+      // tallest of them plus the band's own padding and rule.
+      box + "__header { display: flex; align-items: center; gap: 12px; box-sizing: border-box; width: 100%; min-height: 53px; margin: 0; padding: 12px 22px; background: rgba(12, 49, 102, 0.045); border: 0; border-bottom: 1px solid rgba(12, 49, 102, 0.07); text-align: left; font: inherit; color: inherit; cursor: default; border-radius: 16px 16px 0 0; }" +
       box + "--collapsed .contour-section-box__header { border-radius: 16px; border-bottom-color: transparent; }" +
       box + "__header--togglable { cursor: pointer; }" +
       box + "--collapsed .contour-section-box__header:hover { background: rgba(12, 49, 102, 0.08); }" +
@@ -7516,7 +7780,7 @@ var ContourForm1Logic = function () {
       // shortCountryLabel), so a third of the row fits it. The :not() chain
       // is the page rule's own, repeated so this wins the cascade against
       // it — both carry !important, so it comes down to specificity.
-      "@media (max-width: 767px) { " + box + "__header { padding: 14px 16px; } " + box + "__content-inner { padding: 14px 16px 18px; } " + box + ' .hs-fieldtype-intl-phone.hs-input:not([type="checkbox"]):not([type="radio"]):not([type="file"]) { flex-direction: row !important; } ' + box + " .contour-intl-phone { flex-direction: row !important; } }";
+      "@media (max-width: 767px) { " + box + "__header { min-height: 57px; padding: 14px 16px; } " + box + "__content-inner { padding: 14px 16px 18px; } " + box + ' .hs-fieldtype-intl-phone.hs-input:not([type="checkbox"]):not([type="radio"]):not([type="file"]) { flex-direction: row !important; } ' + box + " .contour-intl-phone { flex-direction: row !important; } }";
     document.head.appendChild(style);
   }
   function ensureSectionBox(def, firstNode) {
@@ -7818,13 +8082,21 @@ var ContourForm1Logic = function () {
     }
     return "";
   }
-  /* On the Guardian flow the card opens on the Guardian segment alone — the
-     visitor leads with their own details — and the Student band and rows
-     slide in once the guardian rows are answered — the same cascade the
-     sections play, one level down (order flipped with the segments, Amrit,
-     1 Sep 2026). Reveal-once, like sections: emptying a guardian field
-     later never yanks filled student rows off the screen. */
+  /* On the Guardian flow both segments arrive on the pick, a beat apart:
+     the Guardian band leads — the visitor leads with their own details —
+     and the Student band and rows follow 90ms later, while the guardian
+     beat is still travelling. One after the other, not one waiting on the
+     other (Angad, 8 Sep 2026: the Student rows never showing up until the
+     guardian rows were answered read as the form having nothing more to
+     ask). studentSegmentAwaitsGuardian restores the older gate.
+
+     Reveal-once, like sections: emptying a guardian field later never
+     yanks filled student rows off the screen. */
   var studentSegmentRevealed = false;
+  // The beat between the two bands, and the one evaluateSections puts
+  // between two sections opening at once — the cascade is the same idea a
+  // level down, so it keeps the same tempo.
+  var PERSON_SEG_BEAT_MS = 90;
   var STUDENT_SEG_HIDDEN_CLASS = "contour-student-seg-hidden";
   function studentSegmentNodes() {
     var nodes = qAll('[data-contour-person-static="student"]');
@@ -7875,21 +8147,47 @@ var ContourForm1Logic = function () {
       });
       return;
     }
-    // Everything shows at once when disclosure is off, for staff, and after
-    // anything that reveals the whole form (submit attempt, prefill).
-    var show = studentSegmentRevealed || !sectionFlowActive() || isInternalMode() || studentSegmentHasAnswer() || guardianSegmentComplete();
-    nodes.forEach(function (node) {
-      if (!show) {
+    // Mid-render the static band can be standing before the dependent rows
+    // land. Marking the segment revealed off the band alone would spend the
+    // one animation this gets on a header with nothing under it, so the pass
+    // waits for the rows — the MutationObserver runs it again.
+    if (personGroupRows(PERSON_GROUPS[0]).length === 0) return;
+    // Default: the pick shows both bands, so the gate is only the flow being
+    // on. With studentSegmentAwaitsGuardian the Student band waits for the
+    // guardian rows again. Either way it shows at once when disclosure is
+    // off, for staff, and after anything that reveals the whole form (submit
+    // attempt, prefill).
+    var awaitsGuardian = featureEnabled("studentSegmentAwaitsGuardian");
+    var show = studentSegmentRevealed || !sectionFlowActive() || isInternalMode() || studentSegmentHasAnswer() || !awaitsGuardian || guardianSegmentComplete();
+    if (!show) {
+      nodes.forEach(function (node) {
         node.classList.add(STUDENT_SEG_HIDDEN_CLASS);
-        return;
-      }
-      if (!node.classList.contains(STUDENT_SEG_HIDDEN_CLASS)) return;
+      });
+      return;
+    }
+    // One animation per flow, and the flag owns it rather than the class the
+    // nodes happen to be carrying: on the default path nothing was ever
+    // hidden, so there is no hidden class to read the transition off.
+    var play = !studentSegmentRevealed;
+    // The Guardian band is new to the visitor on this pass too, so it takes
+    // the leading beat. Its rows are not touched: they were on screen before
+    // the pick under "Your ..." labels, and re-sliding fields that never left
+    // reads as a glitch rather than a reveal. Under the older gate the
+    // guardian segment has been settled for a while — only the Student band
+    // arrives, and it arrives without a delay in front of it.
+    if (play && !awaitsGuardian) {
+      qAll('[data-contour-person-static="guardian"]').forEach(function (band) {
+        playReveal(band);
+      });
+    }
+    var delay = awaitsGuardian ? 0 : PERSON_SEG_BEAT_MS;
+    nodes.forEach(function (node) {
       node.classList.remove(STUDENT_SEG_HIDDEN_CLASS);
-      if (studentSegmentRevealed) return;
-      playReveal(node);
+      if (play) playReveal(node, delay);
     });
-    if (show) studentSegmentRevealed = true;
+    studentSegmentRevealed = true;
   }
+
   // "Started" = any visible field in the group holds an answer. Auto-collapse
   // waits for a later section to be started, not merely revealed — revealing
   // is the form's doing, an answer is the student's, and only the second one
@@ -10550,13 +10848,627 @@ var ContourForm1Logic = function () {
   function ensureIntakeYearNote() {
     var fieldEl = q(FIELD_SELECTORS.intakeYear);
     if (!fieldEl) return;
-    var wrap = fieldWrapper(fieldEl);
-    if (!wrap) return;
-    if (wrap.querySelector(".contour-intake-year-note")) return;
+    // With the gate on, the dropdown is hidden and the question is asked by
+    // the tiles at the top — the note goes under those instead, and says
+    // what the tile captions leave out: which year a new student should
+    // book for (Amrit, 7 Sep 2026).
+    var gateBody = formRoot.querySelector("." + INTAKE_GATE_CLASS + "__body-inner");
+    var host = gateBody || fieldWrapper(fieldEl);
+    if (!host) return;
+    if (host.querySelector(".contour-intake-year-note")) return;
     var note = document.createElement("div");
     note.className = "hs-field-desc contour-intake-year-note";
-    note.textContent = INTAKE_YEAR_NOTE_TEXT;
-    wrap.appendChild(note);
+    note.textContent = gateBody ? intakeYearGateNoteText(fieldEl) : INTAKE_YEAR_NOTE_TEXT;
+    host.appendChild(note);
+  }
+  function intakeYearGateNoteText(select) {
+    var now = new Date().getFullYear();
+    var next = intakeYearOptions(select).filter(function (option) {
+      return parseInt(option.value, 10) === now + 1;
+    })[0];
+    if (!next) return INTAKE_YEAR_NOTE_TEXT;
+    // Copy from the team (via Amrit, 8 Sep 2026): the pitch is the early
+    // start and the nudge to book, not which year most people pick.
+    return "Many of our " + next.label + " programs start as early as November. Sign up early to save your spot.";
+  }
+  /* =========================================================
+     INTAKE YEAR GATE
+     -----------------------------------------------------------
+     "Which year are you interested in tutoring for?" used to sit inside
+     Academic Details as a dropdown, after the visitor had already said who
+     they were and given their details. The whole form is a different form
+     for 2026 than for 2027 — year level, programs, subjects and campuses all
+     read off it — so it is now the first thing asked, ahead of Student /
+     Guardian, as two tiles in that selector's own language, and nothing else
+     is shown until one is picked (Akshay via Amrit, 7 Sep 2026).
+
+     The native <select> is not replaced: HubSpot validates and submits from
+     its own field, and the matrix, the year-level relabel and the draft all
+     read the field by name. Its wrapper is hidden and the tiles write into
+     it through the same programmatic setter the prefill uses, so every
+     evaluator downstream fires exactly as it did when the dropdown changed.
+     The tiles are built from the select's own options, so a third year
+     added in HubSpot appears here without a deploy.
+
+     Two consequences fall out of writing programmatically:
+       - the draft cache and the step logic both discount programmatic
+         changes, so a pick reports itself as the visitor's own act directly
+         (noteVisitorDraftEdit, the step flags);
+       - the reverse direction is a sync, not an event: a draft restore or a
+         pre-fill sets the select first, and the tiles read their state back
+         from it on every intake evaluation.
+     ========================================================= */
+  var INTAKE_GATE_CLASS = "contour-intake-gate";
+  var INTAKE_GATE_PENDING_CLASS = "contour-intake-gate-pending";
+  // On the form for as long as the gate is rendered — the hook for layout
+  // that only holds once the dropdown has left Academic Details.
+  var INTAKE_GATE_ON_CLASS = "contour-intake-gate-on";
+  // The gate is a section card: the same shell, header band and fold as
+  // Academic Details and the rest, so its open and folded states belong to
+  // one system rather than a bespoke row imitating a card (Amrit, 8 Sep 2026).
+  var INTAKE_GATE_FOLDED_CLASS = "contour-section-box--collapsed";
+  var INTAKE_GATE_TITLE = "Intake Year";
+  var INTAKE_GATE_QUESTION_FALLBACK = "Which year are you interested in tutoring for?";
+  // What a student_id link means when the record does not say: the coming
+  // intake. Matched against the select's options before it is used, so a
+  // form that has moved on to 2028 simply gets no default.
+  var PREFILL_DEFAULT_INTAKE_YEAR = "2027";
+  var intakeGateAnswered = null;
+  function intakeYearGateEnabled() {
+    return featureEnabled("intakeYearGate");
+  }
+  var INTAKE_GATE_ANIMATIONS = ["fade", "wipe-radial", "wipe-left"];
+  function intakeYearAnimationStyle() {
+    var style = settingValue("animationStyle");
+    return INTAKE_GATE_ANIMATIONS.indexOf(style) === -1 ? "fade" : style;
+  }
+  function injectIntakeYearGateStyles() {
+    if (document.getElementById("contour-intake-gate-styles")) return;
+    var style = document.createElement("style");
+    style.id = "contour-intake-gate-styles";
+    var gate = ".hs-form ." + INTAKE_GATE_CLASS;
+    var tile = gate + "__tile";
+    var study = ".hs-form." + INTAKE_GATE_ON_CLASS + ' .contour-section-box[data-contour-section="study"]';
+    var feed = "cubic-bezier(.22,.61,.36,1)";
+    // The blue arrives under the pointer, on keyboard focus and on the pick;
+    // the white only on the pick.
+    // The white takes longer than the blue: the pick is the moment to be
+    // enjoyed, the hover only a reply to the pointer (Amrit, 8 Sep 2026).
+    function feedRules(styleName, resting, arrived, blueSeconds, whiteSeconds) {
+      var scope = gate + "--anim-" + styleName + " ";
+      var scopedTile = scope + "." + INTAKE_GATE_CLASS + "__tile";
+      var blue = " ." + INTAKE_GATE_CLASS + "__art-blue";
+      var white = " ." + INTAKE_GATE_CLASS + "__art-white";
+      return scope + "." + INTAKE_GATE_CLASS + "__art-feed { " + resting + " }" +
+        scope + "." + INTAKE_GATE_CLASS + "__art-blue { transition-duration: " + blueSeconds + "s; }" +
+        scope + "." + INTAKE_GATE_CLASS + "__art-white { transition-duration: " + whiteSeconds + "s; }" +
+        scopedTile + ":hover" + blue + ", " + scopedTile + ":focus-visible" + blue + ", " + scopedTile + '[aria-checked="true"]' + blue + ", " + scopedTile + '[aria-checked="true"]' + white + " { " + arrived + " }";
+    }
+    style.textContent = "" +
+      // Everything under the gate waits. display rather than visibility so the
+      // page has no phantom height to scroll into; the banners a return visit
+      // puts above the gate stay, they are about the visitor, not the answer.
+      ".hs-form." + INTAKE_GATE_PENDING_CLASS + " > :not(." + INTAKE_GATE_CLASS + "):not(.contour-prefill-banner):not(.contour-restore-banner) { display: none !important; }" +
+      // The question inside the card sits where a field label would, one step
+      // up in size: it is the card's only question.
+      gate + "__question { display: block; margin: 0 0 14px; font-size: 15px; font-weight: 600; line-height: 1.35; color: #0C3166; }" +
+      gate + "__tiles { display: flex; flex-direction: row; flex-wrap: nowrap; gap: 1.25rem; margin: 0; padding: 0; }" +
+      // The Student / Guardian card, restated as a button: same border, same
+      // radius, same navy fill on selection. The surface holds white until
+      // the pick; the pointer is answered by the outline going navy, not by
+      // the surface changing (Amrit, 8 Sep 2026). A button rather than a
+      // hidden radio so HubSpot never sees a field it did not define. Inside
+      // the card the surface is the form's cream, the well colour the inputs
+      // and the unpicked Student / Guardian card sit in (Amrit, 8 Sep 2026).
+      tile + " { position: relative; flex: 1 1 0%; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; box-sizing: border-box; margin: 0; padding: 26px 16px 22px; border: 1px solid rgba(12, 49, 102, 0.14); border-radius: 1rem; background: #FFF9F1; color: #0C3166; font: inherit; text-align: center; cursor: pointer; appearance: none; -webkit-appearance: none; transition: background-color .3s ease, border-color .2s ease, color .3s ease, transform .15s ease, box-shadow .2s ease; }" +
+      tile + ":hover { border-color: #0C3166; box-shadow: 0 0 0 1px #0C3166; transform: translateY(-1px); }" +
+      tile + ":active { transform: scale(0.985); }" +
+      tile + ":focus { outline: none; }" +
+      tile + ":focus-visible { border-color: #0540F2; box-shadow: 0 0 0 3px rgba(5, 64, 242, 0.18); }" +
+      // Picked in the program cards' #005FCC rather than the navy: the
+      // card's own band above, the Contact band below and the picked Student
+      // card under that are all navy, and a navy tile between them made four
+      // navy blocks in a column read as one mass. The form's dark green was
+      // tried for the fill and sent back to the badge (Amrit, 8 Sep 2026).
+      // Edge and ring follow the fill as they do on the cards.
+      tile + '[aria-checked="true"] { background: #005FCC; border-color: #005FCC; box-shadow: 0 0 0 2px #005FCC; color: #FFFFFF; }' +
+      tile + '[aria-checked="true"]:hover { box-shadow: 0 0 0 2px #005FCC; transform: none; }' +
+      /* The year is the picture on this card. Three copies of the same figure
+         in the page's own type, stacked:
+           - the outline: the glyph stroked navy with its own fill painted on
+             top (paint-order), so only the outer half of the stroke shows.
+             Stroking type draws every contour, and where a "2" overlaps
+             itself the seams showed as a star at its tail — the fill now
+             covers them, and the line is vector, so it is the same width
+             everywhere (the raster ring it replaces was not);
+           - a Contour-blue fill that fades in, slowly, under the pointer;
+           - a white fill that fades in the same way on the pick, over the
+             blue, while the outline fades away — the picked year reads as
+             one solid white figure cut out of the blue (Amrit, 8 Sep 2026;
+             a centre-out wipe was tried first and read as busy). */
+      gate + "__art { position: relative; display: block; width: 180px; height: 74px; }" +
+      gate + "__art-layer { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; display: block; }" +
+      // The figures are set in Polysans Bulky, the site's own heading face
+      // (the Webflow page's --_typography---font-styles--heading), so the
+      // year speaks in the site's headline voice rather than the form's Inter
+      // (team via Amrit, 8 Sep 2026; Inter's 6 closed its gap under the
+      // stroke, and Oswald and Momo Trust Display were tried in between).
+      // Declared by loadIntakeYearFont from the same Webflow CDN file the
+      // page uses, so it also renders off the page; Inter stands in until it
+      // lands. Polysans is wide: at 64 the four figures ran 173 units across
+      // the 150-unit box and inside a phone tile's padding, so they are set
+      // at 58, which keeps them within the tile's own 10px on a 390 screen,
+      // with a hair of tracking and a 3.6 stroke of which the outer 1.8
+      // shows.
+      gate + "__art text { font-family: 'Polysans Bulky', Inter, Arial, sans-serif; font-weight: 700; font-size: 58px; letter-spacing: 0.01em; }" +
+      gate + "__art-outline text { fill: #FFF9F1; stroke: #0C3166; stroke-width: 3.6; stroke-linejoin: round; paint-order: stroke fill; transition: stroke .15s ease, stroke-width .15s ease; }" +
+      // Picked, the outline snaps to white first, then the white fill takes
+      // its time filling it in — the drawn figure is white from the first
+      // frame and the ink arrives after (Amrit, 8 Sep 2026). With the edge
+      // settled before the fill moves, every frame of the fade stays crisp.
+      // The outer half of the white stroke is what keeps the solid year from
+      // reading thin, but it does not need the idle figure's 3.6 to do it:
+      // white on blue blooms, and the stroke sits under a fill of the same
+      // white, so every unit of it is added mass and nothing else. At 3.6 the
+      // picked year closed its own counters — the 0 and the 2's tail choked
+      // (Amrit, 8 Sep 2026). At 2 the outer 1 still shows, which holds the
+      // figure at very near the idle one's footprint (outer 1.8 of navy) so
+      // the pair keep the same size side by side. The width eases with the
+      // colour rather than snapping with it.
+      tile + '[aria-checked="true"] .' + INTAKE_GATE_CLASS + "__art-outline text { stroke: #FFFFFF; stroke-width: 2; }" +
+      // Three ways for the fill to arrive, chosen by the animationStyle
+      // setting (a class on the card). Each style states its own resting and
+      // arrived values, so switching never leaves a property behind.
+      feedRules("fade", "opacity: 0; transition: opacity .75s " + feed + ";", "opacity: 1;", 0.75, 1.2) +
+      feedRules("wipe-radial", "clip-path: circle(0% at 50% 50%); transition: clip-path .85s " + feed + ";", "clip-path: circle(80% at 50% 50%);", 0.85, 1.3) +
+      feedRules("wipe-left", "clip-path: inset(-6px 100% -6px -6px); transition: clip-path .85s ease;", "clip-path: inset(-6px);", 0.85, 1.2) +
+      gate + "__art-blue text { fill: #007AFF; }" +
+      gate + "__art-white text { fill: #FFFFFF; }" +
+
+      "@media (prefers-reduced-motion: reduce) { " + gate + "__art-feed, " + gate + "__art-outline text, " + tile + " { transition: none; } }" +
+      ".contour-sr-only { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }" +
+      gate + "__hint { display: block; font-size: 13.5px; font-weight: 500; line-height: 1.3; color: #6b7280; transition: color .3s ease; }" +
+      tile + '[aria-checked="true"] .' + INTAKE_GATE_CLASS + "__hint { color: rgba(255, 255, 255, 0.78); }" +
+      // The confirmation disc, navy rather than the form's usual blue: on
+      // the blue tile a blue disc vanished into it, and navy is the one
+      // colour in the palette that stands off both the tile and the white
+      // figure (the form's dark green was tried and sent back, Amrit, 8 Sep
+      // 2026). Tucked in on the top-right corner with a white ring, the way
+      // the program cards' badge sits, and the same size on every width
+      // (Amrit, 8 Sep 2026); the phone gap between the tiles widens to give
+      // it room past the neighbour.
+      // Sized to the viewport between 26px on a phone and 36px on a wide
+      // screen, and a third out rather than half — a little further down
+      // and in from the corner (Amrit, 8 Sep 2026); the offsets are derived
+      // from the size.
+      gate + "__tick { --contour-tick: clamp(26px, 3vw, 36px); position: absolute; top: calc(var(--contour-tick) * -0.34); right: calc(var(--contour-tick) * -0.34); display: none; align-items: center; justify-content: center; width: var(--contour-tick); height: var(--contour-tick); box-sizing: border-box; border-radius: 50%; border: 2px solid #FFFFFF; background: #0C3166; color: #FFFFFF; }" +
+      // The tick fills most of the disc, and heavier: a 46% hairline read
+      // as a speck on the phone size (Amrit, 8 Sep 2026).
+      gate + "__tick svg { display: block; width: 66%; height: 66%; }" +
+      tile + '[aria-checked="true"] .' + INTAKE_GATE_CLASS + "__tick { display: flex; }" +
+      "@media (prefers-reduced-motion: no-preference) { " + tile + '[aria-checked="true"] .' + INTAKE_GATE_CLASS + "__tick { animation: contour-badge-in 260ms " + REVEAL_EASE + " both; } }" +
+      // The note under the pair, where the dropdown's helper text used to be.
+      gate + " .contour-intake-year-note { margin-top: 14px; }" +
+      // Phones: the pair shares the row, the way the Student / Guardian cards
+      // do, so the room comes out of the padding and the type.
+      "@media screen and (max-width: 767px) {" +
+      " " + gate + "__tiles { gap: 16px; }" +
+      " " + tile + " { padding: 20px 10px 18px; gap: 6px; border-radius: 14px; }" +
+      " " + gate + "__art { width: 124px; height: 51px; }" +
+      " " + gate + "__hint { font-size: 12.5px; }" +
+      "}" +
+      "@media screen and (max-width: 360px) {" +
+      " " + gate + "__tiles { gap: 14px; }" +
+      " " + tile + " { padding: 16px 6px 14px; }" +
+      " " + gate + "__art { width: 104px; height: 43px; }" +
+      "}" +
+      // With the intake year gone from Academic Details, Year Level was left
+      // alone in the right half of its row and Location alone above it. The
+      // two share one row now (Amrit, 7 Sep 2026). HubSpot renders them in
+      // separate fieldsets, and Location's carries its dependent Region /
+      // Country fields, so nothing is moved: the card's content becomes a
+      // two-column grid, Location's fieldset takes the left column, Year
+      // Level's the right, and every other row spans both. Region and
+      // Country, when they appear, stack under Location in its column.
+      // The gutter is the page's own two-column gutter (0.75rem). Desktop
+      // only — under 768px the page stacks every column anyway.
+      "@media screen and (min-width: 768px) {" +
+      " " + study + " .contour-section-box__content-inner { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 0.75rem; align-items: start; }" +
+      " " + study + " .contour-section-box__content-inner > * { grid-column: 1 / -1; min-width: 0; }" +
+      " " + study + ' .contour-section-box__content-inner > fieldset:has([name="state_territory_country"]) { grid-column: 1; }' +
+      " " + study + ' .contour-section-box__content-inner > fieldset:has([name="year_level"]) { grid-column: 2; }' +
+      // Year Level was the second of two columns; it fills its fieldset now.
+      " " + study + ' .contour-section-box__content-inner > fieldset:has([name="year_level"]) > .hs-form-field { width: 100% !important; float: none !important; padding-right: 0 !important; }' +
+      "}";
+    document.head.appendChild(style);
+  }
+  // The label HubSpot renders for the field, minus its required mark, so the
+  // wording stays whatever the form editor says it is.
+  function intakeYearQuestionText(select) {
+    var wrap = fieldWrapper(select);
+    var label = wrap && wrap.querySelector("label");
+    if (!label) return INTAKE_GATE_QUESTION_FALLBACK;
+    var clone = label.cloneNode(true);
+    var marks = clone.querySelectorAll(".hs-form-required");
+    for (var i = 0; i < marks.length; i++) marks[i].parentNode.removeChild(marks[i]);
+    var text = (clone.textContent || "").replace(/\s+/g, " ").trim();
+    return text || INTAKE_GATE_QUESTION_FALLBACK;
+  }
+  // Captions read off the clock rather than being written in, so the pair
+  // stays right when the options roll over. Kept to one short line each of
+  // matching length, so the tiles hold the same height on a phone; the
+  // longer advice lives in the note under the pair (Amrit, 7 Sep 2026).
+  function intakeYearHint(value) {
+    var year = parseInt(value, 10);
+    if (!year) return "";
+    var now = new Date().getFullYear();
+    if (year === now) return "Join for the rest of this year";
+    if (year === now + 1) return "Early starts from November " + now;
+    return "";
+  }
+  var SVG_NS = "http://www.w3.org/2000/svg";
+  function intakeYearArt(label) {
+    function layer(classes) {
+      var svg = document.createElementNS(SVG_NS, "svg");
+      svg.setAttribute("class", INTAKE_GATE_CLASS + "__art-layer " + classes.map(function (cls) {
+        return INTAKE_GATE_CLASS + "__" + cls;
+      }).join(" "));
+      svg.setAttribute("viewBox", "0 0 150 62");
+      svg.setAttribute("focusable", "false");
+      var text = document.createElementNS(SVG_NS, "text");
+      text.setAttribute("x", "75");
+      text.setAttribute("y", "53");
+      text.setAttribute("text-anchor", "middle");
+      text.textContent = label;
+      svg.appendChild(text);
+      return svg;
+    }
+    var art = document.createElement("span");
+    art.className = INTAKE_GATE_CLASS + "__art";
+    art.setAttribute("aria-hidden", "true");
+    art.appendChild(layer(["art-outline"]));
+    art.appendChild(layer(["art-feed", "art-blue"]));
+    art.appendChild(layer(["art-feed", "art-white"]));
+    return art;
+  }
+  function intakeYearOptions(select) {
+    return Array.prototype.filter.call(select.options, function (opt) {
+      return opt.value !== "";
+    }).map(function (opt) {
+      return { value: opt.value, label: opt.textContent.trim() || opt.value };
+    });
+  }
+  // The figures' face: the Webflow page's own Polysans Bulky file, the one
+  // weight the site declares.
+  var INTAKE_GATE_FONT_SRC = "https://cdn.prod.website-files.com/696ed06d2e62378f0a51f2d4/6982c51839ccd087e99f8077_%20PolySans%20Bulky.otf";
+  function loadIntakeYearFont() {
+    if (document.getElementById("contour-intake-gate-font")) return;
+    // The same @font-face the Webflow stylesheet carries, so on the page it
+    // is a no-op and off it (the local test page) the year still renders.
+    var style = document.createElement("style");
+    style.id = "contour-intake-gate-font";
+    style.textContent = "@font-face { font-family: 'Polysans Bulky'; src: url(" + INTAKE_GATE_FONT_SRC + ") format('opentype'); font-weight: 700; font-style: normal; font-display: swap; }";
+    document.head.appendChild(style);
+  }
+  function renderIntakeYearGate() {
+    if (!intakeYearGateEnabled()) return;
+    var select = q(FIELD_SELECTORS.intakeYear);
+    if (!select || formRoot.querySelector("." + INTAKE_GATE_CLASS)) return;
+    var options = intakeYearOptions(select);
+    if (options.length === 0) return;
+    loadIntakeYearFont();
+    injectIntakeYearGateStyles();
+    var gate = document.createElement("div");
+    gate.className = INTAKE_GATE_CLASS + " contour-section-box contour-section-box--intake " + INTAKE_GATE_CLASS + "--anim-" + intakeYearAnimationStyle();
+    gate.setAttribute("data-contour-complete", "0");
+    // The header is the section cards' own: status disc, title, one-line
+    // summary once folded, pencil to reopen, dash to fold.
+    var header = document.createElement("button");
+    header.type = "button";
+    header.className = "contour-section-box__header";
+    header.setAttribute("aria-expanded", "true");
+    header.innerHTML = '<span class="contour-section-box__status" aria-hidden="true"><svg viewBox="0 0 24 24" width="11" height="11" focusable="false"><path d="M20 6.5L9 17.5l-5-5" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>' +
+      '<span class="contour-section-box__title"></span>' +
+      '<span class="contour-section-box__summary"></span>' +
+      '<span class="contour-section-box__action"><svg viewBox="0 0 24 24" width="15" height="15" focusable="false" aria-hidden="true"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="contour-sr-only">Edit</span></span>' +
+      '<span class="contour-section-box__collapse"><svg viewBox="0 0 24 24" width="15" height="15" focusable="false" aria-hidden="true"><path d="M5 12h14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg><span class="contour-sr-only">Collapse</span></span>';
+    header.querySelector(".contour-section-box__title").textContent = headerLabel(INTAKE_GATE_TITLE);
+    header.addEventListener("click", function () {
+      if (!intakeGateAnsweredNow()) return;
+      var folded = gate.classList.contains(INTAKE_GATE_FOLDED_CLASS);
+      intakeGateEditing = folded;
+      // A fold the visitor asked for holds through the section passes that
+      // would otherwise open an answered card the form has not moved on from.
+      intakeGateManualFold = !folded;
+      setIntakeGateFolded(!folded);
+      if (!folded) return;
+      // Focus lands once the fold has opened: the content is visibility:
+      // hidden while shut, and its transition is shared with the way open.
+      setTimeout(function () {
+        var checked = gate.querySelector("." + INTAKE_GATE_CLASS + '__tile[aria-checked="true"]') || gate.querySelector("." + INTAKE_GATE_CLASS + "__tile");
+        if (checked) focusQuietly(checked);
+      }, prefersReducedMotion() ? 0 : 320);
+    });
+    gate.appendChild(header);
+    var content = document.createElement("div");
+    content.className = "contour-section-box__content";
+    var inner = document.createElement("div");
+    inner.className = "contour-section-box__content-inner " + INTAKE_GATE_CLASS + "__body-inner";
+    content.appendChild(inner);
+    var questionId = "contour-intake-gate-question";
+    var question = document.createElement("span");
+    question.id = questionId;
+    question.className = INTAKE_GATE_CLASS + "__question";
+    question.textContent = intakeYearQuestionText(select);
+    inner.appendChild(question);
+    var tiles = document.createElement("div");
+    tiles.className = INTAKE_GATE_CLASS + "__tiles";
+    tiles.setAttribute("role", "radiogroup");
+    tiles.setAttribute("aria-labelledby", questionId);
+    options.forEach(function (option) {
+      var tile = document.createElement("button");
+      tile.type = "button";
+      tile.className = INTAKE_GATE_CLASS + "__tile";
+      tile.setAttribute("role", "radio");
+      tile.setAttribute("aria-checked", "false");
+      tile.setAttribute("data-contour-intake-year", option.value);
+      tile.appendChild(intakeYearArt(option.label));
+      var year = document.createElement("span");
+      year.className = "contour-sr-only";
+      year.textContent = option.label;
+      tile.appendChild(year);
+      var hint = intakeYearHint(option.value);
+      if (hint) {
+        var hintEl = document.createElement("span");
+        hintEl.className = INTAKE_GATE_CLASS + "__hint";
+        hintEl.textContent = hint;
+        tile.appendChild(hintEl);
+      }
+      if (featureEnabled("intakeYearBadge")) {
+        var tick = document.createElement("span");
+        tick.className = INTAKE_GATE_CLASS + "__tick";
+        tick.setAttribute("aria-hidden", "true");
+        tick.innerHTML = '<svg viewBox="0 0 24 24" width="13" height="13" focusable="false"><path d="M20 6.5L9 17.5l-5-5" fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+        tile.appendChild(tick);
+      }
+      tile.addEventListener("click", function () {
+        chooseIntakeYear(option.value);
+      });
+      tiles.appendChild(tile);
+    });
+    // Arrow keys move between the tiles the way they do between radios; the
+    // click handler does the choosing, so Space and Enter come for free.
+    tiles.addEventListener("keydown", function (e) {
+      var keys = { ArrowLeft: -1, ArrowUp: -1, ArrowRight: 1, ArrowDown: 1 };
+      if (!(e.key in keys)) return;
+      var all = Array.prototype.slice.call(tiles.querySelectorAll("." + INTAKE_GATE_CLASS + "__tile"));
+      var at = all.indexOf(document.activeElement);
+      if (at === -1) return;
+      e.preventDefault();
+      var next = all[(at + keys[e.key] + all.length) % all.length];
+      next.focus();
+      chooseIntakeYear(next.getAttribute("data-contour-intake-year"));
+    });
+    inner.appendChild(tiles);
+    gate.appendChild(content);
+    formRoot.insertBefore(gate, formRoot.firstChild);
+    formRoot.classList.add(INTAKE_GATE_ON_CLASS);
+    watchContactForIntakeGate();
+    syncIntakeYearGate();
+  }
+  // Pressing the folded header reopens the tiles; the next pick folds them
+  // again.
+  var intakeGateEditing = false;
+  // Set for the length of a tile pick, so the sync can tell a fold owed to a
+  // choice made on the page — which waits for the tick to have its moment —
+  // from one owed to the form moving on, which happens at once.
+  var intakeGatePicking = false;
+  var intakeGateFoldTimer = null;
+  /* When the card folds. Not on the pick: the answer stays in view, tiles and
+     all, until the visitor turns to Contact Information — the first press,
+     keystroke or answer on any of its fields is what puts the question
+     behind them, and the card folds to its summary line then (Amrit, 8 Sep
+     2026; it first waited for Academic Details to unlock, which left the
+     tiles on screen through the whole of the first card). Academic Details
+     unlocking still counts: a pre-fill unlocks every card, so it arrives
+     folded, and a restored draft folds if it had got that far. Without the
+     stepper (staff mode) there is nothing to wait for, so an answered card
+     may fold. The header is ahead of all this — it answers a press, and
+     shows the dash, from the moment there is an answer. */
+  var intakeGateContactTouched = false;
+  var intakeGateManualFold = false;
+  function intakeGateAnsweredNow() {
+    var select = q(FIELD_SELECTORS.intakeYear);
+    return !!select && !!select.value;
+  }
+  function intakeGateFoldable() {
+    if (!intakeGateAnsweredNow()) return false;
+    return !stepModeEnabled() || intakeGateContactTouched || !!sectionUnlocked.study;
+  }
+  // The contact card's fields are watched from the form root, on capture:
+  // HubSpot re-renders the fields themselves, and the person pills are
+  // buttons, not fields. isTrusted keeps the form's own dispatched prefill
+  // events from counting as the visitor's move, and the depth counter keeps
+  // out the ones the browser raises for the form's own click() calls — the
+  // Student default arrives as a trusted change on the contact type (see
+  // setCheckboxChecked). Click rather than pointerdown: the card folding above the field
+  // shifts the page, and after the click has landed that is only a scroll
+  // the anchor below holds, not a press that misses. The card's own header
+  // is a fold, not an answer, so it is left out.
+  var intakeGateContactWatched = false;
+  function watchContactForIntakeGate() {
+    if (intakeGateContactWatched || !formRoot) return;
+    intakeGateContactWatched = true;
+    function onContact(e) {
+      if (!e.isTrusted || isProgrammaticEdit()) return;
+      var gate = formRoot.querySelector("." + INTAKE_GATE_CLASS);
+      if (!gate || gate.classList.contains(INTAKE_GATE_FOLDED_CLASS)) return;
+      var target = e.target;
+      if (!target || !target.closest) return;
+      if (target.closest(".contour-section-box__header")) return;
+      if (sectionIdForNode(target) !== "contact") return;
+      intakeGateContactTouched = true;
+      // Reopening the card to look at the year and then turning back to the
+      // contact fields is the visitor done with it again.
+      intakeGateEditing = false;
+      var box = target.closest(".contour-section-box");
+      withScrollAnchor(function () {
+        syncIntakeYearGate();
+        return gate.classList.contains(INTAKE_GATE_FOLDED_CLASS);
+      }, box ? { el: box, top: box.getBoundingClientRect().top } : null);
+    }
+    ["click", "keydown", "input", "change"].forEach(function (type) {
+      formRoot.addEventListener(type, onContact, true);
+    });
+  }
+  function setIntakeGateFolded(folded) {
+    var gate = formRoot && formRoot.querySelector("." + INTAKE_GATE_CLASS);
+    if (!gate) return;
+    if (intakeGateFoldTimer) {
+      clearTimeout(intakeGateFoldTimer);
+      intakeGateFoldTimer = null;
+    }
+    if (gate.classList.contains(INTAKE_GATE_FOLDED_CLASS) !== folded) gate.classList.toggle(INTAKE_GATE_FOLDED_CLASS, folded);
+    var header = gate.querySelector(".contour-section-box__header");
+    var expanded = folded ? "false" : "true";
+    if (header && header.getAttribute("aria-expanded") !== expanded) header.setAttribute("aria-expanded", expanded);
+  }
+  function updateIntakeGateHeader(gate, value) {
+    var summary = gate.querySelector(".contour-section-box__summary");
+    var hint = value ? intakeYearHint(value) : "";
+    var summaryText = value ? [value, hint].filter(Boolean).join(" · ") : "";
+    if (summary && summary.textContent !== summaryText) summary.textContent = summaryText;
+    var complete = value ? "1" : "0";
+    if (gate.getAttribute("data-contour-complete") !== complete) gate.setAttribute("data-contour-complete", complete);
+    var header = gate.querySelector(".contour-section-box__header");
+    var togglable = intakeGateAnsweredNow();
+    if (header && header.classList.contains("contour-section-box__header--togglable") !== togglable) header.classList.toggle("contour-section-box__header--togglable", togglable);
+  }
+  function chooseIntakeYear(value) {
+    var select = q(FIELD_SELECTORS.intakeYear);
+    if (!select || select.value === value) return;
+    // Programmatic on purpose: the setter's change event is what runs the
+    // evaluators, and the draft and step logic are told about the visitor's
+    // act directly here rather than through an event they would discount.
+    intakeGateEditing = false;
+    intakeGatePicking = true;
+    try {
+      setSelectOrTextValue(FIELD_SELECTORS.intakeYear, value);
+      stepInteracted = stepUserActed = true;
+      stepPinnedId = null;
+      noteVisitorDraftEdit();
+      syncIntakeYearGate();
+    } finally {
+      intakeGatePicking = false;
+    }
+  }
+  // Tiles, header and form visibility follow the select — the one source of
+  // truth — and every write below is guarded, since this runs from the
+  // section pass and from evaluators the form's MutationObserver re-fires
+  // (see enforceContactTypeLayout).
+  function syncIntakeYearGate() {
+    if (!formRoot) return;
+    var gate = formRoot.querySelector("." + INTAKE_GATE_CLASS);
+    if (!gate) return;
+    var select = q(FIELD_SELECTORS.intakeYear);
+    var value = select ? select.value : "";
+    // The dropdown's wrapper stays hidden through HubSpot's re-renders, which
+    // hand back a fresh, visible node.
+    if (select) {
+      var wrap = fieldWrapper(select);
+      if (wrap && wrap.style.display !== "none") hideFieldWrapper(select);
+    }
+    Array.prototype.forEach.call(gate.querySelectorAll("." + INTAKE_GATE_CLASS + "__tile"), function (tile) {
+      var checked = !!value && tile.getAttribute("data-contour-intake-year") === value;
+      var want = checked ? "true" : "false";
+      if (tile.getAttribute("aria-checked") !== want) tile.setAttribute("aria-checked", want);
+      // Roving tabindex: the chosen tile (or the first, before a choice) is
+      // the group's one tab stop.
+      var stop = checked || (!value && tile === gate.querySelector("." + INTAKE_GATE_CLASS + "__tile"));
+      var tab = stop ? "0" : "-1";
+      if (tile.getAttribute("tabindex") !== tab) tile.setAttribute("tabindex", tab);
+    });
+    var answered = !!value;
+    updateIntakeGateHeader(gate, value);
+    var folded = gate.classList.contains(INTAKE_GATE_FOLDED_CLASS);
+    if (!answered) {
+      intakeGateEditing = false;
+      intakeGateManualFold = false;
+      if (folded) setIntakeGateFolded(false);
+    } else if (!intakeGateFoldable()) {
+      // Answered, but the form has not moved on: open, unless the visitor
+      // folded it themselves with the header's dash.
+      if (folded && !intakeGateManualFold) setIntakeGateFolded(false);
+    } else if (!intakeGateEditing && !folded && !intakeGateFoldTimer) {
+      // A fold already on the timer is left to it: the section pass that
+      // follows a pick lands here a tick later and would otherwise fold at
+      // once, ahead of the tick and without the hand-off of focus.
+      if (intakeGatePicking) {
+        // A pick with the form already moved on (the visitor came back to
+        // change the year): long enough for the tick to land and be seen
+        // before the card folds, and the header then takes focus so a
+        // keyboard is not left on a control that has just gone.
+        if (!intakeGateFoldTimer) intakeGateFoldTimer = setTimeout(function () {
+          intakeGateFoldTimer = null;
+          if (!intakeGateFoldable() || intakeGateEditing) return;
+          var hadFocus = gate.contains(document.activeElement);
+          setIntakeGateFolded(true);
+          var header = gate.querySelector(".contour-section-box__header");
+          if (hadFocus && header) focusQuietly(header);
+        }, prefersReducedMotion() ? 0 : 420);
+      } else {
+        setIntakeGateFolded(true);
+      }
+    }
+    var pending = formRoot.classList.contains(INTAKE_GATE_PENDING_CLASS);
+    if (!answered && !pending) formRoot.classList.add(INTAKE_GATE_PENDING_CLASS);
+    if (answered && pending) {
+      formRoot.classList.remove(INTAKE_GATE_PENDING_CLASS);
+      // The form arriving under the answer: each top-level piece in turn, the
+      // same cascade a pre-filled return plays. Only for a pick made on the
+      // page — a form that starts answered (draft, pre-fill) has its own
+      // entrance.
+      if (intakeGateAnswered === false) {
+        var delay = 0;
+        Array.prototype.forEach.call(formRoot.children, function (node) {
+          if (node === gate || !node.style || node.style.display === "none") return;
+          playReveal(node, delay);
+          delay += 70;
+        });
+      }
+    }
+    intakeGateAnswered = answered;
+  }
+  function prefillDefaultIntakeYearOffered() {
+    var select = q(FIELD_SELECTORS.intakeYear);
+    return !!select && intakeYearOptions(select).some(function (option) {
+      return option.value === PREFILL_DEFAULT_INTAKE_YEAR;
+    });
+  }
+  // See initPrefetchFromUrl. Fills the record's blank before it is applied;
+  // a year the record does name, even one the form no longer offers, is left
+  // for applyPrefill to handle as it always has.
+  function fillIntakeYearForPrefillRecord(contact) {
+    if (!intakeYearGateEnabled() || !contact) return;
+    if (contact.which_year_are_you_interested_in_tutoring_for_) return;
+    if (!prefillDefaultIntakeYearOffered()) return;
+    contact.which_year_are_you_interested_in_tutoring_for_ = PREFILL_DEFAULT_INTAKE_YEAR;
+  }
+  // The fetch-failed path has no record to fill, so the select is written
+  // directly. Retried the way defaultContactTypeToStudent is: HubSpot's embed
+  // re-renders shortly after the form is ready and can drop a value written
+  // synchronously, so it is checked and re-applied a few times.
+  function defaultIntakeYearForPrefillLink(tries) {
+    if (!intakeYearGateEnabled()) return;
+    if (tries === undefined) tries = 4;
+    var select = q(FIELD_SELECTORS.intakeYear);
+    if (!select || select.value) return;
+    if (!prefillDefaultIntakeYearOffered()) return;
+    setSelectOrTextValue(FIELD_SELECTORS.intakeYear, PREFILL_DEFAULT_INTAKE_YEAR);
+    syncIntakeYearGate();
+    if (tries > 0) setTimeout(function () {
+      defaultIntakeYearForPrefillLink(tries - 1);
+    }, 250);
   }
   function ensureDividerBefore(fieldEl, id) {
     if (!fieldEl) return;
@@ -10586,6 +11498,7 @@ var ContourForm1Logic = function () {
     watchRegionField();
     enhanceCampusLabels();
     initCampusMapHover();
+    renderIntakeYearGate();
     ensureIntakeYearNote();
     ensureDividerBefore(q(FIELD_SELECTORS.programInterest), "contour-divider-program-interest");
     // Sits between the "Your Subjects" summary box and Preferred Campuses —
@@ -10632,6 +11545,12 @@ var ContourForm1Logic = function () {
     renderWelcomeConsultation();
     renderSubjectSummary();
     renderUcatIntakeNote();
+    // Last of the init-time stylesheets on purpose. The intake card wears the
+    // section-box classes from first paint, and the cards' rules only win
+    // their ties (the phone widget's pinned real input among them) by coming
+    // after the phone styles injected above — which they did when the first
+    // card was built after init, and must still.
+    injectSectionBoxStyles();
     initDraftCache();
     initPrefetchFromUrl();
   }
