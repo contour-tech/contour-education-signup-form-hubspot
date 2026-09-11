@@ -2927,6 +2927,47 @@ var ContourForm1Logic = function () {
   function schoolNotFoundHint() {
     return "Can't find it? Leave the full name as you've typed it and continue.";
   }
+  /* Moving the year level to or from Graduated changes which question the
+     field asks. An answer to the old question must not sit under the new
+     label: a high school under "Current University" reads as answered, folds
+     the section behind a tick and submits as the student's university
+     (Amrit, 11 Sep 2026).
+
+     Only an answer that can be *proved* to belong to the other side is
+     cleared — one found in the list whose type is on the wrong side of the
+     switch. Free text nobody can match is left alone: it is as likely to be a
+     small university the list is missing as it is a school, and wiping what
+     someone typed on an unrelated change is the worse failure. A prefill-
+     locked field is left alone too; it is not the student's to answer. */
+  function clearSchoolAnswerIfWrongMode() {
+    var input = q(FIELD_SELECTORS.schoolText);
+    if (!input || input.classList.contains("contour-prefill-locked")) return;
+    var typed = (input.value || "").trim();
+    if (typed === "" || GRAD_QUICK_LEGACY_VALUES.indexOf(typed) !== -1) return;
+    loadSchoolList().then(function (list) {
+      // Re-read at resolve time: the fetch may outlast the switch that started it.
+      var wantUniversity = isGraduatedSelected();
+      var current = q(FIELD_SELECTORS.schoolText);
+      if (!current || (current.value || "").trim() !== typed) return;
+      var acara = getValue(FIELD_SELECTORS.acaraId);
+      var lowered = typed.toLowerCase();
+      var match = null;
+      for (var i = 0; i < list.length; i++) {
+        var entry = list[i];
+        if (acara ? entry.acara_id === acara : entry.name.toLowerCase() === lowered) {
+          match = entry;
+          break;
+        }
+      }
+      if (!match || isUniversityEntry(match) === wantUniversity) return;
+      asProgrammaticEdit(function () {
+        setHiddenValue(FIELD_SELECTORS.schoolText, "");
+        setHiddenValue(FIELD_SELECTORS.schoolCode, "");
+        setHiddenValue(FIELD_SELECTORS.acaraId, "");
+      });
+      setSchoolNotFoundHint(false);
+    });
+  }
   function updateSchoolFieldGraduateMode() {
     var input = q(FIELD_SELECTORS.schoolText);
     if (!input) return;
@@ -2934,6 +2975,7 @@ var ContourForm1Logic = function () {
     if (!wrap) return;
     var isGraduated = isGraduatedSelected();
     var intake = getValue(FIELD_SELECTORS.intakeYear);
+    clearSchoolAnswerIfWrongMode();
     setFieldLabelText("schoolText", isGraduated ? (intake ? "University in " + intake : "Current University") : intake ? "School in " + intake : "Current School");
     var desc = wrap.querySelector(".hs-field-desc");
     if (!desc) return;
