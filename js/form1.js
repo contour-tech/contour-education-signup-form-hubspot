@@ -5663,6 +5663,15 @@ var ContourForm1Logic = function () {
     }
     hint.style.display = mode ? "" : "none";
   }
+  // Page-header CSS is the live copy, so a rule the form needs has to arrive
+  // with the script rather than from css/form1.css.
+  function injectSchoolSuburbStyles() {
+    if (document.getElementById("contour-school-suburb-styles")) return;
+    var style = document.createElement("style");
+    style.id = "contour-school-suburb-styles";
+    style.textContent = ".hs-form .contour-school-search__suburb { margin-left: 8px; color: #6b7280; font-size: 0.85em; font-weight: 500; }";
+    document.head.appendChild(style);
+  }
   function enhanceSchoolSearch() {
     var input = q(FIELD_SELECTORS.schoolText);
     if (!input) return;
@@ -5677,6 +5686,7 @@ var ContourForm1Logic = function () {
     input.setAttribute("aria-autocomplete", "list");
     input.setAttribute("aria-expanded", "false");
     input.setAttribute("autocomplete", "off");
+    injectSchoolSuburbStyles();
     var listbox = document.createElement("ul");
     listbox.className = "contour-school-search__listbox";
     listbox.setAttribute("role", "listbox");
@@ -5790,10 +5800,23 @@ var ContourForm1Logic = function () {
         return school.name !== GRAD_QUICK_VALUE;
       }));
     }
+    /* 166 school names repeat inside a single state — same name, different
+       campus, and nothing on screen to tell them apart. The suburb is only
+       drawn where a name actually repeats in the results being shown, so the
+       common case stays a plain list of names (Amrit, 11 Sep 2026). */
+    function duplicatedNames(matches) {
+      var counts = {};
+      matches.forEach(function (school) {
+        var key = normalize(school.name);
+        counts[key] = (counts[key] || 0) + 1;
+      });
+      return counts;
+    }
     function renderResults(matches) {
       listbox.innerHTML = "";
       currentMatches = matches;
       activeIndex = -1;
+      var nameCounts = duplicatedNames(matches);
       if (matches.length === 0) {
         listbox.hidden = true;
         input.setAttribute("aria-expanded", "false");
@@ -5810,6 +5833,15 @@ var ContourForm1Logic = function () {
         li.setAttribute("role", "option");
         li.setAttribute("aria-selected", "false");
         li.textContent = school.name;
+        if (school.suburb && nameCounts[normalize(school.name)] > 1) {
+          var suburb = document.createElement("span");
+          suburb.className = "contour-school-search__suburb";
+          suburb.textContent = school.suburb;
+          li.appendChild(suburb);
+          // Concatenated text would be read as one run, so the accessible name
+          // is spelled out with the separator a sighted reader sees as spacing.
+          li.setAttribute("aria-label", school.name + ", " + school.suburb);
+        }
         li.addEventListener("mousedown", function (e) {
           e.preventDefault();
           selectSchool(school);
