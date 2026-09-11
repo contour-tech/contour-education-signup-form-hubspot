@@ -2887,6 +2887,9 @@ var ContourForm1Logic = function () {
   function isGraduatedSelected() {
     return getValue(FIELD_SELECTORS.yearLevel) === "Graduated";
   }
+  function isUniversityEntry(school) {
+    return school.type === "University";
+  }
   // Set by enhanceSchoolSearch so quick-fill goes through the combobox's own
   // selectSchool() — the exact event sequence (input + change) that clears
   // HubSpot's native "Please complete this required field" error. A bare
@@ -2924,6 +2927,47 @@ var ContourForm1Logic = function () {
   function schoolNotFoundHint() {
     return "Can't find it? Leave the full name as you've typed it and continue.";
   }
+  /* Moving the year level to or from Graduated changes which question the
+     field asks. An answer to the old question must not sit under the new
+     label: a high school under "Current University" reads as answered, folds
+     the section behind a tick and submits as the student's university
+     (Amrit, 11 Sep 2026).
+
+     Only an answer that can be *proved* to belong to the other side is
+     cleared — one found in the list whose type is on the wrong side of the
+     switch. Free text nobody can match is left alone: it is as likely to be a
+     small university the list is missing as it is a school, and wiping what
+     someone typed on an unrelated change is the worse failure. A prefill-
+     locked field is left alone too; it is not the student's to answer. */
+  function clearSchoolAnswerIfWrongMode() {
+    var input = q(FIELD_SELECTORS.schoolText);
+    if (!input || input.classList.contains("contour-prefill-locked")) return;
+    var typed = (input.value || "").trim();
+    if (typed === "" || GRAD_QUICK_LEGACY_VALUES.indexOf(typed) !== -1) return;
+    loadSchoolList().then(function (list) {
+      // Re-read at resolve time: the fetch may outlast the switch that started it.
+      var wantUniversity = isGraduatedSelected();
+      var current = q(FIELD_SELECTORS.schoolText);
+      if (!current || (current.value || "").trim() !== typed) return;
+      var acara = getValue(FIELD_SELECTORS.acaraId);
+      var lowered = typed.toLowerCase();
+      var match = null;
+      for (var i = 0; i < list.length; i++) {
+        var entry = list[i];
+        if (acara ? entry.acara_id === acara : entry.name.toLowerCase() === lowered) {
+          match = entry;
+          break;
+        }
+      }
+      if (!match || isUniversityEntry(match) === wantUniversity) return;
+      asProgrammaticEdit(function () {
+        setHiddenValue(FIELD_SELECTORS.schoolText, "");
+        setHiddenValue(FIELD_SELECTORS.schoolCode, "");
+        setHiddenValue(FIELD_SELECTORS.acaraId, "");
+      });
+      setSchoolNotFoundHint(false);
+    });
+  }
   function updateSchoolFieldGraduateMode() {
     var input = q(FIELD_SELECTORS.schoolText);
     if (!input) return;
@@ -2931,6 +2975,7 @@ var ContourForm1Logic = function () {
     if (!wrap) return;
     var isGraduated = isGraduatedSelected();
     var intake = getValue(FIELD_SELECTORS.intakeYear);
+    clearSchoolAnswerIfWrongMode();
     setFieldLabelText("schoolText", isGraduated ? (intake ? "University in " + intake : "Current University") : intake ? "School in " + intake : "Current School");
     var desc = wrap.querySelector(".hs-field-desc");
     if (!desc) return;
@@ -5543,7 +5588,15 @@ var ContourForm1Logic = function () {
       });
     }
   }
-  var SCHOOL_LIST_URL = "https://cdn.prod.website-files.com/696ed06d2e62378f0a51f2d4/6a58568773b5f6caa95424cc_7250ab944ad1d54f698183343d9a5688_schools_with_codes.txt";
+  /* Served from this repo's GitHub Pages, built by data/build-schools-json.py
+     out of data/source/lms-schools-comprehensive.csv. It used to be a text
+     file uploaded to Webflow, which minted a fresh CDN URL on every edit and
+     so needed a code change to refresh the list (Luke, 10 Sep 2026).
+
+     The filename is versioned because production and staging run different
+     builds of this script: a shape change ships as -v2 and leaves the
+     production build reading the file it was written against. */
+  var SCHOOL_LIST_URL = "https://contour-tech.github.io/contour-education-signup-form-hubspot/data/schools-v1.json";
   var schoolListCache = null;
   var schoolListPromise = null;
   function loadSchoolList() {
@@ -5610,6 +5663,15 @@ var ContourForm1Logic = function () {
     }
     hint.style.display = mode ? "" : "none";
   }
+  // Page-header CSS is the live copy, so a rule the form needs has to arrive
+  // with the script rather than from css/form1.css.
+  function injectSchoolSuburbStyles() {
+    if (document.getElementById("contour-school-suburb-styles")) return;
+    var style = document.createElement("style");
+    style.id = "contour-school-suburb-styles";
+    style.textContent = ".hs-form .contour-school-search__suburb { margin-left: 8px; color: #6b7280; font-size: 0.85em; font-weight: 500; }";
+    document.head.appendChild(style);
+  }
   function enhanceSchoolSearch() {
     var input = q(FIELD_SELECTORS.schoolText);
     if (!input) return;
@@ -5624,6 +5686,7 @@ var ContourForm1Logic = function () {
     input.setAttribute("aria-autocomplete", "list");
     input.setAttribute("aria-expanded", "false");
     input.setAttribute("autocomplete", "off");
+    injectSchoolSuburbStyles();
     var listbox = document.createElement("ul");
     listbox.className = "contour-school-search__listbox";
     listbox.setAttribute("role", "listbox");
@@ -5638,8 +5701,23 @@ var ContourForm1Logic = function () {
     function normalize(s) {
       return s.toLowerCase().trim();
     }
+    /* Schools and universities share one list, told apart by `type`: CRICOS
+       rows are "University", ACARA rows are Primary/Secondary/Combined/
+       Special. A Graduated student is asked for their university, so their
+       old high school must not be offered — and everyone else the reverse
+       (Aditya, 10 Sep 2026). */
+    function inScope(school) {
+      return isUniversityEntry(school) === isGraduatedSelected();
+    }
+    /* Location gates schools only. A university is chosen nationally — a
+       Melbourne student can be enrolled at UNSW — and there are 42 of them in
+       the whole list, so state is not a useful narrowing there. */
+    function locationMatches(school, location) {
+      if (isUniversityEntry(school)) return true;
+      return !!location && school.state === location;
+    }
     function matchesQueryAndLocation(school, query, location) {
-      if (!location || school.state !== location) return false;
+      if (!inScope(school) || !locationMatches(school, location)) return false;
       return normalize(school.name).indexOf(query) !== -1;
     }
     function tokenize(s) {
@@ -5678,7 +5756,7 @@ var ContourForm1Logic = function () {
       return levenshtein(queryWord, nameWord) <= tolerance;
     }
     function fuzzyMatchesQueryAndLocation(school, queryWords, location) {
-      if (!location || school.state !== location) return false;
+      if (!inScope(school) || !locationMatches(school, location)) return false;
       var nameWords = tokenize(school.name);
       return queryWords.every(function (qw) {
         return nameWords.some(function (nw) {
@@ -5686,16 +5764,32 @@ var ContourForm1Logic = function () {
         });
       });
     }
+    /* Universities are searched nationally but ordered by home state: the
+       student's own state at the top, the rest under it. A graduate is most
+       often at a university in the state they just picked, so it should be the
+       first thing they see — and interstate and online study are common enough
+       that hiding the others would cost more than the ordering saves (Amrit,
+       11 Sep 2026). Schools are already state-filtered, so this is a no-op for
+       them. */
+    function localFirst(matches, location) {
+      if (!location || matches.length < 2) return matches;
+      var local = [];
+      var rest = [];
+      matches.forEach(function (school) {
+        if (school.state === location) local.push(school);else rest.push(school);
+      });
+      return local.concat(rest);
+    }
     function searchSchools(list, query, location) {
       var exact = list.filter(function (school) {
         return matchesQueryAndLocation(school, query, location);
       });
-      if (exact.length > 0) return exact;
+      if (exact.length > 0) return localFirst(exact, location);
       var queryWords = tokenize(query);
       if (queryWords.length === 0) return [];
-      return list.filter(function (school) {
+      return localFirst(list.filter(function (school) {
         return fuzzyMatchesQueryAndLocation(school, queryWords, location);
-      });
+      }), location);
     }
     // For Graduated students "Gap Year/Not in University" behaves like a
     // list entry: it appears (first) only when the typed query matches it —
@@ -5722,10 +5816,23 @@ var ContourForm1Logic = function () {
         return school.name !== GRAD_QUICK_VALUE;
       }));
     }
+    /* 166 school names repeat inside a single state — same name, different
+       campus, and nothing on screen to tell them apart. The suburb is only
+       drawn where a name actually repeats in the results being shown, so the
+       common case stays a plain list of names (Amrit, 11 Sep 2026). */
+    function duplicatedNames(matches) {
+      var counts = {};
+      matches.forEach(function (school) {
+        var key = normalize(school.name);
+        counts[key] = (counts[key] || 0) + 1;
+      });
+      return counts;
+    }
     function renderResults(matches) {
       listbox.innerHTML = "";
       currentMatches = matches;
       activeIndex = -1;
+      var nameCounts = duplicatedNames(matches);
       if (matches.length === 0) {
         listbox.hidden = true;
         input.setAttribute("aria-expanded", "false");
@@ -5742,6 +5849,15 @@ var ContourForm1Logic = function () {
         li.setAttribute("role", "option");
         li.setAttribute("aria-selected", "false");
         li.textContent = school.name;
+        if (school.suburb && nameCounts[normalize(school.name)] > 1) {
+          var suburb = document.createElement("span");
+          suburb.className = "contour-school-search__suburb";
+          suburb.textContent = school.suburb;
+          li.appendChild(suburb);
+          // Concatenated text would be read as one run, so the accessible name
+          // is spelled out with the separator a sighted reader sees as spacing.
+          li.setAttribute("aria-label", school.name + ", " + school.suburb);
+        }
         li.addEventListener("mousedown", function (e) {
           e.preventDefault();
           selectSchool(school);
