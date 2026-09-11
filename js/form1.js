@@ -2887,6 +2887,9 @@ var ContourForm1Logic = function () {
   function isGraduatedSelected() {
     return getValue(FIELD_SELECTORS.yearLevel) === "Graduated";
   }
+  function isUniversityEntry(school) {
+    return school.type === "University";
+  }
   // Set by enhanceSchoolSearch so quick-fill goes through the combobox's own
   // selectSchool() — the exact event sequence (input + change) that clears
   // HubSpot's native "Please complete this required field" error. A bare
@@ -5646,8 +5649,23 @@ var ContourForm1Logic = function () {
     function normalize(s) {
       return s.toLowerCase().trim();
     }
+    /* Schools and universities share one list, told apart by `type`: CRICOS
+       rows are "University", ACARA rows are Primary/Secondary/Combined/
+       Special. A Graduated student is asked for their university, so their
+       old high school must not be offered — and everyone else the reverse
+       (Aditya, 10 Sep 2026). */
+    function inScope(school) {
+      return isUniversityEntry(school) === isGraduatedSelected();
+    }
+    /* Location gates schools only. A university is chosen nationally — a
+       Melbourne student can be enrolled at UNSW — and there are 42 of them in
+       the whole list, so state is not a useful narrowing there. */
+    function locationMatches(school, location) {
+      if (isUniversityEntry(school)) return true;
+      return !!location && school.state === location;
+    }
     function matchesQueryAndLocation(school, query, location) {
-      if (!location || school.state !== location) return false;
+      if (!inScope(school) || !locationMatches(school, location)) return false;
       return normalize(school.name).indexOf(query) !== -1;
     }
     function tokenize(s) {
@@ -5686,7 +5704,7 @@ var ContourForm1Logic = function () {
       return levenshtein(queryWord, nameWord) <= tolerance;
     }
     function fuzzyMatchesQueryAndLocation(school, queryWords, location) {
-      if (!location || school.state !== location) return false;
+      if (!inScope(school) || !locationMatches(school, location)) return false;
       var nameWords = tokenize(school.name);
       return queryWords.every(function (qw) {
         return nameWords.some(function (nw) {
