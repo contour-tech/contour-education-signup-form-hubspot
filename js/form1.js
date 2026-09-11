@@ -5543,7 +5543,15 @@ var ContourForm1Logic = function () {
       });
     }
   }
-  var SCHOOL_LIST_URL = "https://cdn.prod.website-files.com/696ed06d2e62378f0a51f2d4/6a58568773b5f6caa95424cc_7250ab944ad1d54f698183343d9a5688_schools_with_codes.txt";
+  /* Served from this repo's GitHub Pages, built by data/build-schools-json.py
+     out of data/source/lms-schools-comprehensive.csv. It used to be a text
+     file uploaded to Webflow, which minted a fresh CDN URL on every edit and
+     so needed a code change to refresh the list (Luke, 10 Sep 2026).
+
+     The filename is versioned because production and staging run different
+     builds of this script: a shape change ships as -v2 and leaves the
+     production build reading the file it was written against. */
+  var SCHOOL_LIST_URL = "https://contour-tech.github.io/contour-education-signup-form-hubspot/data/schools-v1.json";
   var schoolListCache = null;
   var schoolListPromise = null;
   function loadSchoolList() {
