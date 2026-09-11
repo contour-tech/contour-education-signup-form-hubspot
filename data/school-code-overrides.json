@@ -1,0 +1,18 @@
+{
+  "_comment": "Contour school codes the source CSV does not carry, plus entries the CSV refresh dropped that a code still points at. Everything here was in the list the form served before the CSV became the source of truth — dropping any of it would silently unassign a campus. Keyed by acara_id.",
+  "codes": {
+    "50149": "Haileybury",
+    "53247": "Haileybury",
+    "52627": "Sirius"
+  },
+  "extra": [
+    {
+      "name": "Sirius College - Geelong Campus",
+      "acara_id": "52627",
+      "school_code": "Sirius",
+      "state": "VIC",
+      "suburb": "Geelong",
+      "type": "Secondary"
+    }
+  ]
+}
