@@ -5764,16 +5764,32 @@ var ContourForm1Logic = function () {
         });
       });
     }
+    /* Universities are searched nationally but ordered by home state: the
+       student's own state at the top, the rest under it. A graduate is most
+       often at a university in the state they just picked, so it should be the
+       first thing they see — and interstate and online study are common enough
+       that hiding the others would cost more than the ordering saves (Amrit,
+       11 Sep 2026). Schools are already state-filtered, so this is a no-op for
+       them. */
+    function localFirst(matches, location) {
+      if (!location || matches.length < 2) return matches;
+      var local = [];
+      var rest = [];
+      matches.forEach(function (school) {
+        if (school.state === location) local.push(school);else rest.push(school);
+      });
+      return local.concat(rest);
+    }
     function searchSchools(list, query, location) {
       var exact = list.filter(function (school) {
         return matchesQueryAndLocation(school, query, location);
       });
-      if (exact.length > 0) return exact;
+      if (exact.length > 0) return localFirst(exact, location);
       var queryWords = tokenize(query);
       if (queryWords.length === 0) return [];
-      return list.filter(function (school) {
+      return localFirst(list.filter(function (school) {
         return fuzzyMatchesQueryAndLocation(school, queryWords, location);
-      });
+      }), location);
     }
     // For Graduated students "Gap Year/Not in University" behaves like a
     // list entry: it appears (first) only when the typed query matches it —
