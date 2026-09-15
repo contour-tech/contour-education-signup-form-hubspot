@@ -23,12 +23,17 @@ const { GoogleAuth } = require("google-auth-library");
  *   3. Refuses to run unauthenticated. The prefetch endpoint is open because
  *      it only reads; an open merge endpoint would let anyone destroy records.
  *
- * Direction matters and is deliberate: the caller passes the ENROLLED record
- * as primaryObjectId, so HubSpot keeps it and absorbs the older one. That is
- * what lets the workflow merge early and keep running — the record it is
- * enrolled on survives. Primary values win and blanks fill from the secondary,
- * so student_id and supabase_id carry across on their own; identity fields do
- * NOT, which is why `overrides` exists.
+ * Direction: the caller passes the ENROLLED record as primaryObjectId, so the
+ * newer record's values win and the older one is absorbed. Primary values win
+ * and blanks fill from the secondary, so student_id and supabase_id carry
+ * across on their own; identity fields do NOT, which is why `overrides` exists.
+ *
+ * THE RUN ENDS HERE. HubSpot unenrols a contact from every active workflow the
+ * moment it is merged, so the calling workflow stops at this action — anything
+ * after it may never execute. That is why `setReadyFlag` exists: this service
+ * is the last thing still running, so it has to be what hands off to the next
+ * workflow. A caller that merges without setting the flag (a human merging two
+ * records from Slack, say) deliberately triggers nothing.
  */
 
 const HUBSPOT_BASE = "https://api.hubapi.com";
@@ -59,6 +64,11 @@ const CAPTURE_PROPERTIES = [
 //   "...has a forward reference to 348661568976. Only canonical objects can
 //    be merged."
 const FORWARD_REFERENCE = /forward reference to (\d+)/i;
+
+// The property the next workflow enrols on. Set only when the caller asks for
+// it, so a manual merge never kicks off a signup run.
+// Internal name is signup_ready; the label in HubSpot reads "LGM04 Signup Ready".
+const READY_PROPERTY = process.env.READY_PROPERTY || "signup_ready";
 
 const SHEET_ID = process.env.SHEET_ID || "";
 const SHEET_RANGE = process.env.SHEET_RANGE || "Sheet1!A:L";
@@ -228,6 +238,14 @@ function noteBody(absorbed, survivor, meta) {
     `Requested by: ${meta.actor}`
   ];
 
+  if (meta.readyFlagFailed) {
+    lines.push(
+      "",
+      `<b>Action needed:</b> the merge succeeded but ${READY_PROPERTY} could not be set, ` +
+        "so the follow-on workflow will not pick this record up. It needs enrolling by hand."
+    );
+  }
+
   // Worth saying out loud on the record itself rather than only in a spec: a
   // reviewer reading this note is looking at the only remaining description of
   // a record that no longer exists.
@@ -261,6 +279,23 @@ async function writeNote(survivorId, body, token) {
     token
   );
   return status === 201;
+}
+
+/*
+ * Hands off to the next workflow. Best-effort in the sense that it can never
+ * un-merge anything, but a failure here strands the signup — the record is
+ * merged and nothing will pick it up — so it is reported loudly rather than
+ * swallowed, and it goes in the note so the stranding is visible on the record
+ * itself.
+ */
+async function setReadyFlag(contactId, token) {
+  const { status, body } = await hubspot(
+    `/crm/v3/objects/${CONTACT}/${contactId}`,
+    { method: "PATCH", body: JSON.stringify({ properties: { [READY_PROPERTY]: true } }) },
+    token
+  );
+  if (status === 200) return { set: true };
+  return { set: false, reason: `${status}: ${JSON.stringify(body).slice(0, 200)}` };
 }
 
 let sheetsAuth = null;
@@ -323,6 +358,9 @@ functions.http("merge", async (req, res) => {
   const actor = clean(payload.actor) || "lgm04-workflow";
   const matchedOn = clean(payload.matchedOn) || "email";
   const dryRun = payload.dryRun === true;
+  // Opt-in, not default: only a caller that owns the signup pipeline should
+  // start the next workflow. A manual merge leaves the record alone.
+  const wantsReadyFlag = payload.setReadyFlag === true;
 
   if (!/^\d{1,20}$/.test(primaryId) || !/^\d{1,20}$/.test(secondaryId)) {
     return res.status(400).json({ error: "primaryId and secondaryId must both be numeric record ids" });
@@ -343,7 +381,12 @@ functions.http("merge", async (req, res) => {
     // A dry run answers "what would this destroy" without destroying it. Worth
     // having on the one endpoint in the system with no undo.
     if (dryRun) {
-      return res.status(200).json({ dryRun: true, wouldKeep: primary, wouldAbsorb: secondary });
+      return res.status(200).json({
+        dryRun: true,
+        wouldKeep: primary,
+        wouldAbsorb: secondary,
+        wouldSetReadyFlag: wantsReadyFlag ? READY_PROPERTY : null
+      });
     }
 
     const { survivorId, correctedFrom, alreadyMerged } = await mergeContacts(primaryId, secondaryId, token);
@@ -355,7 +398,11 @@ functions.http("merge", async (req, res) => {
     // writing a second note and audit row for the same merge would leave the
     // log claiming it happened twice.
     if (alreadyMerged) {
-      console.log(JSON.stringify({ event: "merge", survivorId, alreadyMerged: true, logged: false }));
+      // Nothing to log, but the handoff still runs: the call that did the merge
+      // may have died before setting the flag, and setting it twice is free.
+      const ready = wantsReadyFlag ? await setReadyFlag(survivorId, token) : { set: false };
+      if (wantsReadyFlag && !ready.set) console.error("ready flag not set:", ready.reason);
+      console.log(JSON.stringify({ event: "merge", survivorId, alreadyMerged: true, logged: false, readyFlagSet: ready.set }));
       return res.status(200).json({
         survivorId,
         merged: false,
@@ -364,7 +411,9 @@ functions.http("merge", async (req, res) => {
         absorbed: null,
         overridesApplied: {},
         noteWritten: false,
-        auditWritten: false
+        auditWritten: false,
+        readyFlagSet: ready.set,
+        readyFlagError: ready.set ? null : ready.reason || null
       });
     }
 
@@ -376,7 +425,14 @@ functions.http("merge", async (req, res) => {
     // should say what the record actually looks like now.
     const survivor = (await capture(survivorId, token)) || { ...primary, id: survivorId };
 
-    const meta = { matchedOn, reason, actor };
+    // Order matters: overrides land first so the next workflow never reads a
+    // half-corrected record, then the handoff, then the logging.
+    const ready = wantsReadyFlag ? await setReadyFlag(survivorId, token) : { set: false };
+    if (wantsReadyFlag && !ready.set) {
+      console.error("MERGED BUT NOT HANDED OFF:", survivorId, ready.reason);
+    }
+
+    const meta = { matchedOn, reason, actor, readyFlagFailed: wantsReadyFlag && !ready.set };
 
     // Both logs are best-effort on purpose. The merge has already happened and
     // cannot be undone; failing the response because a Sheet append 500'd would
@@ -418,7 +474,8 @@ functions.http("merge", async (req, res) => {
         correctedFrom: correctedFrom || undefined,
         alreadyMerged: alreadyMerged || undefined,
         noteWritten,
-        auditWritten: sheet.written
+        auditWritten: sheet.written,
+        readyFlagSet: ready.set
       })
     );
 
@@ -430,7 +487,9 @@ functions.http("merge", async (req, res) => {
       absorbed: secondary,
       overridesApplied: applied,
       noteWritten,
-      auditWritten: sheet.written
+      auditWritten: sheet.written,
+      readyFlagSet: ready.set,
+      readyFlagError: ready.set ? null : ready.reason || null
     });
   } catch (err) {
     const status = err.statusCode && err.statusCode >= 400 ? err.statusCode : 500;
