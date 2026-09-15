@@ -165,13 +165,13 @@ async function associatedSubjectCodes(contactId, objectType) {
   return [...new Set(codes)];
 }
 
-async function contactExistsByProperties(propertyNames, value, operator) {
+async function contactSearch(propertyNames, value, operator, properties) {
   // filterGroups are OR-ed, so one group per property matches a contact
   // carrying the value on any of them.
   const filterGroups = propertyNames.map((propertyName) => ({
     filters: [{ propertyName, operator: operator || "EQ", value }]
   }));
-  if (filterGroups.length === 0) return false;
+  if (filterGroups.length === 0) return null;
   const res = await fetch(`${HUBSPOT_BASE}/crm/v3/objects/contacts/search`, {
     method: "POST",
     headers: {
@@ -180,13 +180,64 @@ async function contactExistsByProperties(propertyNames, value, operator) {
     },
     body: JSON.stringify({
       filterGroups,
-      properties: ["email"],
+      properties: properties || ["email"],
       limit: 1
     })
   });
   if (!res.ok) throw new Error(`HubSpot search ${res.status}`);
   const data = await res.json();
-  return (data.total || 0) > 0;
+  return (data.results || [])[0] || null;
+}
+
+async function contactExistsByProperties(propertyNames, value, operator) {
+  return Boolean(await contactSearch(propertyNames, value, operator));
+}
+
+// contact_type carries BOTH "Parent" and "Guardian" as separate options
+// (2,014 and 72 records). They mean the same thing to this form — the address
+// belongs to a grown-up, so it cannot be the student's own — and reading only
+// "Parent" is what leaves the 72 Guardian records mis-handled downstream.
+const GUARDIAN_CONTACT_TYPES = ["parent", "guardian", "parent/guardian"];
+const STUDENT_CONTACT_TYPES = ["student"];
+
+// The whole classification happens here, server-side, and only the verdict
+// crosses back. The browser never learns the record id, the raw contact_type,
+// the year level or anything else about a contact it has only guessed the
+// address of.
+//
+// "clear" is the default for every type this form does not act on —
+// Unassigned, temp*, Tutor, Supplier, School/Uni Representative — so an
+// address we cannot confidently classify never blocks a legitimate signup.
+function classifyContact(contact) {
+  if (!contact) return { status: "clear" };
+  const properties = contact.properties || {};
+  const contactType = String(properties.contact_type || "").trim().toLowerCase();
+
+  if (STUDENT_CONTACT_TYPES.includes(contactType)) {
+    // First name only, and only in this branch: it is the minimum a student
+    // needs to recognise their own record ("we found details for Alex — is
+    // this you?"). Deliberately not sent for the guardian case, where naming
+    // them would disclose a third party to whoever typed the address.
+    return {
+      status: "student",
+      firstName: String(properties.firstname || "").trim()
+    };
+  }
+
+  if (GUARDIAN_CONTACT_TYPES.includes(contactType)) {
+    return { status: "guardian" };
+  }
+
+  return { status: "clear" };
+}
+
+async function classifyEmail(email) {
+  const contact = await contactSearch(EMAIL_MATCH_PROPERTIES, email, "EQ", [
+    "email",
+    "contact_type",
+    "firstname"
+  ]);
+  return classifyContact(contact);
 }
 
 async function contactExistsByEmail(email) {
@@ -318,9 +369,17 @@ functions.http("prefetch", async (req, res) => {
       return res.status(400).json({ error: "invalid phone" });
     }
     try {
-      const exists = email
-        ? await contactExistsByEmail(email)
-        : await contactExistsByPhone(phone, dial);
+      // Email returns a CLASSIFICATION, not a boolean: the form needs to know
+      // which of three things to do (block and offer the prefill link, block
+      // and point at the guardian field, or let the submission through), and
+      // deciding that here keeps every contact property server-side. A bare
+      // `exists` is deliberately not returned any more — it answered "is this
+      // address in your CRM" for all 26k records, which is a wider disclosure
+      // than the form has any use for.
+      if (email) {
+        return res.json(await classifyEmail(email));
+      }
+      const exists = await contactExistsByPhone(phone, dial);
       return res.json({ exists });
     } catch (err) {
       console.error("exists error:", err.message);
