@@ -61,7 +61,7 @@ const CAPTURE_PROPERTIES = [
 const FORWARD_REFERENCE = /forward reference to (\d+)/i;
 
 const SHEET_ID = process.env.SHEET_ID || "";
-const SHEET_RANGE = process.env.SHEET_RANGE || "Sheet1!A:I";
+const SHEET_RANGE = process.env.SHEET_RANGE || "Sheet1!A:L";
 
 function clean(value) {
   return String(value ?? "").trim();
@@ -265,6 +265,16 @@ async function writeNote(survivorId, body, token) {
 
 let sheetsAuth = null;
 
+/*
+ * One row per merge, carrying both sides in full. The absorbed half is the
+ * only record of something that no longer exists; the survivor half saves a
+ * reviewer having to open HubSpot to find out what it became.
+ *
+ * Column order (A:L):
+ *   merged_at, matched_on,
+ *   survivor_id, survivor_email, survivor_name, survivor_type, survivor_source,
+ *   absorbed_id, absorbed_email, absorbed_name, absorbed_type, absorbed_source
+ */
 async function appendAuditRow(row) {
   if (!SHEET_ID) return { written: false, reason: "no SHEET_ID configured" };
 
@@ -341,12 +351,30 @@ functions.http("merge", async (req, res) => {
       return res.status(502).json({ error: "merge returned no surviving record id" });
     }
 
+    // A retry has nothing to record: no record was destroyed this time, and
+    // writing a second note and audit row for the same merge would leave the
+    // log claiming it happened twice.
+    if (alreadyMerged) {
+      console.log(JSON.stringify({ event: "merge", survivorId, alreadyMerged: true, logged: false }));
+      return res.status(200).json({
+        survivorId,
+        merged: false,
+        alreadyMerged: true,
+        correctedFrom: correctedFrom || null,
+        absorbed: null,
+        overridesApplied: {},
+        noteWritten: false,
+        auditWritten: false
+      });
+    }
+
     const overrides = isPlainObject(payload.overrides) ? payload.overrides : {};
     const { applied } = await applyOverrides(survivorId, overrides, token);
 
-    const survivor = { ...primary, id: survivorId, name: clean(applied.firstname || applied.lastname)
-      ? [applied.firstname, applied.lastname].map(clean).filter(Boolean).join(" ")
-      : primary.name };
+    // Read the survivor back rather than inferring it. The merge decides which
+    // values won, the overrides then changed some of them, and the audit row
+    // should say what the record actually looks like now.
+    const survivor = (await capture(survivorId, token)) || { ...primary, id: survivorId };
 
     const meta = { matchedOn, reason, actor };
 
@@ -360,15 +388,18 @@ functions.http("merge", async (req, res) => {
         return false;
       }),
       appendAuditRow([
+        new Date().toISOString(),
+        matchedOn,
+        survivorId,
+        survivor.email,
+        survivor.name,
+        survivor.type || "Unassigned",
+        survivor.source,
         secondary.id,
         secondary.email,
         secondary.name,
         secondary.type || "Unassigned",
-        secondary.source,
-        survivorId,
-        survivor.name,
-        matchedOn,
-        new Date().toISOString()
+        secondary.source
       ]).catch((err) => {
         console.error("audit append failed:", err.message);
         return { written: false, reason: err.message };
