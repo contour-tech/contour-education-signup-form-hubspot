@@ -208,24 +208,31 @@ const STUDENT_CONTACT_TYPES = ["student"];
 // "clear" is the default for every type this form does not act on —
 // Unassigned, temp*, Tutor, Supplier, School/Uni Representative — so an
 // address we cannot confidently classify never blocks a legitimate signup.
+function contactFullName(properties) {
+  return [properties.firstname, properties.lastname]
+    .map((part) => String(part || "").trim())
+    .filter(Boolean)
+    .join(" ");
+}
+
 function classifyContact(contact) {
   if (!contact) return { status: "clear" };
   const properties = contact.properties || {};
   const contactType = String(properties.contact_type || "").trim().toLowerCase();
 
+  // Both named branches return the full name so the form can say whose record
+  // it found — "we found details for Annika Hull, is this you?" for a student,
+  // and the equivalent for a guardian so the person can tell whether the
+  // address really is the grown-up's. A surname makes that identifiable to
+  // anyone who can guess an address, which is why the rate limit above is the
+  // only thing standing between this and an enumeration oracle. Nothing else
+  // about the record — id, raw contact_type, year level — ever crosses back.
   if (STUDENT_CONTACT_TYPES.includes(contactType)) {
-    // First name only, and only in this branch: it is the minimum a student
-    // needs to recognise their own record ("we found details for Alex — is
-    // this you?"). Deliberately not sent for the guardian case, where naming
-    // them would disclose a third party to whoever typed the address.
-    return {
-      status: "student",
-      firstName: String(properties.firstname || "").trim()
-    };
+    return { status: "student", fullName: contactFullName(properties) };
   }
 
   if (GUARDIAN_CONTACT_TYPES.includes(contactType)) {
-    return { status: "guardian" };
+    return { status: "guardian", fullName: contactFullName(properties) };
   }
 
   return { status: "clear" };
@@ -235,7 +242,8 @@ async function classifyEmail(email) {
   const contact = await contactSearch(EMAIL_MATCH_PROPERTIES, email, "EQ", [
     "email",
     "contact_type",
-    "firstname"
+    "firstname",
+    "lastname"
   ]);
   return classifyContact(contact);
 }
