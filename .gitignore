@@ -3,4 +3,5 @@ docs/
 contour_signup_form_hubspot_properties.xlsx
 node_modules/
 *.xlsx
-.claudefunctions/*/.gcloudignore
+.claude/
+functions/*/.gcloudignore
