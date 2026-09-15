@@ -220,19 +220,22 @@ function classifyContact(contact) {
   const properties = contact.properties || {};
   const contactType = String(properties.contact_type || "").trim().toLowerCase();
 
-  // Both named branches return the full name so the form can say whose record
-  // it found — "we found details for Annika Hull, is this you?" for a student,
-  // and the equivalent for a guardian so the person can tell whether the
-  // address really is the grown-up's. A surname makes that identifiable to
-  // anyone who can guess an address, which is why the rate limit above is the
-  // only thing standing between this and an enumeration oracle. Nothing else
-  // about the record — id, raw contact_type, year level — ever crosses back.
+  // The student branch returns the whole name because the form validates
+  // against it — "is this you, Annika Hull?" is a question someone can answer,
+  // where a bare first name is a guess.
   if (STUDENT_CONTACT_TYPES.includes(contactType)) {
     return { status: "student", fullName: contactFullName(properties) };
   }
 
+  // The guardian branch only needs enough to address them ("Becky, you're
+  // already registered as a guardian") — there is no identity to confirm here,
+  // just a field to point at, so the surname stays behind. It would make a
+  // third party identifiable to anyone who can guess their address.
   if (GUARDIAN_CONTACT_TYPES.includes(contactType)) {
-    return { status: "guardian", fullName: contactFullName(properties) };
+    return {
+      status: "guardian",
+      firstName: String(properties.firstname || "").trim()
+    };
   }
 
   return { status: "clear" };
