@@ -389,6 +389,7 @@ exports.main = async (event, callback) => {
       guardian_created: false,
       guardian_matched_student_record: false,
       identity_mode: "",
+      resolved_at: "",
       error_type: "",
       error_message: "",
       ...fields
@@ -473,6 +474,7 @@ exports.main = async (event, callback) => {
       return out({
         failed_step: student.step,
         identity_mode: clean(identity.identityMode),
+        resolved_at: clean(identity.resolvedAt),
         error_type: student.errorType,
         error_message: student.errorMessage
       });
@@ -484,7 +486,11 @@ exports.main = async (event, callback) => {
       subjects_after_merge: student.subjectsAfterMerge,
       unknown_subject_codes: student.unknownSubjectCodes,
       has_unknown_subjects: Boolean(student.unknownSubjectCodes),
-      identity_mode: clean(identity.identityMode)
+      identity_mode: clean(identity.identityMode),
+      // The finish action compares this against the blob as it stands then.
+      // A different value means a second submission landed mid-run, and
+      // clearing the flag would throw that submission away unnoticed.
+      resolved_at: clean(identity.resolvedAt)
     };
 
     const guardian = await upsertGuardian({
