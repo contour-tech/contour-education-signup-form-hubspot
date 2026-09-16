@@ -28,6 +28,9 @@ const axios = require("axios");
 
 const CONTACT = "0-1";
 
+// Where the resolved values are parked for Workflow B. See persist() below.
+const RESOLVED_PROPERTY = "lgm04_resolved_identity";
+
 // contact_type carries Parent and Guardian as separate options and they mean
 // the same thing here: the address belongs to a grown-up.
 const GUARDIAN_TYPES = ["parent", "guardian", "parent/guardian"];
@@ -183,7 +186,47 @@ exports.main = async (event, callback) => {
       registered_by_resolved: registeredBy
     };
 
-    if (!student.email) return out(base);
+    /*
+     * Workflow B is a SEPARATE workflow, so nothing computed here reaches it
+     * through action outputs. It is handed over on the record itself.
+     *
+     * One JSON property rather than eleven new ones: none of these values are
+     * ever filtered, reported or segmented on — they are pure transport, and
+     * the real properties (firstname, email, phone...) get written from this
+     * blob by Workflow B moments later. Eleven single-use properties would be
+     * eleven things to create, map and keep in step for no gain.
+     *
+     * It is written to the ENROLLED record, which is the merge primary, so the
+     * survivor carries it through the merge.
+     *
+     * Workflow B deletes it when it finishes. A ready flag ticked by hand
+     * therefore finds nothing and says so, instead of silently replaying a
+     * previous submission's identity.
+     */
+    async function persist(decision) {
+      const blob = {
+        v: 1,
+        resolvedAt: new Date().toISOString(),
+        enrolledId,
+        identityMode,
+        mergeDecision: decision,
+        student,
+        guardian,
+        guardianRequired,
+        interestedSubjects: subjects,
+        registeredBy
+      };
+      await axios.patch(
+        `https://api.hubapi.com/crm/v3/objects/${CONTACT}/${enrolledId}`,
+        { properties: { [RESOLVED_PROPERTY]: JSON.stringify(blob) } },
+        { headers }
+      );
+    }
+
+    if (!student.email) {
+      await persist("none");
+      return out(base);
+    }
 
     /*
      * `email` is the contact's own address and the only property that
@@ -202,11 +245,15 @@ exports.main = async (event, callback) => {
     );
 
     const match = (res.data?.results || []).find((r) => String(r.id) !== enrolledId);
-    if (!match) return out(base);
+    if (!match) {
+      await persist("none");
+      return out(base);
+    }
 
     const matchedType = lower(match.properties?.contact_type);
 
     if (GUARDIAN_TYPES.includes(matchedType)) {
+      await persist("review");
       return out({
         ...base,
         merge_decision: "review",
@@ -216,6 +263,7 @@ exports.main = async (event, callback) => {
       });
     }
 
+    await persist("merge");
     return out({
       ...base,
       merge_decision: "merge",
