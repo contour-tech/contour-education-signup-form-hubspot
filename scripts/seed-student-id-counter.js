@@ -10,8 +10,13 @@
  * Reads every contact with a student_id, takes the trailing digits, and seeds
  * the counter to the highest. Safe to re-run: it never lowers the counter.
  *
- *   node scripts/seed-student-id-counter.js            # report only
- *   node scripts/seed-student-id-counter.js --write    # seed Firestore
+ *   node scripts/seed-student-id-counter.js                     # report only
+ *   node scripts/seed-student-id-counter.js --write             # seed Firestore
+ *   node scripts/seed-student-id-counter.js --min 158000 --write
+ *
+ * --min raises the floor above whatever HubSpot holds, which is how you leave
+ * a deliberate gap — room to test without new ids landing next to real ones,
+ * or a clean round number to start a season on. It can only ever raise.
  *
  * Token: $HUBSPOT_TOKEN, or pulled from Secret Manager if unset.
  */
@@ -23,6 +28,17 @@ const SECRET_PROJECT = "hubspot-signup-form";
 const COUNTER_DOC = "counters/student";
 
 const WRITE = process.argv.includes("--write");
+
+const MIN = (() => {
+  const i = process.argv.indexOf("--min");
+  if (i === -1) return 0;
+  const n = Number(process.argv[i + 1]);
+  if (!Number.isInteger(n) || n < 0) {
+    console.error("--min needs a whole number, e.g. --min 158000");
+    process.exit(1);
+  }
+  return n;
+})();
 
 function token() {
   if (process.env.HUBSPOT_TOKEN) return process.env.HUBSPOT_TOKEN.trim();
@@ -116,8 +132,16 @@ async function main() {
 
   if (!max) throw new Error("No parseable student_id found — refusing to seed.");
 
+  const target = Math.max(max.sequence, MIN);
+  if (MIN > max.sequence) {
+    console.log(`\nHighest in HubSpot is ${max.sequence}; --min raises the floor to ${MIN}.`);
+    console.log(`That leaves ${MIN - max.sequence} numbers unused between the two, on purpose.`);
+  } else if (MIN) {
+    console.log(`\n--min ${MIN} is at or below the highest in HubSpot (${max.sequence}), so it changes nothing.`);
+  }
+
   if (!WRITE) {
-    console.log(`\nWould seed ${COUNTER_DOC} to next = ${max.sequence}. Re-run with --write to apply.`);
+    console.log(`\nWould seed ${COUNTER_DOC} to next = ${target}. Re-run with --write to apply.`);
     return;
   }
 
@@ -131,15 +155,24 @@ async function main() {
   const applied = await firestore.runTransaction(async (tx) => {
     const snap = await tx.get(ref);
     const current = snap.exists ? Number(snap.data().next || 0) : 0;
-    if (current >= max.sequence) return { changed: false, current };
-    tx.set(ref, { next: max.sequence, seededAt: new Date().toISOString(), seededFrom: max.studentId }, { merge: true });
-    return { changed: true, current, next: max.sequence };
+    if (current >= target) return { changed: false, current };
+    tx.set(
+      ref,
+      {
+        next: target,
+        seededAt: new Date().toISOString(),
+        seededFrom: max.studentId,
+        ...(MIN > max.sequence ? { floorApplied: MIN } : {})
+      },
+      { merge: true }
+    );
+    return { changed: true, current, next: target };
   });
 
   console.log(
     applied.changed
-      ? `\nSeeded ${COUNTER_DOC}: ${applied.current} -> ${applied.next}. Next id issued will be ${max.sequence + 1}.`
-      : `\nLeft ${COUNTER_DOC} alone — already at ${applied.current}, which is not below ${max.sequence}.`
+      ? `\nSeeded ${COUNTER_DOC}: ${applied.current} -> ${applied.next}. Next id issued will be ${target + 1}.`
+      : `\nLeft ${COUNTER_DOC} alone — already at ${applied.current}, which is not below ${target}.`
   );
 }
 
