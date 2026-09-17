@@ -324,21 +324,30 @@ var ContourForm1Logic = function () {
   // subjects a location/year-level sees, for every intake it covers. The
   // structured year:/state: tokens on option values are only a fallback for
   // intakes with no grid here (e.g. a future intake added in HubSpot before
-  // this file learns about it). 2027 comes from the Curriculum Planning
-  // Matrix tab; 2026 mirrors the pre-rollout dropdown values
+  // this file learns about it). 2027 comes from the Planning Matrix's
+  // Signup Matrix tab; 2026 mirrors the pre-rollout dropdown values
   // (the vetted 2026 behaviour) — edit the grid, not tokens.
   // Keyed by intake year — the matrix is the single authority for which
   // subjects a location/year-level sees, for every intake it covers. The
   // structured year:/state: tokens on option values are only a fallback for
   // intakes with no grid here (e.g. a future intake added in HubSpot before
-  // this file learns about it). 2027 comes from the Curriculum Planning
-  // Matrix tab; 2026 was generated from the 2026 option tokens on
+  // this file learns about it). 2027 comes from the Planning Matrix's
+  // Signup Matrix tab; 2026 was generated from the 2026 option tokens on
   // 2026-08-21 so behaviour stayed identical — edit the grid, not tokens.
   // VIC-MA10 (plain "Year 10 Maths") was dropped from the 2026 VIC Year 9/10
   // cells on 8 Sep 2026: it was a legacy HubSpot option swept in by that
   // generation, is in no Planning Matrix tab, and is not taught — only
   // Year 10 Advanced (VIC-MA1A) is (Aidann/Yatta, #sales-group-tech).
-  var SUBJECT_MATRIX = { "2026": { "VIC": { "Year 6": ["VIC-MA07", "VSE-FOEN", "VSE-FOMA", "VSE-FOWR"], "Year 7": ["VIC-MA07", "VIC-MA08", "VSE-COEN", "VSE-COMA", "VSE-COWR"], "Year 8": ["VIC-MA08", "VIC-MA09", "VSE-MAEN", "VSE-MAMA", "VSE-MAWR"], "Year 9": ["VIC-MA09", "VIC-MA1A"], "Year 10": ["MD-INT", "UCAT-ANZ-CORE", "VCE-BI12", "VCE-CH12", "VCE-EL12", "VCE-EN12", "VCE-MM12", "VCE-PH12", "VCE-SM12", "VIC-MA1A"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE", "VCE-BI12", "VCE-BI34", "VCE-CH12", "VCE-CH34", "VCE-EL12", "VCE-EL34", "VCE-EN12", "VCE-EN34", "VCE-MM12", "VCE-MM34", "VCE-PH12", "VCE-PH34", "VCE-SM12", "VCE-SM34"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST", "VCE-BI34", "VCE-CH34", "VCE-EL34", "VCE-EN34", "VCE-MM34", "VCE-PH34", "VCE-SM34"], "Year 13": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["MD-INT", "UCAT-ANZ-MAST"] }, "QLD": { "Year 6": ["QLD-MA07"], "Year 7": ["QLD-MA07", "QLD-MA08"], "Year 8": ["QLD-MA08", "QLD-MA09"], "Year 9": ["QLD-MA09", "QLD-MA1A"], "Year 10": ["MD-INT", "QCE-BI12", "QCE-CH12", "QCE-MM12", "QCE-PH12", "QCE-SM12", "QLD-MA1A", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "QCE-BI12", "QCE-BI34", "QCE-CH12", "QCE-CH34", "QCE-MM12", "QCE-MM34", "QCE-PH12", "QCE-PH34", "QCE-SM12", "QCE-SM34", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "QCE-BI34", "QCE-CH34", "QCE-MM34", "QCE-PH34", "QCE-SM34", "UCAT-ANZ-MAST"], "Year 13": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["MD-INT", "UCAT-ANZ-MAST"] }, "WA": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Year 13": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["MD-INT", "UCAT-ANZ-MAST"] }, "SA": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Year 13": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["MD-INT", "UCAT-ANZ-MAST"] }, "NSW": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Year 13": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["MD-INT", "UCAT-ANZ-MAST"] }, "TAS": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Year 13": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["MD-INT", "UCAT-ANZ-MAST"] }, "ACT": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Year 13": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["MD-INT", "UCAT-ANZ-MAST"] }, "NT": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Year 13": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["MD-INT", "UCAT-ANZ-MAST"] }, "NZ": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Year 13": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["MD-INT", "UCAT-ANZ-MAST"] }, "UK": { "Year 10": ["MD-INT", "UCAT-UK-CORE"], "Year 11": ["MD-INT", "UCAT-UK-CORE"], "Year 12": ["MD-INT", "UCAT-UK-MAST"], "Year 13": ["MD-INT", "UCAT-UK-MAST"], "Graduated": ["MD-INT", "UCAT-UK-MAST"] }, "INTERNATIONAL": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Year 13": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["MD-INT", "UCAT-ANZ-MAST"] } }, "2027": { "VIC": { "Year 5": ["VSC-EN05", "VSC-MA05", "VSC-WR05"], "Year 6": ["VIC-EN07", "VIC-EN08", "VIC-MA07", "VIC-MA08", "VIC-SC07", "VIC-SC08", "VSE-EN06", "VSE-MA06", "VSE-WR06"], "Year 7": ["VIC-EN07", "VIC-EN08", "VIC-EN09", "VIC-MA07", "VIC-MA08", "VIC-MA9A", "VIC-SC07", "VIC-SC08", "VIC-SC09", "VSE-EN07", "VSE-MA07", "VSE-WR07"], "Year 8": ["VIC-EN08", "VIC-EN09", "VIC-EN10", "VIC-MA08", "VIC-MA1A", "VIC-MA9A", "VIC-SC08", "VIC-SC09", "VIC-SC10", "VSE-EN08", "VSE-MA08", "VSE-WR08"], "Year 9": ["VCE-BI12", "VCE-CH12", "VCE-EL12", "VCE-EN12", "VCE-MM12", "VCE-PH12", "VCE-SM12", "VIC-EN09", "VIC-EN10", "VIC-MA1A", "VIC-MA9A", "VIC-SC09", "VIC-SC10"], "Year 10": ["MD-INT", "UCAT-ANZ-CORE", "VCE-BI12", "VCE-BI34", "VCE-CH12", "VCE-CH34", "VCE-EL12", "VCE-EL34", "VCE-EN12", "VCE-EN34", "VCE-MM12", "VCE-MM34", "VCE-PH12", "VCE-PH34", "VCE-SM12", "VCE-SM34", "VIC-EN10", "VIC-MA1A", "VIC-SC10"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE", "VCE-BI12", "VCE-BI34", "VCE-CH12", "VCE-CH34", "VCE-EL12", "VCE-EL34", "VCE-EN12", "VCE-EN34", "VCE-MM12", "VCE-MM34", "VCE-PH12", "VCE-PH34", "VCE-SM12", "VCE-SM34"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST", "VCE-BI34", "VCE-CH34", "VCE-EL34", "VCE-EN34", "VCE-MM34", "VCE-PH34", "VCE-SM34"], "Graduated": ["GAMSAT", "MD-INT", "UCAT-ANZ-MAST"] }, "QLD": { "Year 6": ["QLD-EN07", "QLD-EN08", "QLD-MA07", "QLD-MA08", "QLD-SC07", "QLD-SC08"], "Year 7": ["QLD-EN07", "QLD-EN08", "QLD-EN09", "QLD-MA07", "QLD-MA08", "QLD-MA09", "QLD-SC07", "QLD-SC08", "QLD-SC09"], "Year 8": ["QLD-EN08", "QLD-EN09", "QLD-EN10", "QLD-MA08", "QLD-MA09", "QLD-MA1A", "QLD-SC08", "QLD-SC09", "QLD-SC10"], "Year 9": ["QCE-BI12", "QCE-CH12", "QCE-MM12", "QCE-PH12", "QCE-SM12", "QLD-EN09", "QLD-EN10", "QLD-MA09", "QLD-MA1A", "QLD-SC09", "QLD-SC10"], "Year 10": ["MD-INT", "QCE-BI12", "QCE-BI34", "QCE-CH12", "QCE-CH34", "QCE-MM12", "QCE-MM34", "QCE-PH12", "QCE-PH34", "QCE-SM12", "QCE-SM34", "QLD-EN10", "QLD-MA1A", "QLD-SC10", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "QCE-BI12", "QCE-BI34", "QCE-CH12", "QCE-CH34", "QCE-MM12", "QCE-MM34", "QCE-PH12", "QCE-PH34", "QCE-SM12", "QCE-SM34", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "QCE-BI34", "QCE-CH34", "QCE-MM34", "QCE-PH34", "QCE-SM34", "UCAT-ANZ-MAST"], "Graduated": ["GAMSAT", "MD-INT", "UCAT-ANZ-MAST"] }, "WA": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["GAMSAT", "MD-INT", "UCAT-ANZ-MAST"] }, "SA": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["GAMSAT", "MD-INT", "UCAT-ANZ-MAST"] }, "NSW": { "Year 6": ["NSW-EN07", "NSW-EN08", "NSW-MA07", "NSW-MA08", "NSW-SC07", "NSW-SC08"], "Year 7": ["NSW-EN07", "NSW-EN08", "NSW-EN09", "NSW-MA07", "NSW-MA08", "NSW-MA09", "NSW-SC07", "NSW-SC08", "NSW-SC09"], "Year 8": ["NSW-EN08", "NSW-EN09", "NSW-EN10", "NSW-MA08", "NSW-MA09", "NSW-MA10", "NSW-SC08", "NSW-SC09", "NSW-SC10"], "Year 9": ["NSW-EN09", "NSW-EN10", "NSW-MA09", "NSW-MA10", "NSW-SC09", "NSW-SC10", "PRE-BIOL", "PRE-CHEM", "PRE-MADV", "PRE-MAE1", "PRE-PHYS"], "Year 10": ["HSC-BIOL", "HSC-CHEM", "HSC-MADV", "HSC-MAE1", "HSC-MAE2", "HSC-PHYS", "MD-INT", "NSW-EN10", "NSW-MA10", "NSW-SC10", "PRE-BIOL", "PRE-CHEM", "PRE-MADV", "PRE-MAE1", "PRE-PHYS", "UCAT-ANZ-CORE"], "Year 11": ["HSC-BIOL", "HSC-CHEM", "HSC-MADV", "HSC-MAE1", "HSC-MAE2", "HSC-PHYS", "MD-INT", "PRE-BIOL", "PRE-CHEM", "PRE-MADV", "PRE-MAE1", "PRE-PHYS", "UCAT-ANZ-CORE"], "Year 12": ["HSC-BIOL", "HSC-CHEM", "HSC-MADV", "HSC-MAE1", "HSC-MAE2", "HSC-PHYS", "MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["GAMSAT", "MD-INT", "UCAT-ANZ-MAST"] }, "TAS": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["GAMSAT", "MD-INT", "UCAT-ANZ-MAST"] }, "ACT": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["GAMSAT", "MD-INT", "UCAT-ANZ-MAST"] }, "NT": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["GAMSAT", "MD-INT", "UCAT-ANZ-MAST"] }, "NZ": { "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-CORE"], "Year 13": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["GAMSAT", "MD-INT", "UCAT-ANZ-MAST"] }, "UK": { "Year 10": ["MD-INT", "UCAT-UK-MAST"], "Year 11": ["MD-INT", "UCAT-UK-MAST"], "Year 12": ["MD-INT", "UCAT-UK-MAST"], "Year 13": ["MD-INT", "UCAT-UK-MAST"], "Graduated": ["GAMSAT", "MD-INT", "UCAT-UK-MAST"] }, "INTERNATIONAL": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Year 13": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["GAMSAT", "MD-INT", "UCAT-ANZ-MAST"] } } };
+  // The 2027 grid was re-cut from the Signup Matrix tab on 16 Sep 2026, when
+  // acceleration pathways landed (Wassim, #sales-group-tech). A subject a
+  // younger student can be accelerated INTO is now enrolment-only: it shows
+  // on the Enrolment Matrix tab but not the Signup Matrix one, so it is not
+  // a signup option. That took the cross-year options out of the Year 6-9
+  // cells for VIC, QLD and NSW — a year level now offers its own subjects
+  // (and, for Year 10 and up, the senior subjects it always did). Signup
+  // eligibility is the only thing this grid answers, so Signup Matrix is the
+  // tab to re-cut it from; the Enrolment Matrix tab is not for this form.
+  var SUBJECT_MATRIX = { "2026": { "VIC": { "Year 6": ["VIC-MA07", "VSE-FOEN", "VSE-FOMA", "VSE-FOWR"], "Year 7": ["VIC-MA07", "VIC-MA08", "VSE-COEN", "VSE-COMA", "VSE-COWR"], "Year 8": ["VIC-MA08", "VIC-MA09", "VSE-MAEN", "VSE-MAMA", "VSE-MAWR"], "Year 9": ["VIC-MA09", "VIC-MA1A"], "Year 10": ["MD-INT", "UCAT-ANZ-CORE", "VCE-BI12", "VCE-CH12", "VCE-EL12", "VCE-EN12", "VCE-MM12", "VCE-PH12", "VCE-SM12", "VIC-MA1A"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE", "VCE-BI12", "VCE-BI34", "VCE-CH12", "VCE-CH34", "VCE-EL12", "VCE-EL34", "VCE-EN12", "VCE-EN34", "VCE-MM12", "VCE-MM34", "VCE-PH12", "VCE-PH34", "VCE-SM12", "VCE-SM34"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST", "VCE-BI34", "VCE-CH34", "VCE-EL34", "VCE-EN34", "VCE-MM34", "VCE-PH34", "VCE-SM34"], "Year 13": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["MD-INT", "UCAT-ANZ-MAST"] }, "QLD": { "Year 6": ["QLD-MA07"], "Year 7": ["QLD-MA07", "QLD-MA08"], "Year 8": ["QLD-MA08", "QLD-MA09"], "Year 9": ["QLD-MA09", "QLD-MA1A"], "Year 10": ["MD-INT", "QCE-BI12", "QCE-CH12", "QCE-MM12", "QCE-PH12", "QCE-SM12", "QLD-MA1A", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "QCE-BI12", "QCE-BI34", "QCE-CH12", "QCE-CH34", "QCE-MM12", "QCE-MM34", "QCE-PH12", "QCE-PH34", "QCE-SM12", "QCE-SM34", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "QCE-BI34", "QCE-CH34", "QCE-MM34", "QCE-PH34", "QCE-SM34", "UCAT-ANZ-MAST"], "Year 13": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["MD-INT", "UCAT-ANZ-MAST"] }, "WA": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Year 13": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["MD-INT", "UCAT-ANZ-MAST"] }, "SA": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Year 13": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["MD-INT", "UCAT-ANZ-MAST"] }, "NSW": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Year 13": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["MD-INT", "UCAT-ANZ-MAST"] }, "TAS": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Year 13": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["MD-INT", "UCAT-ANZ-MAST"] }, "ACT": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Year 13": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["MD-INT", "UCAT-ANZ-MAST"] }, "NT": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Year 13": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["MD-INT", "UCAT-ANZ-MAST"] }, "NZ": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Year 13": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["MD-INT", "UCAT-ANZ-MAST"] }, "UK": { "Year 10": ["MD-INT", "UCAT-UK-CORE"], "Year 11": ["MD-INT", "UCAT-UK-CORE"], "Year 12": ["MD-INT", "UCAT-UK-MAST"], "Year 13": ["MD-INT", "UCAT-UK-MAST"], "Graduated": ["MD-INT", "UCAT-UK-MAST"] }, "INTERNATIONAL": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Year 13": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["MD-INT", "UCAT-ANZ-MAST"] } }, "2027": { "VIC": { "Year 5": ["VSC-EN05", "VSC-MA05", "VSC-WR05"], "Year 6": ["VSE-EN06", "VSE-MA06", "VSE-WR06"], "Year 7": ["VIC-EN07", "VIC-MA07", "VIC-SC07", "VSE-EN07", "VSE-MA07", "VSE-WR07"], "Year 8": ["VIC-EN08", "VIC-MA08", "VIC-SC08", "VSE-EN08", "VSE-MA08", "VSE-WR08"], "Year 9": ["VIC-EN09", "VIC-MA9A", "VIC-SC09"], "Year 10": ["MD-INT", "UCAT-ANZ-CORE", "VCE-BI12", "VCE-BI34", "VCE-CH12", "VCE-CH34", "VCE-EL12", "VCE-EL34", "VCE-EN12", "VCE-EN34", "VCE-MM12", "VCE-MM34", "VCE-PH12", "VCE-PH34", "VCE-SM12", "VCE-SM34", "VIC-EN10", "VIC-MA1A", "VIC-SC10"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE", "VCE-BI12", "VCE-BI34", "VCE-CH12", "VCE-CH34", "VCE-EL12", "VCE-EL34", "VCE-EN12", "VCE-EN34", "VCE-MM12", "VCE-MM34", "VCE-PH12", "VCE-PH34", "VCE-SM12", "VCE-SM34"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST", "VCE-BI34", "VCE-CH34", "VCE-EL34", "VCE-EN34", "VCE-MM34", "VCE-PH34", "VCE-SM34"], "Graduated": ["GAMSAT", "MD-INT", "UCAT-ANZ-MAST"] }, "QLD": { "Year 7": ["QLD-EN07", "QLD-MA07", "QLD-SC07"], "Year 8": ["QLD-EN08", "QLD-MA08", "QLD-SC08"], "Year 9": ["QLD-EN09", "QLD-MA09", "QLD-SC09"], "Year 10": ["MD-INT", "QCE-BI12", "QCE-BI34", "QCE-CH12", "QCE-CH34", "QCE-MM12", "QCE-MM34", "QCE-PH12", "QCE-PH34", "QCE-SM12", "QCE-SM34", "QLD-EN10", "QLD-MA1A", "QLD-SC10", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "QCE-BI12", "QCE-BI34", "QCE-CH12", "QCE-CH34", "QCE-MM12", "QCE-MM34", "QCE-PH12", "QCE-PH34", "QCE-SM12", "QCE-SM34", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "QCE-BI34", "QCE-CH34", "QCE-MM34", "QCE-PH34", "QCE-SM34", "UCAT-ANZ-MAST"], "Graduated": ["GAMSAT", "MD-INT", "UCAT-ANZ-MAST"] }, "WA": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["GAMSAT", "MD-INT", "UCAT-ANZ-MAST"] }, "SA": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["GAMSAT", "MD-INT", "UCAT-ANZ-MAST"] }, "NSW": { "Year 7": ["NSW-EN07", "NSW-MA07", "NSW-SC07"], "Year 8": ["NSW-EN08", "NSW-MA08", "NSW-SC08"], "Year 9": ["NSW-EN09", "NSW-MA09", "NSW-SC09"], "Year 10": ["HSC-BIOL", "HSC-CHEM", "HSC-MADV", "HSC-MAE1", "HSC-MAE2", "HSC-PHYS", "MD-INT", "NSW-EN10", "NSW-MA10", "NSW-SC10", "PRE-BIOL", "PRE-CHEM", "PRE-MADV", "PRE-MAE1", "PRE-PHYS", "UCAT-ANZ-CORE"], "Year 11": ["HSC-BIOL", "HSC-CHEM", "HSC-MADV", "HSC-MAE1", "HSC-MAE2", "HSC-PHYS", "MD-INT", "PRE-BIOL", "PRE-CHEM", "PRE-MADV", "PRE-MAE1", "PRE-PHYS", "UCAT-ANZ-CORE"], "Year 12": ["HSC-BIOL", "HSC-CHEM", "HSC-MADV", "HSC-MAE1", "HSC-MAE2", "HSC-PHYS", "MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["GAMSAT", "MD-INT", "UCAT-ANZ-MAST"] }, "TAS": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["GAMSAT", "MD-INT", "UCAT-ANZ-MAST"] }, "ACT": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["GAMSAT", "MD-INT", "UCAT-ANZ-MAST"] }, "NT": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["GAMSAT", "MD-INT", "UCAT-ANZ-MAST"] }, "NZ": { "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-CORE"], "Year 13": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["GAMSAT", "MD-INT", "UCAT-ANZ-MAST"] }, "UK": { "Year 10": ["MD-INT", "UCAT-UK-MAST"], "Year 11": ["MD-INT", "UCAT-UK-MAST"], "Year 12": ["MD-INT", "UCAT-UK-MAST"], "Year 13": ["MD-INT", "UCAT-UK-MAST"], "Graduated": ["GAMSAT", "MD-INT", "UCAT-UK-MAST"] }, "INTERNATIONAL": { "Year 10": ["MD-INT", "UCAT-ANZ-CORE"], "Year 11": ["MD-INT", "UCAT-ANZ-CORE"], "Year 12": ["MD-INT", "UCAT-ANZ-MAST"], "Year 13": ["MD-INT", "UCAT-ANZ-MAST"], "Graduated": ["GAMSAT", "MD-INT", "UCAT-ANZ-MAST"] } } };
   // UCAT enrolments are closed until later in September 2026 (Ramodh via Luke,
   // 12 Aug 2026). While closed, the Welcome Consultation scheduler is hidden
   // for UCAT students. Flip UCAT_ENROLMENTS_OPEN back to true when enrolments
@@ -3198,18 +3207,21 @@ var ContourForm1Logic = function () {
     var anyVisible = false;
     var anyVisibleByCategory = {};
     // Subjects the student already trials or is enrolled in (URL prefetch)
-    // don't render at all — nor does the other level of the same subject,
-    // per the one-level rule. The summary card shows them instead, and a
+    // don't render at all — nor does anything else in their lanes, per the
+    // one-subject-per-lane rule. The summary card shows them instead, and a
     // category whose options all fall away takes its header with it
     // (Mani, 21 Aug 2026).
     var prefetchCodes = prefetchedTrialSubjectCodes.concat(prefetchedEnrolledSubjectCodes);
-    var prefetchedKeys = {};
+    var prefetchedLanes = {};
     if (prefetchCodes.length > 0) {
       options.forEach(function (opt) {
         var classification = getClassification(opt);
         if (!classification.code || prefetchCodes.indexOf(classification.code) === -1) return;
-        var key = subjectExclusionKey(classification);
-        if (key) prefetchedKeys[key] = true;
+        var lanes = subjectExclusionLanes(classification);
+        if (!lanes) return;
+        lanes.forEach(function (lane) {
+          prefetchedLanes[lane] = true;
+        });
       });
     }
     options.forEach(function (opt) {
@@ -3235,7 +3247,8 @@ var ContourForm1Logic = function () {
       var intakeOk = subjectMatchesIntake(classification, selectedIntakeYear);
       var audienceOk = subjectMatchesAudience(classification);
       var alreadyHeld = prefetchCodes.length > 0 && !!classification.code && prefetchCodes.indexOf(classification.code) !== -1;
-      var prefetchBlocked = alreadyHeld || prefetchCodes.length > 0 && !!(subjectExclusionKey(classification) && prefetchedKeys[subjectExclusionKey(classification)]);
+      var optionLanes = subjectExclusionLanes(classification);
+      var prefetchBlocked = alreadyHeld || prefetchCodes.length > 0 && !!optionLanes && optionLanes.some(function (lane) { return prefetchedLanes[lane]; });
       var shouldShow = !prefetchBlocked && !!location && selectedPrograms.length > 0 && locationOk && programOk && yearOk && deliveryOk && intakeOk && audienceOk && !ucatBlockedForIntake(classification, selectedIntakeYear);
       // The submission overwrites the Web Form - Interested Subject property
       // wholesale, so a subject the record already holds must keep travelling
@@ -3244,9 +3257,9 @@ var ContourForm1Logic = function () {
       // misreports the signup (Mani, 29 Aug 2026). It stays ticked in its
       // hidden input; on screen the summary card is what represents it.
       if (alreadyHeld && !opt.checked) setCheckboxChecked(opt, true);
-      // A tick that predates the prefetch response on the other level of a
-      // held subject would still submit from a hidden input — clear it while
-      // the input is still clickable.
+      // A tick that predates the prefetch response on another subject in a
+      // held subject's lane would still submit from a hidden input — clear it
+      // while the input is still clickable.
       if (prefetchBlocked && !alreadyHeld && opt.checked) setCheckboxChecked(opt, false);
       if (alreadyHeld) {
         // hideOption clears the tick as it hides — a held subject hides bare
@@ -3428,10 +3441,34 @@ var ContourForm1Logic = function () {
     tip.style.display = show ? "inline-flex" : "none";
     wrap.classList.toggle("contour-has-info-tip", show);
   }
-  function subjectExclusionKey(classification) {
+  // Subject Lane Matrix tab of the 2027 Curriculum Planning Matrix (Wassim,
+  // 16 Sep 2026): the lanes each subject sits in. Two subjects sharing a lane
+  // cannot be held at once, which is what the form blocks on screen. A
+  // subject can sit in more than one lane — VIC highschool English is in both
+  // ENGLISH and ENGLISH LANGUAGE, which is how "not possible to be in
+  // Highschool English and Year 11 English/English Language at the same time"
+  // falls out of the data rather than out of a special case here. Lane names
+  // carry the column they came from, so the VIC lane and the QLD lane of the
+  // same name never collide.
+  var SUBJECT_LANES = { "GAMSAT": ["GAMSAT"], "HSC-BIOL": ["NSW|BIOLOGY"], "HSC-CHEM": ["NSW|CHEMISTRY"], "HSC-MADV": ["NSW|MATHS ADVANCED"], "HSC-MAE1": ["NSW|MATHS EXTENSION 1"], "HSC-MAE2": ["NSW|MATHS EXTENSION 2"], "HSC-PHYS": ["NSW|PHYSICS"], "NSW-EN07": ["NSW|ENGLISH"], "NSW-EN08": ["NSW|ENGLISH"], "NSW-EN09": ["NSW|ENGLISH"], "NSW-EN10": ["NSW|ENGLISH"], "NSW-MA07": ["NSW|HIGHSCHOOL MATHS"], "NSW-MA08": ["NSW|HIGHSCHOOL MATHS"], "NSW-MA09": ["NSW|HIGHSCHOOL MATHS"], "NSW-MA10": ["NSW|HIGHSCHOOL MATHS"], "NSW-SC07": ["NSW|HIGHSCHOOL SCIENCE"], "NSW-SC08": ["NSW|HIGHSCHOOL SCIENCE"], "NSW-SC09": ["NSW|HIGHSCHOOL SCIENCE"], "NSW-SC10": ["NSW|HIGHSCHOOL SCIENCE"], "PRE-BIOL": ["NSW|BIOLOGY"], "PRE-CHEM": ["NSW|CHEMISTRY"], "PRE-MADV": ["NSW|MATHS ADVANCED"], "PRE-MAE1": ["NSW|MATHS EXTENSION 1"], "PRE-PHYS": ["NSW|PHYSICS"], "QCE-BI12": ["QLD|BIOLOGY"], "QCE-BI34": ["QLD|BIOLOGY"], "QCE-CH12": ["QLD|CHEMISTRY"], "QCE-CH34": ["QLD|CHEMISTRY"], "QCE-MM12": ["QLD|MATHS METHODS"], "QCE-MM34": ["QLD|MATHS METHODS"], "QCE-PH12": ["QLD|PHYSICS"], "QCE-PH34": ["QLD|PHYSICS"], "QCE-SM12": ["QLD|MATHS SPECIALIST"], "QCE-SM34": ["QLD|MATHS SPECIALIST"], "QLD-EN07": ["QLD|ENGLISH"], "QLD-EN08": ["QLD|ENGLISH"], "QLD-EN09": ["QLD|ENGLISH"], "QLD-EN10": ["QLD|ENGLISH"], "QLD-MA07": ["QLD|HIGHSCHOOL MATHS"], "QLD-MA08": ["QLD|HIGHSCHOOL MATHS"], "QLD-MA09": ["QLD|HIGHSCHOOL MATHS"], "QLD-MA1A": ["QLD|HIGHSCHOOL MATHS"], "QLD-SC07": ["QLD|HIGHSCHOOL SCIENCE"], "QLD-SC08": ["QLD|HIGHSCHOOL SCIENCE"], "QLD-SC09": ["QLD|HIGHSCHOOL SCIENCE"], "QLD-SC10": ["QLD|HIGHSCHOOL SCIENCE"], "UCAT-ANZ-CORE": ["UCAT"], "UCAT-ANZ-MAST": ["UCAT"], "UCAT-UK-MAST": ["UCAT"], "VCE-BI12": ["VIC|BIOLOGY"], "VCE-BI34": ["VIC|BIOLOGY"], "VCE-CH12": ["VIC|CHEMISTRY"], "VCE-CH34": ["VIC|CHEMISTRY"], "VCE-EL12": ["VIC|ENGLISH LANGUAGE"], "VCE-EL34": ["VIC|ENGLISH LANGUAGE"], "VCE-EN12": ["VIC|ENGLISH"], "VCE-EN34": ["VIC|ENGLISH"], "VCE-MM12": ["VIC|MATHS METHODS"], "VCE-MM34": ["VIC|MATHS METHODS"], "VCE-PH12": ["VIC|PHYSICS"], "VCE-PH34": ["VIC|PHYSICS"], "VCE-SM12": ["VIC|MATHS SPECIALIST"], "VCE-SM34": ["VIC|MATHS SPECIALIST"], "VIC-EN07": ["VIC|ENGLISH", "VIC|ENGLISH LANGUAGE"], "VIC-EN08": ["VIC|ENGLISH", "VIC|ENGLISH LANGUAGE"], "VIC-EN09": ["VIC|ENGLISH", "VIC|ENGLISH LANGUAGE"], "VIC-EN10": ["VIC|ENGLISH", "VIC|ENGLISH LANGUAGE"], "VIC-MA07": ["VIC|HIGHSCHOOL MATHS"], "VIC-MA08": ["VIC|HIGHSCHOOL MATHS"], "VIC-MA1A": ["VIC|HIGHSCHOOL MATHS"], "VIC-MA9A": ["VIC|HIGHSCHOOL MATHS"], "VIC-SC07": ["VIC|HIGHSCHOOL SCIENCE"], "VIC-SC08": ["VIC|HIGHSCHOOL SCIENCE"], "VIC-SC09": ["VIC|HIGHSCHOOL SCIENCE"], "VIC-SC10": ["VIC|HIGHSCHOOL SCIENCE"], "VSC-EN05": ["VIC|SELECTIVE ENGLISH"], "VSC-MA05": ["VIC|SELECTIVE MATHS"], "VSC-WR05": ["VIC|SELECTIVE WRITING"], "VSE-EN06": ["VIC|SELECTIVE ENGLISH"], "VSE-EN07": ["VIC|SELECTIVE ENGLISH"], "VSE-EN08": ["VIC|SELECTIVE ENGLISH"], "VSE-MA06": ["VIC|SELECTIVE MATHS"], "VSE-MA07": ["VIC|SELECTIVE MATHS"], "VSE-MA08": ["VIC|SELECTIVE MATHS"], "VSE-WR06": ["VIC|SELECTIVE WRITING"], "VSE-WR07": ["VIC|SELECTIVE WRITING"], "VSE-WR08": ["VIC|SELECTIVE WRITING"] };
+  // 2026-only codes the AY27 lane sheet does not list. Without them they
+  // would fall back to the subject-token key below while the AY27 siblings
+  // they share a 2026 cell with use lanes, and the pair would quietly stop
+  // blocking each other — VIC-MA09 sits with VIC-MA08 and VIC-MA1A in the
+  // 2026 VIC Year 8/9 cells.
+  var LEGACY_SUBJECT_LANES = { "VIC-MA09": ["VIC|HIGHSCHOOL MATHS"], "UCAT-UK-CORE": ["UCAT"] };
+  function subjectExclusionLanes(classification) {
+    // The lane sheet is the authority. Anything it does not cover — test
+    // subjects, a subject HubSpot offers before this file learns about it —
+    // keeps the old one-level-per-subject key, prefixed so it can never
+    // collide with a lane name.
+    if (classification.code) {
+      var lanes = SUBJECT_LANES[classification.code] || LEGACY_SUBJECT_LANES[classification.code];
+      if (lanes) return lanes;
+    }
     if (classification.program !== "Education") return null;
     if (!classification.subject) return null;
-    return classification.state + "|" + classification.subject;
+    return ["subject:" + classification.state + "|" + classification.subject];
   }
   function ensureSubjectExclusionNote(opt) {
     var wrap = optionWrapper(opt);
@@ -3476,24 +3513,27 @@ var ContourForm1Logic = function () {
     var options = qAll(FIELD_SELECTORS.interestedSubjects);
     if (options.length === 0) return true;
     var prefetchCodes = prefetchedTrialSubjectCodes.concat(prefetchedEnrolledSubjectCodes);
-    // One level per subject: a ticked or already-held option closes the door
-    // on every other level of the same subject, which is exactly what
+    // One subject per lane: a ticked or already-held option closes the door
+    // on every other subject in its lanes, which is exactly what
     // evaluateSubjectExclusions does on screen.
-    var closedKeys = {};
+    var closedLanes = {};
     options.forEach(function (opt) {
       var classification = getClassification(opt);
-      var key = subjectExclusionKey(classification);
-      if (!key) return;
-      if (opt.checked) closedKeys[key] = true;
-      if (classification.code && prefetchCodes.indexOf(classification.code) !== -1) closedKeys[key] = true;
+      var lanes = subjectExclusionLanes(classification);
+      if (!lanes) return;
+      var closed = opt.checked || (classification.code && prefetchCodes.indexOf(classification.code) !== -1);
+      if (!closed) return;
+      lanes.forEach(function (lane) {
+        closedLanes[lane] = true;
+      });
     });
     for (var i = 0; i < options.length; i++) {
       var opt = options[i];
       if (opt.checked) continue;
       var classification = getClassification(opt);
       if (classification.code && prefetchCodes.indexOf(classification.code) !== -1) continue;
-      var key = subjectExclusionKey(classification);
-      if (key && closedKeys[key]) continue;
+      var lanes = subjectExclusionLanes(classification);
+      if (lanes && lanes.some(function (lane) { return closedLanes[lane]; })) continue;
       if (!subjectMatchesAudience(classification)) continue;
       // Same eligibility the option list is built from, minus the test for
       // which programs are ticked.
@@ -3539,24 +3579,41 @@ var ContourForm1Logic = function () {
   }
   function evaluateSubjectExclusions() {
     var options = qAll(FIELD_SELECTORS.interestedSubjects);
-    var checkedByKey = {};
+    var checkedByLane = {};
     options.forEach(function (opt) {
       if (!opt.checked) return;
-      var key = subjectExclusionKey(getClassification(opt));
-      if (key) checkedByKey[key] = opt;
+      var lanes = subjectExclusionLanes(getClassification(opt));
+      if (!lanes) return;
+      lanes.forEach(function (lane) {
+        if (!checkedByLane[lane]) checkedByLane[lane] = opt;
+      });
     });
     options.forEach(function (opt) {
       var wrap = optionWrapper(opt);
       var isVisible = wrap && wrap.style.display !== "none";
-      var key = subjectExclusionKey(getClassification(opt));
-      var blockingOption = key ? checkedByKey[key] : null;
-      var blocked = isVisible && !!blockingOption && blockingOption !== opt;
+      var classification = getClassification(opt);
+      var lanes = subjectExclusionLanes(classification);
+      var blockingOption = null;
+      if (lanes) {
+        for (var i = 0; i < lanes.length && !blockingOption; i++) {
+          var holder = checkedByLane[lanes[i]];
+          if (holder && holder !== opt) blockingOption = holder;
+        }
+      }
+      var blocked = isVisible && !!blockingOption;
       var note = ensureSubjectExclusionNote(opt);
       opt.disabled = blocked;
       if (wrap) wrap.classList.toggle("contour-subject-option--blocked", blocked);
       if (note) {
         if (blocked) {
-          note.textContent = "You can only select one level of this subject";
+          // Two levels of one subject is the case students meet most, and
+          // saying so is clearer than naming the lane. A lane that spans more
+          // than one subject — highschool English and VCE English — gets the
+          // general wording instead, because "one level" would read as wrong.
+          var blockingSubject = getClassification(blockingOption).subject;
+          note.textContent = blockingSubject && blockingSubject === classification.subject
+            ? "You can only select one level of this subject"
+            : "You can only select one subject from this group";
           note.style.display = "";
         } else {
           note.style.display = "none";
