@@ -97,6 +97,13 @@ exports.main = async (event, callback) => {
   function out(fields) {
     const payload = {
       school_success: false,
+      /*
+       * One value for the branch to read, so the workflow never has to
+       * string-match on school_status. That prose is for the human reading the
+       * task; this is for the branch, and the two drift apart the moment
+       * anyone edits the wording.
+       */
+      school_outcome: "error",
       school_status: "",
       school_record_id: "",
       school_not_verified: false,
@@ -177,6 +184,7 @@ exports.main = async (event, callback) => {
       await setNotVerified(true);
       return out({
         school_success: true,
+        school_outcome: "not_applicable",
         school_not_verified: true,
         school_status: "Not applicable — the school question was never asked"
       });
@@ -186,6 +194,7 @@ exports.main = async (event, callback) => {
       await setNotVerified(true);
       return out({
         school_success: true,
+        school_outcome: "not_verified",
         school_not_verified: true,
         school_status: schoolText
           ? `Not verified — "${schoolText}" was typed but no school was picked from the list`
@@ -199,6 +208,7 @@ exports.main = async (event, callback) => {
       await setNotVerified(true);
       return out({
         school_success: true,
+        school_outcome: "not_verified",
         school_not_verified: true,
         school_status: `Not verified — no school record carries ACARA ID ${acaraId}`
       });
@@ -212,6 +222,7 @@ exports.main = async (event, callback) => {
        */
       await setNotVerified(true);
       return out({
+        school_outcome: "duplicate_schools",
         school_not_verified: true,
         error_type: "multiple_school_matches",
         error_message: `ACARA ID ${acaraId} matches more than one company record (${matches
@@ -246,6 +257,7 @@ exports.main = async (event, callback) => {
 
     return out({
       school_success: true,
+      school_outcome: "verified",
       school_record_id: schoolRecordId,
       school_not_verified: false,
       schools_demoted: previousCurrent.length,
