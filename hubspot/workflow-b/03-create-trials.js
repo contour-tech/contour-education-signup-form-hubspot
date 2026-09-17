@@ -155,10 +155,15 @@ exports.main = async (event, callback) => {
     callback({ outputFields: payload });
   }
 
-  async function issueStudentId(prefix) {
+  /*
+   * The issuer builds the prefix itself from the surname, so this sends the
+   * name rather than a prefix. One place owns the rule, and a backfill script
+   * calling the same endpoint cannot drift from what the workflow produces.
+   */
+  async function issueStudentId(lastName) {
     const res = await axios.post(
       issuerUrl,
-      { prefix, contactId },
+      { contactId, lastName },
       { headers: { "X-Issuer-Key": issuerKey, "Content-Type": "application/json" }, timeout: 15000, validateStatus: () => true }
     );
     if (res.status === 429 || res.status >= 500) {
@@ -290,7 +295,6 @@ exports.main = async (event, callback) => {
     let studentIdIssued = false;
 
     if (!studentId) {
-      const prefix = clean(input.student_id_prefix).toUpperCase();
       if (!issuerUrl || !issuerKey) {
         return out({
           error_type: "missing_student_id",
@@ -298,13 +302,14 @@ exports.main = async (event, callback) => {
             "The contact has no student_id and no issuer endpoint is configured, so unique_trial_id cannot be built."
         });
       }
-      if (!prefix) {
+      const lastName = clean(props.lastname);
+      if (!lastName) {
         return out({
-          error_type: "missing_student_id_prefix",
-          error_message: "A student_id has to be issued but no student_id_prefix was supplied to this action."
+          error_type: "missing_last_name",
+          error_message: "A student_id has to be issued but the contact has no last name to build the prefix from."
         });
       }
-      studentId = await issueStudentId(prefix);
+      studentId = await issueStudentId(lastName);
       if (!studentId) {
         return out({ error_type: "student_id_issue_failed", error_message: "The student ID service returned no id." });
       }
