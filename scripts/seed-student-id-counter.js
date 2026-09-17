@@ -24,7 +24,7 @@
 const { execSync } = require("child_process");
 
 const SECRET = "contour-form1-hubspot-token";
-const SECRET_PROJECT = "hubspot-signup-form";
+const PROJECT = "hubspot-signup-form";
 const COUNTER_DOC = "counters/student";
 
 const WRITE = process.argv.includes("--write");
@@ -43,7 +43,7 @@ const MIN = (() => {
 function token() {
   if (process.env.HUBSPOT_TOKEN) return process.env.HUBSPOT_TOKEN.trim();
   return execSync(
-    `gcloud secrets versions access latest --secret=${SECRET} --project=${SECRET_PROJECT}`,
+    `gcloud secrets versions access latest --secret=${SECRET} --project=${PROJECT}`,
     { encoding: "utf8" }
   ).trim();
 }
@@ -146,7 +146,15 @@ async function main() {
   }
 
   const { Firestore } = require("../functions/student-id/node_modules/@google-cloud/firestore");
-  const firestore = new Firestore();
+  /*
+   * projectId is explicit on purpose. Left to resolve itself the client takes
+   * whatever `gcloud config get-value project` happens to be, which on this
+   * machine is a different project entirely — the first run of this script
+   * seeded the counter into it, the function could not see it, and the issuer
+   * correctly refused every request. A script that writes to a project named
+   * nowhere in its own source is a trap.
+   */
+  const firestore = new Firestore({ projectId: PROJECT });
   const ref = firestore.doc(COUNTER_DOC);
 
   // Never lower it. A re-run after the issuer has been live would otherwise
@@ -171,7 +179,7 @@ async function main() {
 
   console.log(
     applied.changed
-      ? `\nSeeded ${COUNTER_DOC}: ${applied.current} -> ${applied.next}. Next id issued will be ${target + 1}.`
+      ? `\nSeeded ${PROJECT} ${COUNTER_DOC}: ${applied.current} -> ${applied.next}. Next id issued will be ${target + 1}.`
       : `\nLeft ${COUNTER_DOC} alone — already at ${applied.current}, which is not below ${target}.`
   );
 }
