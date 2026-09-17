@@ -220,6 +220,11 @@ async function syncStudent({ headers, contactId, existing, allowedSubjects, iden
   return {
     ok: true,
     status: unknown.length ? "Updated; some subject codes were not recognised" : "Updated",
+    // The validated codes from THIS submission. Create trials needs these and
+    // not subjectsAfterMerge: the merged list carries subjects from every
+    // previous signup too, and a trial is only owed for what was just asked
+    // for.
+    subjectsSubmitted: known.join(";"),
     subjectsAdded: added.join(";"),
     subjectsAfterMerge: afterMerge.join(";"),
     unknownSubjectCodes: unknown.join(";")
@@ -380,6 +385,7 @@ exports.main = async (event, callback) => {
       sync_success: false,
       failed_step: "",
       student_upsert_status: "",
+      subjects_submitted: "",
       subjects_added: "",
       subjects_after_merge: "",
       unknown_subject_codes: "",
@@ -482,6 +488,7 @@ exports.main = async (event, callback) => {
 
     const studentFields = {
       student_upsert_status: student.status,
+      subjects_submitted: student.subjectsSubmitted,
       subjects_added: student.subjectsAdded,
       subjects_after_merge: student.subjectsAfterMerge,
       unknown_subject_codes: student.unknownSubjectCodes,
