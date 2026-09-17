@@ -47,23 +47,30 @@ const SUBJECT = "0-410";
 const TRIAL_PIPELINE_ID = "1313869299";
 const LEAD_NO_TRIAL_BOOKED_STAGE_ID = "2172208571";
 
+// Verified against the portal's association schema: 951 is "Unbooked Trial"
+// on contacts -> trial, paired with 950 "Trialling Student" coming back.
 const CONTACT_TO_TRIAL_UNBOOKED_ASSOCIATION = 951;
+
+// Verified: 351 is "Considering" on contacts -> course, paired with 350.
+const CONTACT_TO_SUBJECT_CONSIDERING_ASSOCIATION = 351;
+
+/*
+ * UNVERIFIED. This is the value the old action carried, but the portal reports
+ * no association type between Trial and Course in either direction, and 994
+ * appears nowhere in the schema:
+ *
+ *   2-207877831 -> 0-410 : (none)
+ *   0-410 -> 2-207877831 : (none)
+ *
+ * Either the old constant is stale and the call has been failing quietly for
+ * a long time, or the label is defined somewhere the schema endpoint does not
+ * report. Until that is settled the call is made but NOT allowed to fail the
+ * subject — see associateSubjectToTrial below.
+ */
 const TRIAL_TO_SUBJECT_ASSOCIATION = 994;
 
-/*
- * SET THIS before going live. The original associated the student to the
- * Subject record as "considering" as well, but that action's association type
- * id is not in anything I have. Left at 0 the step is skipped rather than
- * guessed at — a wrong type id would write a silently wrong relationship.
- */
-const CONTACT_TO_SUBJECT_CONSIDERING_ASSOCIATION = 0;
-
-/*
- * SET THIS TOO, or leave blank to skip. The original appended newly added
- * subject names to a contact property for the repeat-student comms. Same
- * reason: the property name is not in anything I have.
- */
-const ADDED_SUBJECTS_PROPERTY = "";
+// "Added Subject List" on the contact — what the repeat-student comms reads.
+const ADDED_SUBJECTS_PROPERTY = "added_subject_list";
 
 const TRIAL_SOURCE_VALUE = "Website Sign-Up";
 const TRIAL_STATUS_SIGNED_UP = "Signed Up";
@@ -130,6 +137,7 @@ exports.main = async (event, callback) => {
   const results = [];
   const createdIds = [];
   const newSubjectNames = [];
+  const subjectLinkFailures = [];
   let createdCount = 0;
   let skippedCount = 0;
 
@@ -143,6 +151,7 @@ exports.main = async (event, callback) => {
       trials_errors: 0,
       created_trial_ids: "",
       new_subject_names: "",
+      subject_link_failures: "",
       is_first_time_student: false,
       student_id: "",
       student_id_issued: false,
@@ -266,6 +275,27 @@ exports.main = async (event, callback) => {
     );
   }
 
+  /*
+   * The Trial-to-Course link is metadata. The association that MATTERS is
+   * contact -> trial: without it the Trial cannot be found in the UI at all,
+   * which is why a failure there deletes the Trial again.
+   *
+   * This one failing should not cost a student their trial, their school
+   * association and their confirmation email. It is reported instead, which
+   * also means a stale association type id shows up as a named warning rather
+   * than as every subject mysteriously erroring.
+   */
+  async function associateSubjectToTrial(trialId, subjectId, subjectCode) {
+    try {
+      await associate(TRIAL, trialId, SUBJECT, subjectId, TRIAL_TO_SUBJECT_ASSOCIATION);
+      return true;
+    } catch (error) {
+      console.error(`Trial ${trialId} could not be linked to subject ${subjectCode}:`, errorMessage(error));
+      subjectLinkFailures.push(subjectCode);
+      return false;
+    }
+  }
+
   try {
     if (!token) return out({ error_type: "missing_token", error_message: "No HubSpot token secret selected on this action." });
     if (!contactId) return out({ error_type: "missing_contact_id", error_message: "The enrolled contact had no record ID." });
@@ -348,7 +378,7 @@ exports.main = async (event, callback) => {
 
         if (existing) {
           const trialId = clean(existing.id);
-          await associate(TRIAL, trialId, SUBJECT, subjectId, TRIAL_TO_SUBJECT_ASSOCIATION);
+          await associateSubjectToTrial(trialId, subjectId, subjectCode);
           skippedCount += 1;
           results.push({ subject: subjectCode, subject_name: subjectName, trial_id: trialId, status: "skipped_duplicate" });
           continue;
@@ -395,11 +425,10 @@ exports.main = async (event, callback) => {
         newTrialId = clean(createRes.data?.id);
         if (!newTrialId) throw typedError("Trial was created but returned no id.", "missing_created_trial_id");
 
+        // Fatal if this fails — an unassociated Trial is invisible in the UI.
         await associate(CONTACT, contactId, TRIAL, newTrialId, CONTACT_TO_TRIAL_UNBOOKED_ASSOCIATION);
-        await associate(TRIAL, newTrialId, SUBJECT, subjectId, TRIAL_TO_SUBJECT_ASSOCIATION);
-        if (CONTACT_TO_SUBJECT_CONSIDERING_ASSOCIATION) {
-          await associate(CONTACT, contactId, SUBJECT, subjectId, CONTACT_TO_SUBJECT_CONSIDERING_ASSOCIATION);
-        }
+        await associate(CONTACT, contactId, SUBJECT, subjectId, CONTACT_TO_SUBJECT_CONSIDERING_ASSOCIATION);
+        await associateSubjectToTrial(newTrialId, subjectId, subjectCode);
 
         createdIds.push(newTrialId);
         newSubjectNames.push(subjectName);
@@ -478,6 +507,7 @@ exports.main = async (event, callback) => {
       trials_errors: errorCount,
       created_trial_ids: createdIds.join(";"),
       new_subject_names: newSubjectNames.join(";"),
+      subject_link_failures: subjectLinkFailures.join(";"),
       is_first_time_student: isFirstTimeStudent,
       student_id: studentId,
       student_id_issued: studentIdIssued,
