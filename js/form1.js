@@ -163,6 +163,13 @@ var ContourForm1Logic = function () {
     // whether the address can take mail: real domain, live mail server, not
     // a throwaway inbox. See EMAIL DELIVERABILITY CHECK (Amrit, 5 Sep 2026).
     emailDeliverabilityCheck: true,
+    // Checks the STUDENT's email box against HubSpot as it is left, and acts
+    // on what comes back: an address already held by a student is offered the
+    // link that continues that signup, and one held by a parent or guardian is
+    // sent to the field it belongs in. The guardian's own box is never checked
+    // — a parent signing up a second child reuses it by design. See STUDENT
+    // EMAIL RECOGNITION (Amrit, 18 Sep 2026).
+    studentEmailRecognition: true,
     // Puts "Which year are you interested in tutoring for?" at the very top
     // of the form as two illustrated-card-sized tiles, 2026 and 2027, in the
     // Student / Guardian selector's own language, and holds the rest of the
@@ -3802,6 +3809,10 @@ var ContourForm1Logic = function () {
     });
   }
   var PREFETCH_ENDPOINT = "https://australia-southeast1-hubspot-signup-form.cloudfunctions.net/contour-form1-prefetch";
+  // Flips the one property a HubSpot workflow enrols on to send the "continue
+  // your signup" email. Separate function, not a prefetch route, so the only
+  // endpoint holding a write-scoped token is the one that needs it.
+  var SEND_LINK_ENDPOINT = "https://australia-southeast1-hubspot-signup-form.cloudfunctions.net/contour-form1-send-link";
   // functions/email-verify — domain-level deliverability verdict for an address.
   var EMAIL_VERIFY_ENDPOINT = "https://australia-southeast1-hubspot-signup-form.cloudfunctions.net/contour-form1-email-verify";
   // Shared by the school search and by the completeness test that decides
@@ -9748,6 +9759,7 @@ var ContourForm1Logic = function () {
       // unlocked nodes. The binder no-ops on anything already locked.
       enforcePrefilledFieldLock();
       enforceEmailDeliverabilityValidation();
+      enforceStudentEmailRecognition();
       // enforceDuplicateEmailValidation(); // parked — see DUPLICATE EMAIL GUARD
       refreshAllContactFormatErrors();
       // The student fields join the DOM only after the Guardian radio is set,
@@ -10120,6 +10132,436 @@ var ContourForm1Logic = function () {
       }
     });
     bindEmailVerifyPendingGate();
+  }
+
+  /* =========================================================
+     STUDENT EMAIL RECOGNITION
+     -----------------------------------------------------------
+     One box is checked against HubSpot, and it is always the student's: on
+     the Student flow that is email_2 (the visitor is the student), on the
+     Guardian flow it is student_email. The guardian's own address is never
+     looked up — a parent signing a second child up is entitled to reuse it,
+     and that was the whole reason the old blanket duplicate guard was parked.
+
+     The verdict comes back classified rather than raw (see /exists in
+     functions/prefetch/index.js), so the browser learns one of three things
+     and nothing else about the record behind the address:
+
+       clear    — nobody we act on holds it. Carry on.
+       student  — it already belongs to a student. Offer to email them the
+                  link that continues their existing signup, rather than
+                  letting them build a duplicate by hand.
+       guardian — it belongs to a parent or guardian, so it cannot also be
+                  the student's. Point at the field it does belong in.
+
+     Both non-clear verdicts hold the submit: the flowchart's two exits are
+     "that's me, send the link" and "not me, use a different address", and
+     both of them leave this form rather than submitting it.
+
+     Failure is open. A timeout, a 5xx or an unreachable function yields
+     "unknown", which passes — our own outage must never cost a signup.
+     ========================================================= */
+  var STUDENT_RECOGNITION_ERROR_CLASS = "contour-student-recognition-error";
+  var STUDENT_RECOGNITION_BOUND_ATTR = "data-contour-student-recognition";
+  var STUDENT_RECOGNITION_PANEL_CLASS = "contour-recognition";
+  var STUDENT_RECOGNITION_TIMEOUT_MS = 5000;
+  // Guardian verdicts are a plain field error, so they read like every other
+  // correction the form asks for. The wording has to differ by flow: on the
+  // Guardian flow there is a Guardian Email box on screen to point at, and on
+  // the Student flow there is not — the fix there is to switch flows or use
+  // the student's own address.
+  var STUDENT_RECOGNITION_GUARDIAN_MESSAGE_GUARDIAN_FLOW =
+    "This email is already registered to a parent or guardian. Put it in the Guardian Email field above, and give the student their own address.";
+  var STUDENT_RECOGNITION_GUARDIAN_MESSAGE_STUDENT_FLOW =
+    "This email is already registered to a parent or guardian. Choose “I'm a parent or guardian” above, or enter the student's own email address.";
+  // { status, fullName, canSendLink } keyed by address.
+  var studentRecognitionByAddress = {};
+  var studentRecognitionPending = {};
+  // "idle" | "sending" | "sent" | "failed", keyed by address, so a link
+  // already sent still reads as sent if the visitor comes back to the box.
+  var studentRecognitionSendState = {};
+  var studentRecognitionGateBound = false;
+  var studentRecognitionPendingGateBound = false;
+  var studentRecognitionContactTypeBound = false;
+  var studentRecognitionStylesInjected = false;
+
+  // Read as the file loads, which is the only moment the URL can be trusted:
+  // a dud link strips the parameter the moment prefetch answers "not found",
+  // and a live one strips it on the student's first edit. Reading it later
+  // would switch this check on halfway through a pre-fill session and tell a
+  // student their own address was already taken.
+  var STUDENT_RECOGNITION_ARRIVED_ON_LINK = getUrlParam(STUDENT_ID_PARAM).trim() !== "";
+  function studentRecognitionEnabled() {
+    if (!featureEnabled("studentEmailRecognition") || !PREFETCH_ENDPOINT) return false;
+    if (typeof window.fetch !== "function") return false;
+    // A pre-fill link IS the answer this check offers. Someone already holding
+    // one must not be told their own address is taken. prefillLinkSession is
+    // the sticky half of the same fact — it survives the parameter going.
+    return !STUDENT_RECOGNITION_ARRIVED_ON_LINK && !prefillLinkSession;
+  }
+  // Which box holds the student's address right now. Only ever one.
+  function studentRecognitionSelector() {
+    return isGuardianContactType() ? FIELD_SELECTORS.studentEmail : FIELD_SELECTORS.emailTemp;
+  }
+  // The box, but only while it is in play: on the page, on screen, and
+  // typable. student_email sits in the Contact Type dependent group and
+  // lingers for a moment after the flow switches away from it; a locked
+  // prefilled address came out of HubSpot and has nothing to learn here.
+  function studentRecognitionInput() {
+    if (!studentRecognitionEnabled()) return null;
+    var input = q(studentRecognitionSelector());
+    if (!input || input.readOnly || input.disabled) return null;
+    var wrap = fieldWrapper(input);
+    if (wrap && !isFieldWrapVisible(wrap)) return null;
+    return input;
+  }
+  function studentRecognitionValue(input) {
+    return ((input && input.value) || "").trim().toLowerCase();
+  }
+  // Worth a round trip. Blank and malformed belong to the format check, and
+  // a student address that merely duplicates the guardian's belongs to the
+  // pair check — neither is spent on the network until it is put right.
+  function studentRecognitionCheckable(value) {
+    if (value === "" || !emailStructureIsValid(value)) return false;
+    return emailPairIsValid();
+  }
+  function studentRecognitionVerdict(value) {
+    return Object.prototype.hasOwnProperty.call(studentRecognitionByAddress, value)
+      ? studentRecognitionByAddress[value]
+      : null;
+  }
+  function studentRecognitionRequest(value) {
+    var controller = typeof AbortController === "function" ? new AbortController() : null;
+    var timer = controller ? setTimeout(function () { controller.abort(); }, STUDENT_RECOGNITION_TIMEOUT_MS) : null;
+    // A plain GET with no custom headers, so the browser sends it without a
+    // preflight: one round trip per address.
+    return fetch(PREFETCH_ENDPOINT + "/exists?email=" + encodeURIComponent(value), controller ? { signal: controller.signal } : undefined).then(function (res) {
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      return res.json();
+    }).then(function (data) {
+      if (timer) clearTimeout(timer);
+      return data;
+    }, function (err) {
+      if (timer) clearTimeout(timer);
+      throw err;
+    });
+  }
+  // One lookup per address, shared by whoever asks while it is in flight.
+  // "unknown" is remembered so the pending gate cannot re-ask and re-hold the
+  // submit forever on a dead network, but a fresh blur retries it — the next
+  // attempt may well get through.
+  function lookupStudentRecognition(value, retryUnknown) {
+    var known = studentRecognitionVerdict(value);
+    if (known && !(retryUnknown && known.status === "unknown")) return Promise.resolve(known);
+    if (studentRecognitionPending[value]) return studentRecognitionPending[value];
+    var request = studentRecognitionRequest(value).then(function (data) {
+      var status = data && data.status;
+      if (status !== "student" && status !== "guardian") status = "clear";
+      return {
+        status: status,
+        fullName: String((data && data.fullName) || "").trim(),
+        firstName: String((data && data.firstName) || "").trim(),
+        canSendLink: !!(data && data.canSendLink)
+      };
+    }).catch(function (err) {
+      console.warn("Contour Form 1 logic: student email check failed:", err);
+      return { status: "unknown", fullName: "", firstName: "", canSendLink: false };
+    }).then(function (verdict) {
+      studentRecognitionByAddress[value] = verdict;
+      delete studentRecognitionPending[value];
+      return verdict;
+    });
+    studentRecognitionPending[value] = request;
+    return request;
+  }
+  // Unknown and not-yet-asked both pass here; the pending gate resolves the
+  // latter before the form leaves.
+  function studentRecognitionIsValid() {
+    var input = studentRecognitionInput();
+    if (!input) return true;
+    var value = studentRecognitionValue(input);
+    if (!studentRecognitionCheckable(value)) return true;
+    var verdict = studentRecognitionVerdict(value);
+    if (!verdict) return true;
+    return verdict.status !== "student" && verdict.status !== "guardian";
+  }
+
+  function injectStudentRecognitionStyles() {
+    if (studentRecognitionStylesInjected) return;
+    studentRecognitionStylesInjected = true;
+    if (document.getElementById("contour-recognition-styles")) return;
+    // Injected from here rather than css/form1.css: the live page loads only
+    // this file, so a rule that is not written by JS never reaches production.
+    var style = document.createElement("style");
+    style.id = "contour-recognition-styles";
+    var navy = "#0C3166";
+    style.textContent = "" +
+      ".hs-form ." + STUDENT_RECOGNITION_PANEL_CLASS + " { margin: 10px 0 0; padding: 14px 16px; background: #FFF9F1; border: 1px solid rgba(12,49,102,0.18); border-radius: 12px; }" +
+      ".hs-form ." + STUDENT_RECOGNITION_PANEL_CLASS + "__title { display: block; margin: 0 0 4px; font-size: 14px; font-weight: 700; line-height: 1.35; color: " + navy + "; }" +
+      ".hs-form ." + STUDENT_RECOGNITION_PANEL_CLASS + "__body { display: block; margin: 0; font-size: 13.5px; line-height: 1.45; color: #33475B; }" +
+      ".hs-form ." + STUDENT_RECOGNITION_PANEL_CLASS + "__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 12px 0 0; }" +
+      ".hs-form button." + STUDENT_RECOGNITION_PANEL_CLASS + "__send { appearance: none; -webkit-appearance: none; border: 0; border-radius: 999px; background: " + navy + "; color: #FFFFFF; font: inherit; font-size: 13.5px; font-weight: 600; line-height: 1.2; padding: 9px 18px; cursor: pointer; }" +
+      ".hs-form button." + STUDENT_RECOGNITION_PANEL_CLASS + "__send[disabled] { opacity: 0.55; cursor: default; }" +
+      ".hs-form ." + STUDENT_RECOGNITION_PANEL_CLASS + "__hint { display: block; margin: 10px 0 0; font-size: 12.5px; line-height: 1.4; color: #516383; }" +
+      ".hs-form ." + STUDENT_RECOGNITION_PANEL_CLASS + "__note { display: block; margin: 12px 0 0; font-size: 13px; line-height: 1.45; font-weight: 600; color: " + navy + "; }";
+    document.head.appendChild(style);
+  }
+
+  function studentRecognitionPanel(input, create) {
+    var wrap = fieldWrapper(input) || input.parentElement;
+    if (!wrap) return null;
+    var panel = wrap.querySelector("." + STUDENT_RECOGNITION_PANEL_CLASS);
+    if (panel || !create) return panel;
+    injectStudentRecognitionStyles();
+    panel = document.createElement("div");
+    panel.className = STUDENT_RECOGNITION_PANEL_CLASS;
+    // Announced, not shouted: the panel is an offer, not a validation failure.
+    panel.setAttribute("role", "status");
+    wrap.appendChild(panel);
+    return panel;
+  }
+  function removeStudentRecognitionPanel(input) {
+    if (!input) return;
+    var panel = studentRecognitionPanel(input, false);
+    if (panel && panel.parentNode) panel.parentNode.removeChild(panel);
+  }
+  // Every name that reaches the page goes in as text. It comes from a CRM
+  // record this visitor only guessed the address of, so it is not ours to
+  // trust with markup.
+  function studentRecognitionLine(parent, className, text) {
+    var el = document.createElement("span");
+    el.className = className;
+    el.textContent = text;
+    parent.appendChild(el);
+    return el;
+  }
+  function renderStudentRecognitionPanel(input, value, verdict) {
+    var panel = studentRecognitionPanel(input, true);
+    if (!panel) return;
+    panel.textContent = "";
+    var base = STUDENT_RECOGNITION_PANEL_CLASS;
+    var sendState = studentRecognitionSendState[value] || "idle";
+    // A matched record with no name is common — roughly a third of them carry
+    // no firstname at all — so the greeting degrades to something that still
+    // makes sense rather than addressing an empty string.
+    var title = verdict.fullName ? "Is this you, " + verdict.fullName + "?" : "You already have an account with us";
+
+    if (sendState === "sent") {
+      studentRecognitionLine(panel, base + "__title", "Check your inbox");
+      studentRecognitionLine(panel, base + "__body", "We've emailed your sign-up link to " + value + ". Open it to pick up where you left off and add subjects.");
+      studentRecognitionLine(panel, base + "__hint", "Not your account? Enter a different email address to sign up as someone new.");
+      return;
+    }
+
+    studentRecognitionLine(panel, base + "__title", title);
+    if (!verdict.canSendLink) {
+      // A student record with no add_subjects_url on it. There is nothing to
+      // send, so the panel stops promising one and hands them to the team.
+      studentRecognitionLine(panel, base + "__body", "This email is already signed up. Contact our team at hello@contoureducation.com.au and we'll pick it up from there.");
+      studentRecognitionLine(panel, base + "__hint", "Not your account? Enter a different email address to sign up as someone new.");
+      return;
+    }
+    studentRecognitionLine(panel, base + "__body", "This email is already signed up with us. We can email you a link that carries on from where you got to, so you can add subjects without filling this in again.");
+
+    var actions = document.createElement("div");
+    actions.className = base + "__actions";
+    var button = document.createElement("button");
+    // Not a submit: inside a form, a bare <button> submits it.
+    button.type = "button";
+    button.className = base + "__send";
+    button.textContent = sendState === "sending" ? "Sending…" : "Email me my link";
+    button.disabled = sendState === "sending";
+    button.addEventListener("click", function () {
+      sendStudentRecognitionLink(input, value);
+    });
+    actions.appendChild(button);
+    panel.appendChild(actions);
+
+    if (sendState === "failed") {
+      studentRecognitionLine(panel, base + "__note", "We couldn't send that just now. Try again, or contact our team at hello@contoureducation.com.au.");
+    }
+    studentRecognitionLine(panel, base + "__hint", "Not your account? Enter a different email address to sign up as someone new.");
+  }
+  function sendStudentRecognitionLink(input, value) {
+    if (studentRecognitionSendState[value] === "sending") return;
+    studentRecognitionSendState[value] = "sending";
+    refreshStudentRecognition(false);
+    var controller = typeof AbortController === "function" ? new AbortController() : null;
+    var timer = controller ? setTimeout(function () { controller.abort(); }, STUDENT_RECOGNITION_TIMEOUT_MS) : null;
+    // The address only. The endpoint resolves the record itself — a record id
+    // chosen by the browser would let anyone have any student's link mailed.
+    fetch(SEND_LINK_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: value }),
+      signal: controller ? controller.signal : undefined
+    }).then(function (res) {
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      return res.json();
+    }).then(function (data) {
+      if (timer) clearTimeout(timer);
+      studentRecognitionSendState[value] = data && data.sent ? "sent" : "failed";
+    }).catch(function (err) {
+      if (timer) clearTimeout(timer);
+      console.warn("Contour Form 1 logic: send link failed:", err);
+      studentRecognitionSendState[value] = "failed";
+    }).then(function () {
+      refreshStudentRecognition(false);
+      syncFieldErrorAria();
+    });
+  }
+  // The single place that decides what the box is showing. Called after every
+  // verdict, every send, and every flow switch, so a message raised against an
+  // address that is no longer in that box never outlives it.
+  function refreshStudentRecognition(showErrors) {
+    // Both boxes are cleaned, not just the one in play: switching flow moves
+    // which of them holds the student's address, and the one left behind must
+    // not keep a panel raised under a label that no longer means the student.
+    [FIELD_SELECTORS.emailTemp, FIELD_SELECTORS.studentEmail].forEach(function (selector) {
+      var node = q(selector);
+      if (!node) return;
+      if (node !== studentRecognitionInput()) {
+        clearContourError(node, STUDENT_RECOGNITION_ERROR_CLASS);
+        removeStudentRecognitionPanel(node);
+      }
+    });
+    var input = studentRecognitionInput();
+    if (!input) return;
+    var value = studentRecognitionValue(input);
+    var verdict = studentRecognitionCheckable(value) ? studentRecognitionVerdict(value) : null;
+
+    if (!verdict || verdict.status === "clear" || verdict.status === "unknown") {
+      clearContourError(input, STUDENT_RECOGNITION_ERROR_CLASS);
+      removeStudentRecognitionPanel(input);
+      return;
+    }
+    if (verdict.status === "guardian") {
+      removeStudentRecognitionPanel(input);
+      var message = isGuardianContactType()
+        ? STUDENT_RECOGNITION_GUARDIAN_MESSAGE_GUARDIAN_FLOW
+        : STUDENT_RECOGNITION_GUARDIAN_MESSAGE_STUDENT_FLOW;
+      var list = ensureContourError(input, STUDENT_RECOGNITION_ERROR_CLASS, message);
+      // The flow can switch under a standing message, so the text is re-read
+      // rather than left as whatever it said when the list was built.
+      var label = list && list.querySelector(".hs-error-msg");
+      if (label) label.textContent = message;
+      if (showErrors) showContourError(input, STUDENT_RECOGNITION_ERROR_CLASS);
+      return;
+    }
+    // status === "student": an offer, not an error, so no red box.
+    clearContourError(input, STUDENT_RECOGNITION_ERROR_CLASS);
+    renderStudentRecognitionPanel(input, value, verdict);
+  }
+  function checkStudentRecognitionOnBlur() {
+    var input = studentRecognitionInput();
+    if (!input) return;
+    var value = studentRecognitionValue(input);
+    if (!studentRecognitionCheckable(value)) {
+      refreshStudentRecognition(false);
+      return;
+    }
+    lookupStudentRecognition(value, true).then(function () {
+      // Typed on since leaving: whatever is in the box now owns the verdict,
+      // and its own blur will ask for it.
+      var current = studentRecognitionInput();
+      if (!current || studentRecognitionValue(current) !== value) return;
+      refreshStudentRecognition(true);
+      syncFieldErrorAria();
+    });
+  }
+  // Submit can beat the first verdict: Enter inside the box, or a quick click
+  // after a paste. The submission is held for the outstanding lookup, then
+  // re-issued — a clear address goes straight through on the retry.
+  function studentRecognitionPendingGate(e) {
+    if (!studentRecognitionEnabled()) return;
+    var input = studentRecognitionInput();
+    if (!input) return;
+    var value = studentRecognitionValue(input);
+    if (!studentRecognitionCheckable(value)) return;
+    if (studentRecognitionVerdict(value)) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    markSubmitBusy(true);
+    lookupStudentRecognition(value, false).then(function () {
+      markSubmitBusy(false);
+      refreshStudentRecognition(true);
+      syncFieldErrorAria();
+      if (studentRecognitionIsValid()) {
+        if (typeof formRoot.requestSubmit === "function") {
+          formRoot.requestSubmit();
+        } else {
+          var button = submitButtonEl();
+          if (button) button.click();
+        }
+        return;
+      }
+      // The verdict can land a second after the click, by which time the caret
+      // may have moved on. Always scroll to the reason the submit did nothing,
+      // but only take focus if nothing else holds it.
+      var current = studentRecognitionInput();
+      if (!current) return;
+      var wrap = fieldWrapper(current) || current;
+      var active = document.activeElement;
+      var caretIsFree = !active || active === document.body || active.type === "submit" || active.tagName === "BUTTON";
+      reportFieldError(wrap, caretIsFree ? current : null);
+      showFormErrorSummary([wrap]);
+    });
+  }
+  // Called from init() ahead of the first registerSubmitValidator(), so this
+  // capture listener sits before runSubmitGate and holds the submit before the
+  // gate has marked the form busy or cleared the draft.
+  function bindStudentRecognitionPendingGate() {
+    if (!formRoot || studentRecognitionPendingGateBound || !studentRecognitionEnabled()) return;
+    studentRecognitionPendingGateBound = true;
+    formRoot.addEventListener("submit", studentRecognitionPendingGate, true);
+  }
+  function enforceStudentEmailRecognition() {
+    if (!studentRecognitionEnabled()) return;
+    if (!studentRecognitionContactTypeBound) {
+      studentRecognitionContactTypeBound = true;
+      // Switching flow moves which box is the student's. The verdicts are kept
+      // — they are per address, not per box — but what is on screen is redrawn
+      // against the box that now holds it.
+      onContactTypeChange(function () {
+        refreshStudentRecognition(false);
+      });
+    }
+    // Both boxes are bound whether or not they are in play right now: which
+    // one counts is decided when the event fires, student_email is not in the
+    // DOM until the Guardian flow is chosen, and HubSpot swaps nodes on
+    // re-render. The observer brings each fresh node back through here.
+    [FIELD_SELECTORS.emailTemp, FIELD_SELECTORS.studentEmail].forEach(function (selector) {
+      var input = q(selector);
+      if (!input || input.getAttribute(STUDENT_RECOGNITION_BOUND_ATTR) === "1") return;
+      input.setAttribute(STUDENT_RECOGNITION_BOUND_ATTR, "1");
+      input.addEventListener("blur", function () {
+        checkStudentRecognitionOnBlur();
+      });
+      input.addEventListener("input", function () {
+        // Typing takes the message away; it comes back on the way out. This is
+        // also the "not me" exit — a different address is the whole answer, so
+        // there is no dismiss button to get wrong.
+        clearContourError(input, STUDENT_RECOGNITION_ERROR_CLASS);
+        removeStudentRecognitionPanel(input);
+      });
+    });
+    if (formRoot && !studentRecognitionGateBound) {
+      studentRecognitionGateBound = true;
+      registerSubmitValidator({
+        isValid: studentRecognitionIsValid,
+        showError: function () {
+          var current = studentRecognitionInput();
+          if (!current) return;
+          refreshStudentRecognition(true);
+          reportFieldError(fieldWrapper(current) || current, current);
+        },
+        anchor: function () {
+          var current = studentRecognitionInput();
+          return current ? fieldWrapper(current) || current : null;
+        }
+      });
+    }
+    bindStudentRecognitionPendingGate();
   }
 
   /* =========================================================
@@ -11690,6 +12132,7 @@ var ContourForm1Logic = function () {
     // Before the first registerSubmitValidator() call binds runSubmitGate, so
     // an email lookup still in flight holds the submit ahead of the gate.
     bindEmailVerifyPendingGate();
+    bindStudentRecognitionPendingGate();
     enforceAllContactFormatValidation();
     injectStudentPhoneStyles();
     enhanceStudentPhoneField();
@@ -11697,6 +12140,7 @@ var ContourForm1Logic = function () {
     enforceStudentPhoneValidation();
     enforceGuardianStudentEmailValidation();
     enforceEmailDeliverabilityValidation();
+    enforceStudentEmailRecognition();
     // enforceDuplicateEmailValidation(); // parked — see DUPLICATE EMAIL GUARD
     watchContactFields();
     enforceFieldRequiredValidation("programInterest", "Please select a program.", "contour-program-interest-error", anyProgramInterestOptionEligible);
