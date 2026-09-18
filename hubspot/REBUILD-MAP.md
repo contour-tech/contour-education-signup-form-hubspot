@@ -6,6 +6,49 @@ checked rather than taken on trust.
 Read in full: 3, 7, 12, 25, 42, 43, 44, 45, 46. Everything else is from the
 canvas and from a truncated render, and is marked as such.
 
+## As built
+
+Both workflows exist in `[AMRIT TESTING]` form and are OFF. Every custom code
+action is written and in this repo.
+
+### Workflow A
+
+| # | Action |
+|---|---|
+| — | Trigger: `LGM04 Test Enroll` = true, re-enrol ON *(swap to the real condition before go-live)* |
+| 1 | Set `LGM04 Signup Ready` = false |
+| 3 | Clear `LGM04 Resolved Identity` |
+| 5 | Branch — 2026 submissions fork off to Make |
+| 5 | Custom code — [identity resolution](workflow-a/03-identity-resolution.js) |
+| 6 | Branch — `Waitlist SMS Sent` |
+| 8 | Send SMS to `student_phone_resolved`, then 12 sets the flag |
+| 7 | Branch on `merge_decision` — merge / review / none |
+| 9 | Custom code — [call merge service](workflow-a/07-call-merge.js) |
+| 11 | `none` leg sets `LGM04 Signup Ready` = true |
+
+### Workflow B
+
+| # | Action |
+|---|---|
+| — | Trigger: `LGM04 Signup Ready` = true, re-enrol ON |
+| 1 | Custom code — [student and guardian sync](workflow-b/01-sync.js) |
+| 2 | Branch `sync_success` → 4 branches `failed_step` (setup / student / guardian / unknown) |
+| 3 | Custom code — [school verification](workflow-b/02-school-verification.js) |
+| 5 | Branch `school_outcome` — duplicate_schools / error / rest |
+| 13 | Custom code — [create trials](workflow-b/03-create-trials.js) |
+| 20 | Branch `outcome` — error / no_subjects / rest |
+| 22 | Custom code — [build comms](workflow-b/04-build-comms.js) |
+| 24 | Branch `comms_success` |
+| 25 | Branch `send_mode` — native / rest |
+| 27, 28 | Set marketing contact status, then Send email |
+| 29 | Branch `should_send_2027_slack` → 32 Send Slack |
+| 33 | Branch `needs_review` → 35 task |
+| 34 | Custom code — [finish](workflow-b/05-finish.js) |
+| 37 | Branch `resubmission_pending` → 36 task |
+
+Every terminating path routes through 29 → 33 → 34, so the ready flag, the SMS
+flag and the blob always clear.
+
 ## Workflow A — identity and merge
 
 | Old | New | Note |
@@ -41,9 +84,37 @@ The `23` wait-for-event on `email IS_KNOWN` (30 days) went with it. It fired on
 | 42–46 comms | B comms | See below |
 | 48 Branch → None met → Slack → End | gone | Legs are exhaustive over one enum |
 | 55 email, 62 SMS | kept | See open questions |
-| 77 | B finish | Clears `signup_ready` and the blob |
+| 77 | B finish | Clears `signup_ready`, `waitlist_sms_sent` and the blob |
 
-## The comms layer: one renderer, four trigger flips
+## The comms layer as rebuilt
+
+Five actions become one. [04-build-comms.js](workflow-b/04-build-comms.js)
+renders the student's HTML and the guardian's, writes both records, and sets
+whichever trigger flag the outcome calls for — in the same PATCH as the content,
+so a record is never flagged for sending with a half-written body.
+
+`send_mode` is the single value the canvas branches on:
+
+| Value | Meaning |
+|---|---|
+| `native` | this workflow sends it — first-time student |
+| `handoff` | a flag is set; a sending workflow takes over |
+| `none` | nothing to send |
+
+| Outcome | Student flag | Guardian flag |
+|---|---|---|
+| `first_time` | *(native send)* | `send_waitlist_confirmation_guardian_mail` |
+| `first_time_already_enrolled` | `send_already_enrolled_confirmation` | `..._guardian_mail` |
+| `repeat_new_trials` | `send_waitlist_added_subjects_mail` | `send_waitlist_subject_added_confirmation_guardian_mail` |
+| `repeat_no_new_trials` | `already_on_waitlist_no_new_subjects_added` | `..._confirmation_guardian_mail` |
+| `partial` | resolves to first_time or repeat_new_trials | same |
+| `no_subjects`, `error` | none | none |
+
+`partial` was in no row of the original and would have set no flag and triggered
+no send: the student would have heard nothing precisely when something had
+already gone wrong.
+
+## The comms layer as it was: one renderer, four trigger flips
 
 | Leg | Action | What it does |
 |---|---|---|
@@ -105,6 +176,18 @@ standard first-time waitlist confirmation.
 Nothing in HubSpot carries the signal. `enrolment_status` and `subject_enrolled`
 are populated on one contact each. Whatever knows a student is enrolled lives in
 the student-accounts system, not here.
+
+## Infrastructure built for this
+
+| Thing | State |
+|---|---|
+| Merge service | deployed, idempotent, audited to a Google Sheet |
+| [Student ID issuer](../functions/student-id/index.js) | deployed `australia-southeast1`, Firestore counter seeded to **158000** |
+| [Counter seeding script](../scripts/seed-student-id-counter.js) | `--min` raises the floor; never lowers |
+
+The ID sequence is global, not per surname — verified against 6,105 live records.
+The prefix is the first three **letters** of the surname, where the old rule took
+the first three characters and produced ids like `AL-157110` and `A K157097`.
 
 ## Bugs in the live workflow
 
@@ -180,8 +263,12 @@ Live today. Not caused by the rebuild.
 
 ## Open questions
 
-- What sets `send_waitlist_confirmation_guardian_mail`?
-- Do the receiving workflows reset their own trigger flags? (bug 3)
+- What sets `send_waitlist_confirmation_guardian_mail` in the OLD workflow? The
+  rebuild sets it in the comms action; it is not clear what did before, since
+  action 42 only logs that it did.
+- ~~Do the receiving workflows reset their own trigger flags?~~ Resolved: yes.
+- Does the Slack action pass through the message's markdown and newlines
+  unchanged? `slack_message_text` is fully formatted by the code.
 - What should populate `already_enrolled`? Until something does, the
   already-enrolled leg is unreachable and paying students get the wrong email.
   There is a `send_already_enrolled_confirmation_guardian_mail` property too,
