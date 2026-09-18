@@ -81,6 +81,28 @@
 
   <script charset="utf-8" type="text/javascript" src="https://js-ap1.hsforms.net/forms/embed/v2.js"></script>
 
+  <!-- Endpoint switch. By default the page talks to the deployed Cloud
+       Functions, exactly as the live form does. Add ?api=local to the URL to
+       point it at functions running on this machine instead, which is the only
+       way to exercise a change to one of them before it is deployed:
+
+         cd functions/prefetch  && PORT=8081 npx functions-framework --target=prefetch
+         cd functions/send-link && PORT=8082 npx functions-framework --target=sendLink
+
+       Must run before form1.js — the endpoints are read as that file loads. -->
+  <script>
+    if (new URLSearchParams(location.search).get("api") === "local") {
+      window.ContourForm1Config = Object.assign({}, window.ContourForm1Config, {
+        prefetchEndpoint: "http://localhost:8081",
+        sendLinkEndpoint: "http://localhost:8082"
+      });
+      document.addEventListener("DOMContentLoaded", function () {
+        var banner = document.querySelector(".test-page-banner");
+        if (banner) banner.insertAdjacentHTML("beforeend", " <br><strong>API: local</strong> \u2014 prefetch on :8081, send-link on :8082.");
+      });
+    }
+  </script>
+
   <script src="../js/form1.js"></script>
 
   <script>
