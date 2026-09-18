@@ -64,6 +64,25 @@ reason** — the enrolled contact is always the student.
 - The other three flags could also become native sends, but their email content
   lives in the receiving workflows. Collapsing them is a separate decision.
 
+## Where each flag lands
+
+From the Email/SMS mapping document. Three templates, four receiving workflows,
+every one of them sending Email **and** SMS.
+
+| Receiving workflow | Audience | Template | Fed by |
+|---|---|---|---|
+| LGM-04/05 Website Trial Sign-up | Student | `waitlist-confirmation` | native send on the First Time leg |
+| Waitlist Parent Confirmation | Parent | `waitlist-confirmation` | `send_waitlist_confirmation_guardian_mail` |
+| Waitlist Subject added Parent Confirmation | Parent | `waitlist-added-subjects`, `already-on-the-waitlist` | the two repeat-student flags |
+| Waitlist Added Subjects comms | Student | `waitlist-added-subjects`, `waitlist-confirmation`, `already-on-the-waitlist` | `send_waitlist_added_subjects_mail`, `send_first_time_confirmation_mail`, `already_on_waitlist_no_new_subjects_added` |
+
+The document names the "existing HubSpot contact matching" branch explicitly as
+a `waitlist-confirmation` send. That branch exists only because the enrolled
+contact might not be the student, so it goes with merge-first.
+
+`send_already_enrolled_confirmation` appears in no row of the document. Either
+its email is undocumented or that leg sends nothing.
+
 ## Bugs in the live workflow
 
 Live today. Not caused by the rebuild.
@@ -90,42 +109,53 @@ Live today. Not caused by the rebuild.
    `send_first_time_confirmation_mail`. Anyone reading the canvas gets the
    wrong picture of what the workflow does.
 
-5. **`48. Branch → None met → Slack → End`.** Trials created, student on the
+5. **The confirmation email is a marketing email.** HubSpot silently drops
+   marketing sends to non-marketable contacts — no error, no branch, and the
+   workflow reports success. Only the manual-review path sets marketing contact
+   status first (action 70); the standard path goes straight from branch 48 to
+   send 55 with no equivalent anywhere upstream. Around 83% of Student, Parent
+   and Guardian contacts in this portal came from data import, which is exactly
+   the population most likely to be non-marketable. This is a second, live
+   "signed up and heard nothing" path, independent of bug 3.
+
+6. **`48. Branch → None met → Slack → End`.** Trials created, student on the
    waitlist, confirmation email and SMS both skipped. Only trace is a Slack
    message; everything upstream reports success.
 
-6. **Guardian upsert and school verification failures have no branch.**
+7. **Guardian upsert and school verification failures have no branch.**
    `guardian_upsert_success` and `school_association_success` are never read.
    `multiple_guardian_email_matches` returns "Manual Review Required" into a
    void.
 
-7. **The guardian is found by association label**, then filtered on
+8. **The guardian is found by association label**, then filtered on
    `contact_type`. A guardian typed `Guardian` or `Parent/Guardian` rather than
    `Parent` gets the guardian body with the student's subject line.
 
-8. **Dead conditions in `hasConsult`.** `GAMSAT` and `/^VSC-/` appear in the
+9. **Dead conditions in `hasConsult`.** `GAMSAT` and `/^VSC-/` appear in the
    first clause and are excluded by the second. The header says the value is
    derived from MedPrep/TestPrep program interest; the code never looks at it.
 
-9. **Action 25's secrets.** Attached: `Supabase_URL`, `Counter`,
+10. **Action 25's secrets.** Attached: `Supabase_URL`, `Counter`,
    `Supabase_CustomCode_API`, `Supabase_Webhook_API`. The code reads
    `HUBSPOT_PRIVATE_APP_ACCESS_TOKEN || HUBSPOT_TOKEN || Counter` and the first
    two are not attached — so the secret named `Counter` holds a HubSpot token.
    The Supabase secrets are unused; that integration was removed.
 
-10. **1,127 contacts hold something other than a student ID in `student_id`** —
+11. **1,127 contacts hold something other than a student ID in `student_id`** —
     mostly bare HubSpot record ids, plus values like `"0384"`.
 
-11. **No Trial↔Course association type exists in the portal's schema**, yet
+12. **No Trial↔Course association type exists in the portal's schema**, yet
     action 25 associates them with type 994 and works. Unexplained.
 
-12. **Action 42's success log claims it set
+13. **Action 42's success log claims it set
     `send_waitlist_confirmation_guardian_mail`.** The PATCH does not.
 
 ## Open questions
 
 - What sets `send_waitlist_confirmation_guardian_mail`?
 - Do the receiving workflows reset their own trigger flags? (bug 3)
-- Is email 55 marketing or transactional? If marketing, non-marketable contacts
-  have it dropped silently and the workflow still reports success.
-- How does action 62 send the SMS?
+- Does `send_already_enrolled_confirmation` have an email at all? It is in no
+  row of the comms mapping document.
+- The SMS is being moved to a single generic send in Workflow A. The mapping
+  document has an SMS on all four receiving workflows, so parents currently get
+  one and would stop. Deliberate?
