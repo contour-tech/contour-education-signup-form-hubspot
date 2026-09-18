@@ -80,6 +80,66 @@ unassign a campus.
 It was previously a .txt uploaded to Webflow, which minted a new CDN URL on
 every edit and so needed a code change to refresh (Luke, 10 Sep 2026).
 
+## The student email check
+
+As the **student's** email box is left, the form asks HubSpot whether that
+address already belongs to someone. Only the student's box is checked — on the
+Student flow that is `email_2`, on the Guardian flow `student_email`. A
+guardian's own address is never looked up, because a parent signing up a second
+child is meant to reuse it.
+
+`functions/prefetch` classifies the address server-side and returns one of
+three verdicts, and nothing else about the record:
+
+| verdict | when | what the form does |
+|---|---|---|
+| `clear` | no match, or a match this form does not act on (untyped, `temp *`, Tutor, School/Uni Representative, Supplier) | nothing |
+| `student` | `contact_type` is Student | offers to email them the link that continues that signup; `canSendLink` says whether `add_subjects_url` is actually on the record |
+| `guardian` | `contact_type` is Parent or Guardian | points at the field the address belongs in |
+
+Both non-clear verdicts hold the submit. The two ways out are "that's me, send
+me the link" and "not me, use a different address", and neither of them submits
+this form. A lookup that fails or times out yields `unknown`, which passes —
+our own outage must never cost a signup. Arriving on a `?student_id=` link
+switches the whole check off, since that link is the answer it would offer.
+
+`functions/send-link` is what the "Email me my link" button calls. It takes an
+address, resolves the contact itself, and sets one boolean so a HubSpot
+workflow sends the "continue your signup" email — which builds its button from
+that contact's own `add_subjects_url`. The browser never sends or receives a
+record id, and the flag is only ever set, so a second click cannot queue a
+second email.
+
+**Not deployed yet.** It needs the name of the boolean the sending workflow
+enrols on, and refuses to start without it rather than guess:
+
+```
+gcloud functions deploy contour-form1-send-link --gen2 \
+  --region=australia-southeast1 --project=hubspot-signup-form \
+  --runtime=nodejs22 --entry-point=sendLink --trigger-http \
+  --allow-unauthenticated --source=functions/send-link \
+  --set-secrets=HUBSPOT_TOKEN=projects/1034904971230/secrets/contour-form1-hubspot-write-token:latest \
+  --set-env-vars=SEND_TRIGGER_PROPERTY=<the-property> \
+  --memory=256Mi --timeout=30s --max-instances=20
+```
+
+The write-scoped token is required: this is the only endpoint the form has that
+writes to HubSpot. `functions/prefetch` stays on the read-only token.
+
+Redeploy prefetch alongside it, so `/exists` starts reporting `canSendLink`:
+
+```
+gcloud functions deploy contour-form1-prefetch --gen2 \
+  --region=australia-southeast1 --project=hubspot-signup-form \
+  --runtime=nodejs22 --entry-point=prefetch --trigger-http \
+  --allow-unauthenticated --source=functions/prefetch \
+  --set-secrets=HUBSPOT_TOKEN=projects/1034904971230/secrets/contour-form1-hubspot-token:latest \
+  --memory=256Mi --timeout=60s --max-instances=100
+```
+
+Turn the form's half off with `window.ContourForm1Config = { studentEmailRecognition: false }`
+on the page; with it off the form behaves exactly as it did before.
+
 ## Production releases
 
 Verify on staging, then push a version tag:
