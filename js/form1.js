@@ -10325,22 +10325,27 @@ var ContourForm1Logic = function () {
       // it belongs to is a 50% tile inside .contour-person-group-host, and a
       // panel carrying the only call to action on screen reads as a footnote
       // at half width. order keeps it last whatever order the rows are in.
-      // Three rows, two columns. The title keeps the full width it had; the
-      // body and the footer share their rows with the button, which spans
-      // both of them and centres against the pair. That is what takes the
-      // height down — the button no longer owns a row of its own — and what
-      // uses the width the panel already had.
-      // The panel's own edges sit exactly where the field boxes above it sit:
-      // 24px in on both sides, the gutter the card gives every row. At 12px it
-      // overhung the Email and Phone boxes by 12px on each side, which is what
-      // made it read as misaligned rather than as part of the card.
       //
-      // Four rows. The title spans. The body and the failure note share their
-      // rows with the button, which centres against those two and nothing
-      // else. The footer spans both columns, so its rule runs the full width
-      // of the panel rather than stopping where the button starts.
-      ".hs-form " + c + " { flex: 0 0 100%; width: 100%; order: 99; box-sizing: border-box; margin: 2px 24px 18px; padding: 18px 20px 14px; background: #FFF9F1; border: 1px solid rgba(12,49,102,0.20); border-radius: 12px; flex-basis: calc(100% - 48px);" +
-      " display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: \'title title\' \'body cta\' \'note cta\' \'hint hint\'; column-gap: 24px; align-items: start; }" +
+      // The panel is a note about the box above it, so it wears the form's own
+      // container language rather than inventing a second one: the navy tint
+      // the section-box headers are painted in, the navy hairline every card
+      // edge uses, and the 16px corner the section boxes and the person-group
+      // box already wear. It was cream (#FFF9F1) on a 12px corner until now,
+      // which is exactly what the input boxes look like — so a reader coming
+      // down the column met it as one more empty field before they met it as
+      // something to read. The tint is what keeps it visible inside the white
+      // card without borrowing the inputs\' peach.
+      //
+      // The panel's own edges sit where the field boxes above it sit: 24px in
+      // on both sides, the gutter the card gives every row.
+      //
+      // Five rows, two columns. The eyebrow and the footer span. The title,
+      // body and failure note share their rows with the button, which spans
+      // those three and centres against them, so the button never owns a row
+      // of its own — that is what keeps the panel wide and shallow.
+      ".hs-form " + c + " { flex: 0 0 100%; width: 100%; order: 99; box-sizing: border-box; margin: 2px 24px 18px; padding: 16px 20px 14px; background: rgba(12,49,102,0.045); border: 1px solid rgba(12,49,102,0.12); border-radius: 16px; flex-basis: calc(100% - 48px);" +
+      " display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: \'eyebrow eyebrow\' \'title cta\' \'body cta\' \'note cta\' \'hint hint\'; column-gap: 24px; align-items: start; }" +
+      ".hs-form " + c + "__eyebrow { grid-area: eyebrow; }" +
       ".hs-form " + c + "__title { grid-area: title; }" +
       ".hs-form " + c + "__body { grid-area: body; }" +
       ".hs-form " + c + "__hint { grid-area: hint; }" +
@@ -10348,29 +10353,42 @@ var ContourForm1Logic = function () {
       // are both on screen at once when a send fails, and sharing an area
       // would stack them on top of each other.
       ".hs-form " + c + "__note { grid-area: note; }" +
-      // Centred against the body it sits beside — not the footer, which now
-      // runs underneath both of them.
+      // Centred against the three rows it sits beside — not the footer, which
+      // runs underneath all of them.
       ".hs-form " + c + "__cta { grid-area: cta; align-self: center; justify-self: end; }" +
-      // Sitting under the card rather than inside a tile, it needs the card's
-      // own side gutters back so its edges line up with the fields above.
-
-      ".hs-form " + c + "--warning { background: #FFF4EC; border-color: rgba(191,74,36,0.30); }" +
-      // Bigger, with room under it, and the weight carried by the name alone
-      // — "Is this you, <b>Priya Shah</b>?" puts the emphasis on the only
-      // part the reader has to check.
-      ".hs-form " + c + "__title { display: block; margin: 0 0 12px; font-size: 17px; font-weight: 600; line-height: 1.32; color: " + navy + "; }" +
+      // The standing label every other block in this form opens with: the
+      // uppercase, letter-spaced navy line the person-group segments wear. It
+      // says what the panel is before the sentence has to, which is what lets
+      // the title come down off section-header size.
+      // Pinned to 11.5px in both header modes and set in the corner label's
+      // muted navy: at the size the title-case headers take (12.5px, full
+      // navy) it sat a hair under the title below it and read as a first
+      // sentence rather than as a label on the box.
+      ".hs-form " + c + "__eyebrow { display: block; margin: 0 0 9px; font-weight: " + headerFontWeight(700, 600) + "; " + headerCapsCss(11.5, "0.10em", 11.5) + " color: rgba(12,49,102,0.55); }" +
+      // The guardian verdict is a block, not an offer, so it borrows the
+      // colours the errored tab already wears rather than an orange that
+      // appears nowhere else on the form.
+      ".hs-form " + c + "--warning { background: rgba(200,16,46,0.04); border-color: rgba(200,16,46,0.30); }" +
+      ".hs-form " + c + "--warning " + c + "__eyebrow { color: #8A0C22; }" +
+      // The weight is carried by the name alone — "Is this you, <b>Priya
+      // Shah</b>?" puts the emphasis on the only part the reader has to check.
+      // Sized under the section headers rather than over them: this is a note
+      // inside the Contact card, not a new section of the form.
+      ".hs-form " + c + "__title { display: block; margin: 0 0 7px; font-size: 15.5px; font-weight: 600; line-height: 1.35; color: " + navy + "; }" +
       ".hs-form " + c + "__name { font-weight: 800; }" +
-      ".hs-form " + c + "__body { display: block; margin: 0; font-size: 13.5px; line-height: 1.5; color: #33475B; }" +
-      // Lifted off the panel rather than made louder: the fill is already the
-      // brightest thing in the form, so prominence comes from the shadow and
-      // the whitespace around it.
-      ".hs-form button" + c + "__send { appearance: none; -webkit-appearance: none; white-space: nowrap; display: inline-flex; align-items: center; gap: 9px; border: 0; border-radius: 999px; background: " + lime + "; color: " + navy + "; font: inherit; font-size: 14.5px; font-weight: 700; line-height: 1.2; padding: 13px 26px; cursor: pointer; box-shadow: 0 2px 10px rgba(12,49,102,0.14); transition: transform .15s ease, box-shadow .15s ease, filter .15s ease; }" +
-      ".hs-form button" + c + "__send:hover { filter: brightness(0.96); transform: translateY(-1px); box-shadow: 0 5px 16px rgba(12,49,102,0.20); }" +
-      ".hs-form button" + c + "__send:active { transform: translateY(0); box-shadow: 0 2px 8px rgba(12,49,102,0.16); }" +
-      ".hs-form button" + c + "__send[disabled] { opacity: 0.55; cursor: default; filter: none; transform: none; box-shadow: none; }" +
+      ".hs-form " + c + "__body { display: block; margin: 0; font-size: 13.5px; line-height: 1.5; color: #516383; }" +
+      // The pill the form's own tabs and segment labels wear, filled with the
+      // highlighter. Flat rather than raised: the only shadow this form uses
+      // is the section boxes\' 1px hairline of one, so a button on a 10px drop
+      // read as a widget dropped in from somewhere else. On a tinted panel the
+      // lime is prominence enough.
+      ".hs-form button" + c + "__send { appearance: none; -webkit-appearance: none; white-space: nowrap; display: inline-flex; align-items: center; gap: 8px; border: 0; border-radius: 999px; background: " + lime + "; color: " + navy + "; font: inherit; font-size: 14px; font-weight: 700; line-height: 1.3; padding: 10px 20px; cursor: pointer; transition: filter .15s ease; }" +
+      ".hs-form button" + c + "__send:hover { filter: brightness(0.94); }" +
+      ".hs-form button" + c + "__send:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(12,49,102,0.25); }" +
+      ".hs-form button" + c + "__send[disabled] { opacity: 0.55; cursor: default; filter: none; }" +
       // Spans both columns, so the rule above it is the full width of the
       // panel. Kept short — it is the escape hatch, not the offer.
-      ".hs-form " + c + "__hint { display: block; grid-column: 1 / -1; margin: 14px 0 0; padding: 10px 0 0; border-top: 1px solid rgba(12,49,102,0.12); font-size: 12.5px; line-height: 1.35; color: #516383; }" +
+      ".hs-form " + c + "__hint { display: block; grid-column: 1 / -1; margin: 14px 0 0; padding: 10px 0 0; border-top: 1px solid rgba(12,49,102,0.10); font-size: 12.5px; line-height: 1.35; color: #516383; }" +
       // The guardian message is shown by the panel, but its error list has to
       // stay in the field wrapper AND stay displayed: fieldWrapperInvalid()
       // reads the lists inside a wrapper to decide whether a card is finished
@@ -10380,12 +10398,14 @@ var ContourForm1Logic = function () {
       // One column below the card's stacking point: beside becomes below, and
       // the button takes the full width so it stays the obvious next move.
       " @media (max-width: 767px) {" +
-      " .hs-form " + c + " { margin: 2px 20px 16px; padding: 16px 16px 12px; flex-basis: calc(100% - 40px); }" +
-      " .hs-form " + c + " { grid-template-columns: minmax(0, 1fr); grid-template-areas: \'title\' \'body\' \'cta\' \'note\' \'hint\'; }" +
+      " .hs-form " + c + " { margin: 2px 20px 16px; padding: 14px 16px 12px; flex-basis: calc(100% - 40px); }" +
+      " .hs-form " + c + " { grid-template-columns: minmax(0, 1fr); grid-template-areas: \'eyebrow\' \'title\' \'body\' \'cta\' \'note\' \'hint\'; }" +
       " .hs-form " + c + "__cta { justify-self: stretch; margin: 14px 0 2px; }" +
-      " .hs-form button" + c + "__send { width: 100%; }" +
+      " .hs-form button" + c + "__send { width: 100%; justify-content: center; }" +
       " }" +
-      ".hs-form " + c + "__note { display: block; margin: 12px 0 0; font-size: 13px; line-height: 1.45; font-weight: 600; color: " + navy + "; }";
+      // A send that did not go through, in the red the form already uses for
+      // a blocked field rather than in the navy the offer is written in.
+      ".hs-form " + c + "__note { display: block; margin: 12px 0 0; font-size: 13px; line-height: 1.45; font-weight: 600; color: #8A0C22; }";
     document.head.appendChild(style);
   }
 
@@ -10518,6 +10538,7 @@ var ContourForm1Logic = function () {
     panel.removeAttribute("role");
     panel.setAttribute("aria-hidden", "true");
     var base = STUDENT_RECOGNITION_PANEL_CLASS;
+    studentRecognitionLine(panel, base + "__eyebrow", "Check this address");
     studentRecognitionTitle(panel, base, STUDENT_RECOGNITION_GUARDIAN_TITLE, "", "");
     studentRecognitionLine(panel, base + "__body", studentRecognitionGuardianBody());
   }
@@ -10537,6 +10558,10 @@ var ContourForm1Logic = function () {
     // A matched record with no name is common — a third of them carry no
     // firstname at all — so the greeting degrades to something that still
     // makes sense rather than addressing an empty string.
+    // First in the DOM as well as first on screen: role="status" reads the
+    // panel in source order, and the standing label is what tells a screen
+    // reader which of the three things this box can say it is about to say.
+    studentRecognitionLine(panel, base + "__eyebrow", sendState === "sent" ? "Link sent" : "Existing sign-up");
     if (sendState === "sent") {
       studentRecognitionTitle(panel, base, "Check your inbox", "", "");
       studentRecognitionLine(panel, base + "__body", "We've emailed your sign-up link to " + value + ". Open it to pick up where you left off and add subjects.");
