@@ -10380,6 +10380,10 @@ var ContourForm1Logic = function () {
   // node rather than finding it by wrapper makes moving it between the two
   // email boxes on a flow switch one remove instead of a search of both.
   var studentRecognitionPanelEl = null;
+  // What the panel currently says. The form observer re-runs the enforcement
+  // pass on every HubSpot re-render, and rebuilding the panel each time would
+  // flicker and could pull focus out of the button mid-click.
+  var studentRecognitionRenderKey = "";
   // The full width of the person card. Which element that is depends on the
   // flow, because the two email boxes sit at different depths:
   //
@@ -10409,6 +10413,15 @@ var ContourForm1Logic = function () {
       studentRecognitionPanelEl.parentNode.removeChild(studentRecognitionPanelEl);
     }
     studentRecognitionPanelEl = null;
+    studentRecognitionRenderKey = "";
+  }
+  // True when the panel already on screen says exactly this, and is hanging
+  // off the right element. A re-render that swapped the card out fails the
+  // parent test and rebuilds.
+  function studentRecognitionPanelIsCurrent(input, key) {
+    return studentRecognitionRenderKey === key &&
+      !!studentRecognitionPanelEl &&
+      studentRecognitionPanelEl.parentNode === studentRecognitionAnchor(input);
   }
   function studentRecognitionPanel(input) {
     var anchor = studentRecognitionAnchor(input);
@@ -10436,8 +10449,11 @@ var ContourForm1Logic = function () {
   // and gets the same full width, with aria-hidden because the error list in
   // the field is already announcing the identical sentence.
   function renderStudentRecognitionGuardianPanel(input) {
+    var key = "guardian|" + (isGuardianContactType() ? "g" : "s");
+    if (studentRecognitionPanelIsCurrent(input, key)) return;
     var panel = studentRecognitionPanel(input);
     if (!panel) return;
+    studentRecognitionRenderKey = key;
     panel.textContent = "";
     panel.className = STUDENT_RECOGNITION_PANEL_CLASS + " " + STUDENT_RECOGNITION_PANEL_CLASS + "--warning";
     panel.removeAttribute("role");
@@ -10447,8 +10463,11 @@ var ContourForm1Logic = function () {
     studentRecognitionLine(panel, base + "__body", studentRecognitionGuardianBody());
   }
   function renderStudentRecognitionPanel(input, value, verdict) {
+    var key = ["student", value, studentRecognitionSendState[value] || "idle", verdict.canSendLink ? "1" : "0", verdict.fullName].join("|");
+    if (studentRecognitionPanelIsCurrent(input, key)) return;
     var panel = studentRecognitionPanel(input);
     if (!panel) return;
+    studentRecognitionRenderKey = key;
     panel.textContent = "";
     panel.className = STUDENT_RECOGNITION_PANEL_CLASS;
     panel.removeAttribute("aria-hidden");
@@ -10555,7 +10574,12 @@ var ContourForm1Logic = function () {
       // The flow can switch under a standing message, so the text is re-read
       // rather than left as whatever it said when the list was built.
       var label = list && list.querySelector(".hs-error-msg");
-      if (label) label.textContent = message;
+      // Only when it actually differs. Assigning textContent replaces the text
+      // node even when the string is identical, and that is a childList
+      // mutation — which wakes the form observer, which runs this pass again,
+      // which writes it again. Harmless while this only ran on blur; an
+      // endless loop once the pass also runs on every re-render.
+      if (label && label.textContent !== message) label.textContent = message;
       // Clipped, not hidden: the panel below says this on screen, but the list
       // has to stay displayed for fieldWrapperInvalid() to keep counting the
       // card unfinished. See the note beside .contour-recognition-muted.
@@ -10623,6 +10647,38 @@ var ContourForm1Logic = function () {
       showFormErrorSummary([wrap]);
     });
   }
+  /* A reload blurs nothing. The address comes back into the box — the browser
+     restores it, or the local draft does — but every verdict this file holds
+     lived in memory and went with the page, so a check that had already run
+     reads as never having run. Nothing would ask again until the visitor
+     happened to focus the box and leave it, which they have no reason to do:
+     the field already looks answered.
+
+     So whenever an address is sitting in the box with no verdict against it,
+     resolve it, rather than waiting for a blur that is not coming. Run from
+     the enforcement pass, which fires at init and on every re-render; the
+     per-address memo makes the repeat passes free, and the render key above
+     means a settled panel is not rebuilt. A box the visitor is typing in is
+     left alone — its own blur owns it. */
+  function autoCheckStudentRecognition() {
+    if (!studentRecognitionEnabled()) return;
+    var input = studentRecognitionInput();
+    if (!input || document.activeElement === input) return;
+    var value = studentRecognitionValue(input);
+    if (!studentRecognitionCheckable(value)) return;
+    // Answered already, or the answer is on its way: just make sure what is on
+    // screen still matches it, since a re-render can take the panel with it.
+    if (studentRecognitionVerdict(value) || studentRecognitionPending[value]) {
+      refreshStudentRecognition(true);
+      return;
+    }
+    lookupStudentRecognition(value, false).then(function () {
+      var current = studentRecognitionInput();
+      if (!current || studentRecognitionValue(current) !== value) return;
+      refreshStudentRecognition(true);
+      syncFieldErrorAria();
+    });
+  }
   // Called from init() ahead of the first registerSubmitValidator(), so this
   // capture listener sits before runSubmitGate and holds the submit before the
   // gate has marked the form busy or cleared the draft.
@@ -10678,6 +10734,7 @@ var ContourForm1Logic = function () {
       });
     }
     bindStudentRecognitionPendingGate();
+    autoCheckStudentRecognition();
   }
 
   /* =========================================================
