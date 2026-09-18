@@ -10330,14 +10330,17 @@ var ContourForm1Logic = function () {
       // both of them and centres against the pair. That is what takes the
       // height down — the button no longer owns a row of its own — and what
       // uses the width the panel already had.
-      // Outlined, but not inset on top of the card's own gutter. The fields
-      // above sit 24px in; the panel's border sits at 12px and its padding
-      // adds the other 12px, so the text lines up with the Email box it is
-      // talking about while the outline still reads as its own section. The
-      // earlier version put a 24px margin AND 20px of padding on top of that
-      // gutter and indented the text about 44px further than the field.
-      ".hs-form " + c + " { flex: 0 0 100%; width: 100%; order: 99; box-sizing: border-box; margin: 2px 12px 16px; padding: 18px 12px 16px; background: #FFF9F1; border: 1px solid rgba(12,49,102,0.20); border-radius: 12px; flex-basis: calc(100% - 24px);" +
-      " display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: \'title title\' \'body cta\' \'note cta\' \'hint cta\'; column-gap: 24px; align-items: start; }" +
+      // The panel's own edges sit exactly where the field boxes above it sit:
+      // 24px in on both sides, the gutter the card gives every row. At 12px it
+      // overhung the Email and Phone boxes by 12px on each side, which is what
+      // made it read as misaligned rather than as part of the card.
+      //
+      // Four rows. The title spans. The body and the failure note share their
+      // rows with the button, which centres against those two and nothing
+      // else. The footer spans both columns, so its rule runs the full width
+      // of the panel rather than stopping where the button starts.
+      ".hs-form " + c + " { flex: 0 0 100%; width: 100%; order: 99; box-sizing: border-box; margin: 2px 24px 18px; padding: 18px 20px 14px; background: #FFF9F1; border: 1px solid rgba(12,49,102,0.20); border-radius: 12px; flex-basis: calc(100% - 48px);" +
+      " display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: \'title title\' \'body cta\' \'note cta\' \'hint hint\'; column-gap: 24px; align-items: start; }" +
       ".hs-form " + c + "__title { grid-area: title; }" +
       ".hs-form " + c + "__body { grid-area: body; }" +
       ".hs-form " + c + "__hint { grid-area: hint; }" +
@@ -10345,8 +10348,8 @@ var ContourForm1Logic = function () {
       // are both on screen at once when a send fails, and sharing an area
       // would stack them on top of each other.
       ".hs-form " + c + "__note { grid-area: note; }" +
-      // Centred against the body and footer it sits beside, and held to its
-      // own width so a long body never squeezes it.
+      // Centred against the body it sits beside — not the footer, which now
+      // runs underneath both of them.
       ".hs-form " + c + "__cta { grid-area: cta; align-self: center; justify-self: end; }" +
       // Sitting under the card rather than inside a tile, it needs the card's
       // own side gutters back so its edges line up with the fields above.
@@ -10365,9 +10368,9 @@ var ContourForm1Logic = function () {
       ".hs-form button" + c + "__send:hover { filter: brightness(0.96); transform: translateY(-1px); box-shadow: 0 5px 16px rgba(12,49,102,0.20); }" +
       ".hs-form button" + c + "__send:active { transform: translateY(0); box-shadow: 0 2px 8px rgba(12,49,102,0.16); }" +
       ".hs-form button" + c + "__send[disabled] { opacity: 0.55; cursor: default; filter: none; transform: none; box-shadow: none; }" +
-      // The rule sits on the footer itself, so it stays inside the text
-      // column and never runs under the button beside it.
-      ".hs-form " + c + "__hint { display: block; margin: 14px 0 0; padding: 12px 0 0; border-top: 1px solid rgba(12,49,102,0.12); font-size: 12.5px; line-height: 1.4; color: #516383; }" +
+      // Spans both columns, so the rule above it is the full width of the
+      // panel. Kept short — it is the escape hatch, not the offer.
+      ".hs-form " + c + "__hint { display: block; grid-column: 1 / -1; margin: 14px 0 0; padding: 10px 0 0; border-top: 1px solid rgba(12,49,102,0.12); font-size: 12.5px; line-height: 1.35; color: #516383; }" +
       // The guardian message is shown by the panel, but its error list has to
       // stay in the field wrapper AND stay displayed: fieldWrapperInvalid()
       // reads the lists inside a wrapper to decide whether a card is finished
@@ -10377,7 +10380,7 @@ var ContourForm1Logic = function () {
       // One column below the card's stacking point: beside becomes below, and
       // the button takes the full width so it stays the obvious next move.
       " @media (max-width: 767px) {" +
-      " .hs-form " + c + " { margin: 2px 8px 14px; padding: 16px 12px 14px; flex-basis: calc(100% - 16px); }" +
+      " .hs-form " + c + " { margin: 2px 20px 16px; padding: 16px 16px 12px; flex-basis: calc(100% - 40px); }" +
       " .hs-form " + c + " { grid-template-columns: minmax(0, 1fr); grid-template-areas: \'title\' \'body\' \'cta\' \'note\' \'hint\'; }" +
       " .hs-form " + c + "__cta { justify-self: stretch; margin: 14px 0 2px; }" +
       " .hs-form button" + c + "__send { width: 100%; }" +
