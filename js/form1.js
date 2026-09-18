@@ -10180,10 +10180,22 @@ var ContourForm1Logic = function () {
   // Guardian flow there is a Guardian Email box on screen to point at, and on
   // the Student flow there is not — the fix there is to switch flows or use
   // the student's own address.
-  var STUDENT_RECOGNITION_GUARDIAN_MESSAGE_GUARDIAN_FLOW =
-    "This email is already registered to a parent or guardian. Put it in the Guardian Email field above, and give the student their own address.";
-  var STUDENT_RECOGNITION_GUARDIAN_MESSAGE_STUDENT_FLOW =
-    "This email is already registered to a parent or guardian. Choose “I'm a parent or guardian” above, or enter the student's own email address.";
+  var STUDENT_RECOGNITION_GUARDIAN_TITLE = "We already have these details for a parent or guardian";
+  var STUDENT_RECOGNITION_GUARDIAN_BODY_GUARDIAN_FLOW =
+    "Put this address in the Guardian Email field above, and give the student their own email address.";
+  var STUDENT_RECOGNITION_GUARDIAN_BODY_STUDENT_FLOW =
+    "Choose “I'm a parent or guardian” above, or enter the student's own email address.";
+  function studentRecognitionGuardianBody() {
+    return isGuardianContactType()
+      ? STUDENT_RECOGNITION_GUARDIAN_BODY_GUARDIAN_FLOW
+      : STUDENT_RECOGNITION_GUARDIAN_BODY_STUDENT_FLOW;
+  }
+  // The sentence the error list carries. It stays whole because the error
+  // summary and the screen reader read it on its own, away from the panel
+  // that shows the same thing on screen.
+  function studentRecognitionGuardianMessage() {
+    return STUDENT_RECOGNITION_GUARDIAN_TITLE + ". " + studentRecognitionGuardianBody();
+  }
   // { status, fullName, canSendLink } keyed by address.
   var studentRecognitionByAddress = {};
   var studentRecognitionPending = {};
@@ -10305,35 +10317,84 @@ var ContourForm1Logic = function () {
     var style = document.createElement("style");
     style.id = "contour-recognition-styles";
     var navy = "#0C3166";
+    // The form's highlighter, the pair the active campus-map tab already uses.
+    var lime = "#D7FC3D";
+    var c = "." + STUDENT_RECOGNITION_PANEL_CLASS;
     style.textContent = "" +
-      ".hs-form ." + STUDENT_RECOGNITION_PANEL_CLASS + " { margin: 10px 0 0; padding: 14px 16px; background: #FFF9F1; border: 1px solid rgba(12,49,102,0.18); border-radius: 12px; }" +
-      ".hs-form ." + STUDENT_RECOGNITION_PANEL_CLASS + "__title { display: block; margin: 0 0 4px; font-size: 14px; font-weight: 700; line-height: 1.35; color: " + navy + "; }" +
-      ".hs-form ." + STUDENT_RECOGNITION_PANEL_CLASS + "__body { display: block; margin: 0; font-size: 13.5px; line-height: 1.45; color: #33475B; }" +
-      ".hs-form ." + STUDENT_RECOGNITION_PANEL_CLASS + "__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 12px 0 0; }" +
-      ".hs-form button." + STUDENT_RECOGNITION_PANEL_CLASS + "__send { appearance: none; -webkit-appearance: none; border: 0; border-radius: 999px; background: " + navy + "; color: #FFFFFF; font: inherit; font-size: 13.5px; font-weight: 600; line-height: 1.2; padding: 9px 18px; cursor: pointer; }" +
-      ".hs-form button." + STUDENT_RECOGNITION_PANEL_CLASS + "__send[disabled] { opacity: 0.55; cursor: default; }" +
-      ".hs-form ." + STUDENT_RECOGNITION_PANEL_CLASS + "__hint { display: block; margin: 10px 0 0; font-size: 12.5px; line-height: 1.4; color: #516383; }" +
-      ".hs-form ." + STUDENT_RECOGNITION_PANEL_CLASS + "__note { display: block; margin: 12px 0 0; font-size: 13px; line-height: 1.45; font-weight: 600; color: " + navy + "; }";
+      // flex-basis 100% is what takes it across the whole card. The email box
+      // it belongs to is a 50% tile inside .contour-person-group-host, and a
+      // panel carrying the only call to action on screen reads as a footnote
+      // at half width. order keeps it last whatever order the rows are in.
+      ".hs-form " + c + " { flex: 0 0 100%; width: 100%; order: 99; box-sizing: border-box; margin: 4px 0 0; padding: 16px 18px; background: #FFF9F1; border: 1px solid rgba(12,49,102,0.18); border-radius: 12px; }" +
+      // Sitting under the card rather than inside a tile, it needs the card's
+      // own side gutters back so its edges line up with the fields above.
+      // Inside the card it needs the card's own side gutters back, so its
+      // edges line up with the fields above it. Both parents it can land on.
+      ".hs-form .contour-person-group-host > " + c + ", .hs-form fieldset." + PERSON_CARD_ROW_CLASS + " > " + c + " { margin: 0 24px 24px; width: auto; flex-basis: calc(100% - 48px); }" +
+      ".hs-form " + c + "--warning { background: #FFF4EC; border-color: rgba(191,74,36,0.30); }" +
+      ".hs-form " + c + "__title { display: block; margin: 0 0 5px; font-size: 14.5px; font-weight: 700; line-height: 1.35; color: " + navy + "; }" +
+      ".hs-form " + c + "__body { display: block; margin: 0; font-size: 13.5px; line-height: 1.5; color: #33475B; }" +
+      ".hs-form " + c + "__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 14px 0 0; }" +
+      ".hs-form button" + c + "__send { appearance: none; -webkit-appearance: none; border: 0; border-radius: 999px; background: " + lime + "; color: " + navy + "; font: inherit; font-size: 14px; font-weight: 700; line-height: 1.2; padding: 11px 22px; cursor: pointer; transition: filter .15s ease; }" +
+      ".hs-form button" + c + "__send:hover { filter: brightness(0.94); }" +
+      ".hs-form button" + c + "__send[disabled] { opacity: 0.55; cursor: default; filter: none; }" +
+      ".hs-form " + c + "__hint { display: block; margin: 12px 0 0; font-size: 12.5px; line-height: 1.4; color: #516383; }" +
+      // The guardian message is shown by the panel, but its error list has to
+      // stay in the field wrapper AND stay displayed: fieldWrapperInvalid()
+      // reads the lists inside a wrapper to decide whether a card is finished
+      // and skips any that is display:none. Clipped rather than hidden, so the
+      // card still counts as unfinished and the alert still announces once.
+      ".hs-form .contour-recognition-muted { position: absolute !important; width: 1px !important; height: 1px !important; margin: -1px !important; padding: 0 !important; overflow: hidden !important; clip-path: inset(50%) !important; white-space: nowrap !important; }" +
+      " @media (max-width: 767px) { .hs-form .contour-person-group-host > " + c + ", .hs-form fieldset." + PERSON_CARD_ROW_CLASS + " > " + c + " { margin: 0 20px 20px; flex-basis: calc(100% - 40px); } }" +
+      ".hs-form " + c + "__note { display: block; margin: 12px 0 0; font-size: 13px; line-height: 1.45; font-weight: 600; color: " + navy + "; }";
     document.head.appendChild(style);
   }
 
-  function studentRecognitionPanel(input, create) {
-    var wrap = fieldWrapper(input) || input.parentElement;
-    if (!wrap) return null;
-    var panel = wrap.querySelector("." + STUDENT_RECOGNITION_PANEL_CLASS);
-    if (panel || !create) return panel;
-    injectStudentRecognitionStyles();
-    panel = document.createElement("div");
-    panel.className = STUDENT_RECOGNITION_PANEL_CLASS;
-    // Announced, not shouted: the panel is an offer, not a validation failure.
-    panel.setAttribute("role", "status");
-    wrap.appendChild(panel);
-    return panel;
+  // Only one box is ever checked, so only one panel can exist. Holding the
+  // node rather than finding it by wrapper makes moving it between the two
+  // email boxes on a flow switch one remove instead of a search of both.
+  var studentRecognitionPanelEl = null;
+  // The full width of the person card. Which element that is depends on the
+  // flow, because the two email boxes sit at different depths:
+  //
+  //   Student flow  — email_2 is one of two .hs-form-field children inside a
+  //                   top-level fieldset that spans the card, so the fieldset
+  //                   is the full-width parent and the panel joins it as a
+  //                   third flex child.
+  //   Guardian flow — student_email IS the card row, a 50% tile whose parent
+  //                   is .contour-person-group-host, so the host is the one
+  //                   that spans.
+  //
+  // Told apart by whether the row the field belongs to is the field's own
+  // wrapper. Falls back to the wrapper wherever the card is not built at all
+  // (person groups off, or a HubSpot re-render caught mid-flight) — half
+  // width, but never detached from the box it belongs to.
+  function studentRecognitionAnchor(input) {
+    var wrap = fieldWrapper(input);
+    var row = input && input.closest ? input.closest("." + PERSON_CARD_ROW_CLASS) : null;
+    if (!row) return wrap || (input && input.parentElement) || null;
+    if (row !== wrap) return row;
+    var host = row.parentElement;
+    if (host && host.classList && host.classList.contains("contour-person-group-host")) return host;
+    return wrap || row;
   }
-  function removeStudentRecognitionPanel(input) {
-    if (!input) return;
-    var panel = studentRecognitionPanel(input, false);
-    if (panel && panel.parentNode) panel.parentNode.removeChild(panel);
+  function removeStudentRecognitionPanel() {
+    if (studentRecognitionPanelEl && studentRecognitionPanelEl.parentNode) {
+      studentRecognitionPanelEl.parentNode.removeChild(studentRecognitionPanelEl);
+    }
+    studentRecognitionPanelEl = null;
+  }
+  function studentRecognitionPanel(input) {
+    var anchor = studentRecognitionAnchor(input);
+    if (!anchor) return null;
+    if (studentRecognitionPanelEl && studentRecognitionPanelEl.parentNode === anchor) return studentRecognitionPanelEl;
+    removeStudentRecognitionPanel();
+    injectStudentRecognitionStyles();
+    var panel = document.createElement("div");
+    panel.className = STUDENT_RECOGNITION_PANEL_CLASS;
+    anchor.appendChild(panel);
+    studentRecognitionPanelEl = panel;
+    return panel;
   }
   // Every name that reaches the page goes in as text. It comes from a CRM
   // record this visitor only guessed the address of, so it is not ours to
@@ -10345,16 +10406,34 @@ var ContourForm1Logic = function () {
     parent.appendChild(el);
     return el;
   }
-  function renderStudentRecognitionPanel(input, value, verdict) {
-    var panel = studentRecognitionPanel(input, true);
+  // The guardian verdict. Shown as a panel so it reads the same as the offer
+  // and gets the same full width, with aria-hidden because the error list in
+  // the field is already announcing the identical sentence.
+  function renderStudentRecognitionGuardianPanel(input) {
+    var panel = studentRecognitionPanel(input);
     if (!panel) return;
     panel.textContent = "";
+    panel.className = STUDENT_RECOGNITION_PANEL_CLASS + " " + STUDENT_RECOGNITION_PANEL_CLASS + "--warning";
+    panel.removeAttribute("role");
+    panel.setAttribute("aria-hidden", "true");
+    var base = STUDENT_RECOGNITION_PANEL_CLASS;
+    studentRecognitionLine(panel, base + "__title", STUDENT_RECOGNITION_GUARDIAN_TITLE);
+    studentRecognitionLine(panel, base + "__body", studentRecognitionGuardianBody());
+  }
+  function renderStudentRecognitionPanel(input, value, verdict) {
+    var panel = studentRecognitionPanel(input);
+    if (!panel) return;
+    panel.textContent = "";
+    panel.className = STUDENT_RECOGNITION_PANEL_CLASS;
+    panel.removeAttribute("aria-hidden");
+    // Announced, not shouted: the offer is not a validation failure.
+    panel.setAttribute("role", "status");
     var base = STUDENT_RECOGNITION_PANEL_CLASS;
     var sendState = studentRecognitionSendState[value] || "idle";
-    // A matched record with no name is common — roughly a third of them carry
-    // no firstname at all — so the greeting degrades to something that still
+    // A matched record with no name is common — a third of them carry no
+    // firstname at all — so the greeting degrades to something that still
     // makes sense rather than addressing an empty string.
-    var title = verdict.fullName ? "Is this you, " + verdict.fullName + "?" : "You already have an account with us";
+    var title = verdict.fullName ? "Is this you, " + verdict.fullName + "?" : "We already have your details";
 
     if (sendState === "sent") {
       studentRecognitionLine(panel, base + "__title", "Check your inbox");
@@ -10367,11 +10446,11 @@ var ContourForm1Logic = function () {
     if (!verdict.canSendLink) {
       // A student record with no add_subjects_url on it. There is nothing to
       // send, so the panel stops promising one and hands them to the team.
-      studentRecognitionLine(panel, base + "__body", "This email is already signed up. Contact our team at hello@contoureducation.com.au and we'll pick it up from there.");
+      studentRecognitionLine(panel, base + "__body", "We already have your details in our system. Contact our team at hello@contoureducation.com.au and we'll pick it up from there.");
       studentRecognitionLine(panel, base + "__hint", "Not your account? Enter a different email address to sign up as someone new.");
       return;
     }
-    studentRecognitionLine(panel, base + "__body", "This email is already signed up with us. We can email you a link that carries on from where you got to, so you can add subjects without filling this in again.");
+    studentRecognitionLine(panel, base + "__body", "We already have your details in our system. We can email you a link that picks up where you left off, so you can add subjects without filling this in again.");
 
     var actions = document.createElement("div");
     actions.className = base + "__actions";
@@ -10429,33 +10508,34 @@ var ContourForm1Logic = function () {
     // not keep a panel raised under a label that no longer means the student.
     [FIELD_SELECTORS.emailTemp, FIELD_SELECTORS.studentEmail].forEach(function (selector) {
       var node = q(selector);
-      if (!node) return;
-      if (node !== studentRecognitionInput()) {
-        clearContourError(node, STUDENT_RECOGNITION_ERROR_CLASS);
-        removeStudentRecognitionPanel(node);
-      }
+      if (node && node !== studentRecognitionInput()) clearContourError(node, STUDENT_RECOGNITION_ERROR_CLASS);
     });
     var input = studentRecognitionInput();
-    if (!input) return;
+    if (!input) {
+      removeStudentRecognitionPanel();
+      return;
+    }
     var value = studentRecognitionValue(input);
     var verdict = studentRecognitionCheckable(value) ? studentRecognitionVerdict(value) : null;
 
     if (!verdict || verdict.status === "clear" || verdict.status === "unknown") {
       clearContourError(input, STUDENT_RECOGNITION_ERROR_CLASS);
-      removeStudentRecognitionPanel(input);
+      removeStudentRecognitionPanel();
       return;
     }
     if (verdict.status === "guardian") {
-      removeStudentRecognitionPanel(input);
-      var message = isGuardianContactType()
-        ? STUDENT_RECOGNITION_GUARDIAN_MESSAGE_GUARDIAN_FLOW
-        : STUDENT_RECOGNITION_GUARDIAN_MESSAGE_STUDENT_FLOW;
+      var message = studentRecognitionGuardianMessage();
       var list = ensureContourError(input, STUDENT_RECOGNITION_ERROR_CLASS, message);
       // The flow can switch under a standing message, so the text is re-read
       // rather than left as whatever it said when the list was built.
       var label = list && list.querySelector(".hs-error-msg");
       if (label) label.textContent = message;
+      // Clipped, not hidden: the panel below says this on screen, but the list
+      // has to stay displayed for fieldWrapperInvalid() to keep counting the
+      // card unfinished. See the note beside .contour-recognition-muted.
+      if (list) list.classList.add("contour-recognition-muted");
       if (showErrors) showContourError(input, STUDENT_RECOGNITION_ERROR_CLASS);
+      renderStudentRecognitionGuardianPanel(input);
       return;
     }
     // status === "student": an offer, not an error, so no red box.
@@ -10552,7 +10632,7 @@ var ContourForm1Logic = function () {
         // also the "not me" exit — a different address is the whole answer, so
         // there is no dismiss button to get wrong.
         clearContourError(input, STUDENT_RECOGNITION_ERROR_CLASS);
-        removeStudentRecognitionPanel(input);
+        removeStudentRecognitionPanel();
       });
     });
     if (formRoot && !studentRecognitionGateBound) {
