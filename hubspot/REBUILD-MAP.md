@@ -80,8 +80,31 @@ The document names the "existing HubSpot contact matching" branch explicitly as
 a `waitlist-confirmation` send. That branch exists only because the enrolled
 contact might not be the student, so it goes with merge-first.
 
-`send_already_enrolled_confirmation` appears in no row of the document. Either
-its email is undocumented or that leg sends nothing.
+`send_already_enrolled_confirmation` appears in no row of the document because
+**nothing sends on it.** The branch that sets it cannot fire:
+
+| property | contacts with any value |
+|---|---|
+| `already_enrolled` | **0** |
+| `send_already_enrolled_confirmation` | 0 |
+| `enrolment_status` | 1 |
+| `enrolment_id` | 0 |
+| *(for scale)* `student_id` | 6,112 |
+
+`already_enrolled` has never been written to a single contact — not `true`, not
+`false`, no value at all. The leg is gated on `isFirstTimeStudent &&
+isAlreadyEnrolled`, so it has never run. The action that sets the flag, the
+property, the clear step in the receiving workflow and the branch leg all exist
+for a case that has not occurred once.
+
+The intent is clear and worth keeping: do not send "your waitlist spot is
+confirmed" to someone who is already a paying student. **That intent is
+currently unimplemented** — an enrolled student who signs up today gets the
+standard first-time waitlist confirmation.
+
+Nothing in HubSpot carries the signal. `enrolment_status` and `subject_enrolled`
+are populated on one contact each. Whatever knows a student is enrolled lives in
+the student-accounts system, not here.
 
 ## Bugs in the live workflow
 
@@ -159,13 +182,16 @@ Live today. Not caused by the rebuild.
 
 - What sets `send_waitlist_confirmation_guardian_mail`?
 - Do the receiving workflows reset their own trigger flags? (bug 3)
-- Does `send_already_enrolled_confirmation` have an email at all? It is in no
-  row of the comms mapping document, though a receiving workflow clears the
-  flag, so something consumes it.
+- What should populate `already_enrolled`? Until something does, the
+  already-enrolled leg is unreachable and paying students get the wrong email.
+  There is a `send_already_enrolled_confirmation_guardian_mail` property too,
+  equally unused.
 - The SMS is now a single generic send in Workflow A. The mapping document has
   an SMS on all four receiving workflows, so parents currently get one and
   would stop. Deliberate?
-- Workflow A sends that SMS to the enrolled record's `phone`. On a guardian
-  submission that is the guardian's number, not the student's. Intended?
-- `Waitlist SMS Sent` is set true and never cleared, unlike the comms flags.
-  One welcome SMS ever, or one per signup?
+- ~~Workflow A sends the SMS to `phone`~~ — resolved, it uses
+  `student_phone_resolved` from identity resolution.
+- `Waitlist SMS Sent` is cleared by Workflow B's finish action, alongside
+  `signup_ready` and the blob. Not at the start of A: if the merge fails the
+  record stalls and B never runs, and clearing at A's start would send a second
+  SMS to the same student when someone re-triggers it.
