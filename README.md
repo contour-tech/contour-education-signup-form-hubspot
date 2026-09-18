@@ -110,8 +110,11 @@ that contact's own `add_subjects_url`. The browser never sends or receives a
 record id, and the flag is only ever set, so a second click cannot queue a
 second email.
 
-**Not deployed yet.** It needs the name of the boolean the sending workflow
-enrols on, and refuses to start without it rather than guess:
+The boolean is `send_prefill_link` (Send Pre-fill Link, single checkbox). It
+has no default in the function: writing a guessed property name onto a live
+contact either sends nothing or sends the wrong mail to a real family, and
+neither failure is visible from the function, so an unconfigured deploy returns
+503 rather than writing.
 
 ```
 gcloud functions deploy contour-form1-send-link --gen2 \
@@ -119,12 +122,16 @@ gcloud functions deploy contour-form1-send-link --gen2 \
   --runtime=nodejs22 --entry-point=sendLink --trigger-http \
   --allow-unauthenticated --source=functions/send-link \
   --set-secrets=HUBSPOT_TOKEN=projects/1034904971230/secrets/contour-form1-hubspot-write-token:latest \
-  --set-env-vars=SEND_TRIGGER_PROPERTY=<the-property> \
+  --set-env-vars=SEND_TRIGGER_PROPERTY=send_prefill_link \
   --memory=256Mi --timeout=30s --max-instances=20
 ```
 
 The write-scoped token is required: this is the only endpoint the form has that
 writes to HubSpot. `functions/prefetch` stays on the read-only token.
+
+`DRY_RUN=true` runs everything except the write — the address is resolved, the
+record is checked, the caller gets the answer the form would get. Use it to
+exercise the button without mailing anyone.
 
 Redeploy prefetch alongside it, so `/exists` starts reporting `canSendLink`:
 
@@ -136,6 +143,25 @@ gcloud functions deploy contour-form1-prefetch --gen2 \
   --set-secrets=HUBSPOT_TOKEN=projects/1034904971230/secrets/contour-form1-hubspot-token:latest \
   --memory=256Mi --timeout=60s --max-instances=100
 ```
+
+### Testing before you deploy
+
+Run both functions here and open `test/local-test.html?api=local`:
+
+```
+cd functions/prefetch  && HUBSPOT_TOKEN=$(gcloud secrets versions access latest \
+  --secret=contour-form1-hubspot-token --project hubspot-signup-form) \
+  PORT=8081 npx functions-framework --target=prefetch
+
+cd functions/send-link && HUBSPOT_TOKEN=$(gcloud secrets versions access latest \
+  --secret=contour-form1-hubspot-write-token --project hubspot-signup-form) \
+  DRY_RUN=true SEND_TRIGGER_PROPERTY=send_prefill_link \
+  PORT=8082 npx functions-framework --target=sendLink
+```
+
+Without `?api=local` the page talks to the deployed functions, as the live form
+does. Either way it loads the **live** HubSpot form, so blur the email box to
+test this check and don't submit unless you mean to create a real contact.
 
 Turn the form's half off with `window.ContourForm1Config = { studentEmailRecognition: false }`
 on the page; with it off the form behaves exactly as it did before.
