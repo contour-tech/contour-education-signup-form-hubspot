@@ -1,0 +1,824 @@
+<title>LGM-04 Rebuild</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+
+<style>
+:root {
+  --paper:   #F6F7F9;
+  --surface: #FFFFFF;
+  --sunk:    #EDEFF3;
+  --ink:     #141A24;
+  --ink-2:   #4A5568;
+  --ink-3:   #78839A;
+  --line:    #D9DEE7;
+  --line-2:  #E8EBF0;
+  --navy:    #0C3166;
+  --lime:    #C3E62B;
+  --keep:    #1B6B4F;
+  --keep-bg: #E4F1EB;
+  --cut:     #A03C2C;
+  --cut-bg:  #F7E7E3;
+  --new:     #2A5BA8;
+  --new-bg:  #E5EDF9;
+  --warn:    #8C5E12;
+  --warn-bg: #F7EEDC;
+  --flag:    #0C3166;
+
+  --sans: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --cond: "IBM Plex Sans Condensed", "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --measure: 70ch;
+  --wide: 1080px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper:   #0D1219;
+    --surface: #151C26;
+    --sunk:    #1B232F;
+    --ink:     #E3E8F0;
+    --ink-2:   #A6B1C4;
+    --ink-3:   #7C889C;
+    --line:    #2A3440;
+    --line-2:  #222B36;
+    --navy:    #8FB2EC;
+    --lime:    #C3E62B;
+    --keep:    #63C9A0;
+    --keep-bg: #14322A;
+    --cut:     #E8907E;
+    --cut-bg:  #3A2019;
+    --new:     #8AB4F0;
+    --new-bg:  #17273D;
+    --warn:    #E0B265;
+    --warn-bg: #352A14;
+    --flag:    #8FB2EC;
+  }
+}
+
+:root[data-theme="dark"] {
+  --paper:   #0D1219;
+  --surface: #151C26;
+  --sunk:    #1B232F;
+  --ink:     #E3E8F0;
+  --ink-2:   #A6B1C4;
+  --ink-3:   #7C889C;
+  --line:    #2A3440;
+  --line-2:  #222B36;
+  --navy:    #8FB2EC;
+  --lime:    #C3E62B;
+  --keep:    #63C9A0;
+  --keep-bg: #14322A;
+  --cut:     #E8907E;
+  --cut-bg:  #3A2019;
+  --new:     #8AB4F0;
+  --new-bg:  #17273D;
+  --warn:    #E0B265;
+  --warn-bg: #352A14;
+  --flag:    #8FB2EC;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 15.5px;
+  line-height: 1.62;
+  -webkit-font-smoothing: antialiased;
+  padding-inline: 20px;
+  padding-block: 0 88px;
+}
+
+.wrap { max-width: var(--wide); margin-inline: auto; }
+
+header.mast {
+  padding-block: 56px 36px;
+  border-bottom: 2px solid var(--navy);
+  margin-bottom: 40px;
+}
+
+.eyebrow {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin: 0 0 14px;
+}
+
+h1 {
+  font-family: var(--cond);
+  font-weight: 700;
+  font-size: clamp(38px, 7vw, 62px);
+  line-height: 1.02;
+  letter-spacing: -0.015em;
+  margin: 0 0 18px;
+  text-wrap: balance;
+  color: var(--navy);
+}
+
+.standfirst {
+  font-size: 18.5px;
+  line-height: 1.5;
+  color: var(--ink-2);
+  margin: 0;
+  max-width: 62ch;
+}
+
+.shipped {
+  margin-top: 26px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+  align-items: center;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink-3);
+}
+
+.shipped .dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--keep);
+  display: inline-block;
+}
+
+section { margin-block: 0 56px; }
+
+h2 {
+  font-family: var(--cond);
+  font-weight: 700;
+  font-size: clamp(25px, 3.4vw, 33px);
+  line-height: 1.12;
+  letter-spacing: -0.01em;
+  margin: 0 0 6px;
+  padding-left: 14px;
+  border-left: 4px solid var(--lime);
+  text-wrap: balance;
+}
+
+h2 + .deck {
+  color: var(--ink-2);
+  margin: 0 0 24px 18px;
+  max-width: 64ch;
+}
+
+h3 {
+  font-family: var(--cond);
+  font-weight: 600;
+  font-size: 19px;
+  margin: 32px 0 8px;
+  color: var(--ink);
+  text-wrap: balance;
+}
+
+p { margin: 0 0 14px; max-width: var(--measure); }
+p:last-child { margin-bottom: 0; }
+
+a { color: var(--new); }
+
+code, .m {
+  font-family: var(--mono);
+  font-size: 0.88em;
+  background: var(--sunk);
+  padding: 1px 5px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+strong { font-weight: 600; }
+em { font-style: italic; }
+
+ul.plain { margin: 0 0 14px; padding-left: 20px; max-width: var(--measure); }
+ul.plain li { margin-bottom: 7px; }
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
+  margin: 0 0 26px;
+}
+
+.stat { background: var(--surface); padding: 16px 18px; }
+
+.stat .n {
+  font-family: var(--cond);
+  font-weight: 700;
+  font-size: 32px;
+  line-height: 1;
+  color: var(--navy);
+  font-variant-numeric: tabular-nums;
+}
+
+.stat .l { font-size: 12.5px; color: var(--ink-2); margin-top: 6px; line-height: 1.35; }
+
+.scroller { overflow-x: auto; margin: 0 0 20px; }
+
+table { border-collapse: collapse; width: 100%; min-width: 520px; font-size: 14px; }
+
+th {
+  font-family: var(--cond);
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  text-align: left;
+  color: var(--ink-3);
+  border-bottom: 1.5px solid var(--line);
+  padding: 0 14px 8px 0;
+  vertical-align: bottom;
+}
+
+td { padding: 10px 14px 10px 0; border-bottom: 1px solid var(--line-2); vertical-align: top; }
+tbody tr:last-child td { border-bottom: none; }
+
+.pill {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  padding: 2px 7px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+.pill.keep { background: var(--keep-bg); color: var(--keep); }
+.pill.cut  { background: var(--cut-bg);  color: var(--cut); }
+.pill.new  { background: var(--new-bg);  color: var(--new); }
+.pill.warn { background: var(--warn-bg); color: var(--warn); }
+
+.flow { border: 1px solid var(--line); background: var(--surface); margin: 0 0 20px; }
+
+.step {
+  display: grid;
+  grid-template-columns: 54px 1fr;
+  gap: 16px;
+  padding: 13px 18px;
+  border-bottom: 1px solid var(--line-2);
+  align-items: start;
+}
+.step:last-child { border-bottom: none; }
+
+.step .id {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink-3);
+  padding-top: 2px;
+  font-variant-numeric: tabular-nums;
+}
+
+.step .body { min-width: 0; }
+.step .t { font-family: var(--cond); font-weight: 600; font-size: 16px; line-height: 1.25; }
+.step .d { font-size: 13.5px; color: var(--ink-2); line-height: 1.45; margin-top: 3px; }
+.step.branch { background: var(--sunk); }
+.step.branch .t { color: var(--navy); }
+
+.sub {
+  margin-top: 8px;
+  border-left: 2px solid var(--line);
+  padding-left: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.sub .leg { font-size: 13.5px; line-height: 1.4; }
+
+.sub .leg b {
+  font-family: var(--mono);
+  font-weight: 500;
+  font-size: 12px;
+  color: var(--ink);
+  background: var(--sunk);
+  padding: 1px 5px;
+  border-radius: 3px;
+  margin-right: 6px;
+}
+
+figure.dia { margin: 0 0 24px; border: 1px solid var(--line); background: var(--surface); }
+figure.dia .canvas { overflow-x: auto; padding: 22px 20px 10px; }
+
+figure.dia svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  color: var(--ink);
+  font-family: var(--sans);
+}
+
+figure.dia svg.wide { min-width: 720px; }
+
+figure.dia figcaption {
+  border-top: 1px solid var(--line-2);
+  padding: 12px 20px 14px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+
+figure.dia figcaption b { font-family: var(--cond); font-weight: 600; color: var(--ink); }
+
+.note {
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--navy);
+  background: var(--surface);
+  padding: 16px 20px;
+  margin: 0 0 20px;
+  max-width: var(--measure);
+}
+
+.note.risk { border-left-color: var(--cut); }
+.note.good { border-left-color: var(--keep); }
+.note .h { font-family: var(--cond); font-weight: 600; font-size: 15px; margin-bottom: 5px; }
+.note p { margin-bottom: 8px; font-size: 14.5px; }
+.note p:last-child { margin-bottom: 0; }
+
+pre.log {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 1.6;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  padding: 15px 18px;
+  overflow-x: auto;
+  margin: 0 0 20px;
+  color: var(--ink-2);
+}
+pre.log b { color: var(--ink); font-weight: 500; }
+
+.open li { margin-bottom: 11px; }
+
+footer {
+  margin-top: 56px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink-3);
+  max-width: var(--wide);
+}
+
+@media (max-width: 560px) {
+  .step { grid-template-columns: 1fr; gap: 4px; }
+  h2 { padding-left: 11px; }
+  h2 + .deck { margin-left: 11px; }
+}
+</style>
+
+<div class="wrap">
+
+<header class="mast">
+  <p class="eyebrow">Contour Education · Website signups</p>
+  <h1>LGM-04 Rebuild</h1>
+  <p class="standfirst">The 82-action waitlist workflow, rebuilt as two workflows of nine and fourteen actions. Every custom code action is written. This describes what the system does, path by path.</p>
+  <p class="shipped"><span class="dot"></span> Built and off · merge service and student&nbsp;ID issuer deployed · ID counter seeded at 158000</p>
+</header>
+
+<section>
+  <h2>One constraint shapes everything</h2>
+  <p class="deck">HubSpot unenrols a contact from every active workflow the moment it is merged. A run cannot merge halfway and carry on.</p>
+
+  <p>The old workflow worked around this by merging in its <em>very last action</em>, which meant carrying two record IDs — a temporary form contact and a canonical one — through the whole run, plus a recovery path for every place they diverged. That bookkeeping was roughly half its complexity: five copies of the merge script, a <code>student_id</code> fallback that read from the temp record and deliberately declined to write it back, and a fifth outcome branch that existed only to route around an email send that would have gone to the wrong record.</p>
+
+  <p><strong>So A merges and dies. B does the work on the one surviving record.</strong> Everything downstream gets to assume the enrolled contact <em>is</em> the student — the assumption the old workflow could never make.</p>
+
+  <div class="stats">
+    <div class="stat"><div class="n">82 → 23</div><div class="l">actions, across both workflows</div></div>
+    <div class="stat"><div class="n">5 → 1</div><div class="l">copies of the merge script</div></div>
+    <div class="stat"><div class="n">15 → 0</div><div class="l">delay steps</div></div>
+    <div class="stat"><div class="n">13</div><div class="l">live bugs found on the way</div></div>
+  </div>
+</section>
+
+<section>
+  <h2>The handover</h2>
+  <p class="deck">Separate workflows cannot share action outputs. Three contact properties carry everything across the gap.</p>
+
+<figure class="dia">
+<div class="canvas">
+<svg class="wide" viewBox="0 0 760 332" role="img" aria-label="Timeline of three contact properties across both workflows. Signup ready is set false at the start of Workflow A, true by the merge service at its end, and false again by Workflow B's finish action. The resolved identity blob is cleared at A's start, written by identity resolution, read by B, and deleted by finish. The SMS sent flag is set when A sends the SMS and cleared by finish.">
+  <defs>
+    <marker id="h-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+    </marker>
+  </defs>
+
+  <line x1="30" y1="44" x2="330" y2="44" stroke="currentColor" stroke-width="2" opacity=".85"/>
+  <text x="30" y="30" font-size="11" letter-spacing="1.4" fill="currentColor" opacity=".55">WORKFLOW A</text>
+  <line x1="430" y1="44" x2="730" y2="44" stroke="currentColor" stroke-width="2" opacity=".85"/>
+  <text x="430" y="30" font-size="11" letter-spacing="1.4" fill="currentColor" opacity=".55">WORKFLOW B</text>
+  <line x1="330" y1="44" x2="430" y2="44" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 4" opacity=".45"/>
+  <text x="380" y="30" font-size="11" text-anchor="middle" fill="currentColor" opacity=".5">A ends</text>
+
+  <circle cx="30" cy="44" r="4" fill="currentColor"/>
+  <circle cx="330" cy="44" r="4" fill="currentColor"/>
+  <circle cx="430" cy="44" r="4" fill="currentColor"/>
+  <circle cx="730" cy="44" r="4" fill="currentColor"/>
+
+  <text x="30" y="96" font-size="12.5" font-weight="600" fill="currentColor">signup_ready</text>
+  <line x1="30" y1="112" x2="730" y2="112" stroke="currentColor" stroke-width="1" opacity=".18"/>
+  <rect x="30" y="104" width="300" height="16" fill="currentColor" opacity=".10"/>
+  <rect x="330" y="104" width="400" height="16" fill="#C3E62B" opacity=".55"/>
+  <text x="34" y="116" font-size="10.5" fill="currentColor" opacity=".7">false</text>
+  <text x="334" y="116" font-size="10.5" fill="currentColor" opacity=".9">true — this is what triggers B</text>
+  <text x="330" y="140" font-size="10.5" text-anchor="middle" fill="currentColor" opacity=".7">merge service sets it</text>
+  <text x="730" y="140" font-size="10.5" text-anchor="end" fill="currentColor" opacity=".7">finish clears it</text>
+
+  <text x="30" y="184" font-size="12.5" font-weight="600" fill="currentColor">lgm04_resolved_identity</text>
+  <line x1="30" y1="200" x2="730" y2="200" stroke="currentColor" stroke-width="1" opacity=".18"/>
+  <rect x="150" y="192" width="580" height="16" fill="currentColor" opacity=".22"/>
+  <text x="154" y="204" font-size="10.5" fill="currentColor" opacity=".9">JSON: who the student is, who the guardian is</text>
+  <text x="150" y="228" font-size="10.5" text-anchor="middle" fill="currentColor" opacity=".7">identity resolution writes it</text>
+  <text x="730" y="228" font-size="10.5" text-anchor="end" fill="currentColor" opacity=".7">finish deletes it</text>
+
+  <text x="30" y="272" font-size="12.5" font-weight="600" fill="currentColor">waitlist_sms_sent</text>
+  <line x1="30" y1="288" x2="730" y2="288" stroke="currentColor" stroke-width="1" opacity=".18"/>
+  <rect x="230" y="280" width="500" height="16" fill="currentColor" opacity=".22"/>
+  <text x="234" y="292" font-size="10.5" fill="currentColor" opacity=".9">true — stops a resubmission double-sending</text>
+  <text x="230" y="316" font-size="10.5" text-anchor="middle" fill="currentColor" opacity=".7">SMS sent</text>
+  <text x="730" y="316" font-size="10.5" text-anchor="end" fill="currentColor" opacity=".7">finish clears it</text>
+
+  <line x1="30" y1="60" x2="30" y2="98" stroke="currentColor" stroke-width="1" stroke-dasharray="2 3" opacity=".35"/>
+  <line x1="150" y1="60" x2="150" y2="186" stroke="currentColor" stroke-width="1" stroke-dasharray="2 3" opacity=".35"/>
+  <line x1="230" y1="60" x2="230" y2="274" stroke="currentColor" stroke-width="1" stroke-dasharray="2 3" opacity=".35"/>
+  <line x1="730" y1="60" x2="730" y2="274" stroke="currentColor" stroke-width="1" stroke-dasharray="2 3" opacity=".35"/>
+</svg>
+</div>
+<figcaption><b>Three properties, one lifecycle each.</b> <code>signup_ready</code> is a one-shot token: false at A's start, true at A's end, false at B's end. That is what makes re-enrolment safe — a returning student's second signup flips it false&#8594;true again and re-triggers cleanly. Clearing it <em>first</em> also stops the blob write from enrolling the record in B before the merge has happened.</figcaption>
+</figure>
+
+  <div class="note">
+    <div class="h">Why A's first two actions are property clears</div>
+    <p>Any property write re-evaluates B's enrolment trigger. Without the clear, writing the identity blob two actions later could enrol the record in B <em>before</em> the merge — and the merge would then unenrol it mid-run, leaving a half-written student with no trials and no email.</p>
+  </div>
+</section>
+
+<section>
+  <h2>Workflow A — resolve, then merge</h2>
+  <p class="deck">Nine actions. Decides who this person is, sends the SMS, merges any duplicate, and hands over.</p>
+
+<figure class="dia">
+<div class="canvas">
+<svg class="wide" viewBox="0 0 760 800" role="img" aria-label="Workflow A flowchart. Form submission clears the ready flag and the identity blob, forks 2026 submissions to Make, resolves identity, sends an SMS if not already sent, then branches on merge decision into merge, review or none. Merge calls the merge service; review raises a task and stops; none sets the ready flag directly. Both surviving paths end by setting signup ready to true, which starts Workflow B.">
+  <defs>
+    <marker id="a-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+    </marker>
+    <marker id="a-arf" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="currentColor" opacity=".45"/>
+    </marker>
+  </defs>
+
+  <rect x="60" y="16" width="300" height="40" rx="3" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="210" y="41" text-anchor="middle" font-size="12.5" font-weight="600" fill="currentColor">Form submitted</text>
+  <line x1="210" y1="56" x2="210" y2="76" stroke="currentColor" stroke-width="1.5" marker-end="url(#a-ar)"/>
+
+  <rect x="60" y="76" width="300" height="52" rx="3" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="210" y="97" text-anchor="middle" font-size="12.5" font-weight="600" fill="currentColor">1, 3 &#183; Clear the handover</text>
+  <text x="210" y="115" text-anchor="middle" font-size="11" fill="currentColor" opacity=".65">signup_ready = false &#183; blob cleared</text>
+  <line x1="210" y1="128" x2="210" y2="148" stroke="currentColor" stroke-width="1.5" marker-end="url(#a-ar)"/>
+
+  <polygon points="84,148 336,148 360,174 336,200 84,200 60,174" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="210" y="179" text-anchor="middle" font-size="12.5" font-weight="600" fill="currentColor">5 &#183; Which intake year?</text>
+  <line x1="360" y1="174" x2="434" y2="174" stroke="currentColor" stroke-width="1.2" opacity=".45" marker-end="url(#a-arf)"/>
+  <text x="368" y="167" font-size="10.5" fill="currentColor" opacity=".6">2026</text>
+  <rect x="440" y="156" width="300" height="36" rx="3" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4 3" opacity=".5"/>
+  <text x="454" y="179" font-size="11.5" fill="currentColor" opacity=".75">Make webhook &#8212; unchanged, ends</text>
+  <line x1="210" y1="200" x2="210" y2="220" stroke="currentColor" stroke-width="1.5" marker-end="url(#a-ar)"/>
+  <text x="218" y="215" font-size="10.5" fill="currentColor" opacity=".65">2027+</text>
+
+  <rect x="60" y="220" width="300" height="52" rx="3" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="210" y="241" text-anchor="middle" font-size="12.5" font-weight="600" fill="currentColor">5 &#183; Resolve identity</text>
+  <text x="210" y="259" text-anchor="middle" font-size="11" fill="currentColor" opacity=".65">writes the blob &#183; decides merge / review / none</text>
+  <line x1="210" y1="272" x2="210" y2="292" stroke="currentColor" stroke-width="1.5" marker-end="url(#a-ar)"/>
+
+  <polygon points="84,292 336,292 360,318 336,344 84,344 60,318" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="210" y="323" text-anchor="middle" font-size="12.5" font-weight="600" fill="currentColor">6 &#183; SMS already sent?</text>
+  <line x1="60" y1="318" x2="44" y2="318" stroke="currentColor" stroke-width="1.2" opacity=".45"/>
+  <path d="M44,318 V372 H56" fill="none" stroke="currentColor" stroke-width="1.2" opacity=".45" marker-end="url(#a-arf)"/>
+  <text x="10" y="312" font-size="10.5" fill="currentColor" opacity=".6">no</text>
+  <rect x="56" y="354" width="230" height="36" rx="3" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4 3" opacity=".5"/>
+  <text x="68" y="377" font-size="11.5" fill="currentColor" opacity=".75">8 &#183; Send SMS, set the flag</text>
+  <line x1="210" y1="344" x2="210" y2="412" stroke="currentColor" stroke-width="1.5" marker-end="url(#a-ar)"/>
+
+  <polygon points="84,412 336,412 360,438 336,464 84,464 60,438" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="210" y="443" text-anchor="middle" font-size="12.5" font-weight="600" fill="currentColor">7 &#183; merge_decision</text>
+
+  <line x1="360" y1="438" x2="434" y2="438" stroke="currentColor" stroke-width="1.2" opacity=".45" marker-end="url(#a-arf)"/>
+  <text x="368" y="431" font-size="10.5" fill="currentColor" opacity=".6">review</text>
+  <rect x="440" y="412" width="300" height="52" rx="3" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4 3" opacity=".5"/>
+  <text x="454" y="433" font-size="11.5" fill="currentColor" opacity=".75">10 &#183; Task + Slack, then stops.</text>
+  <text x="454" y="451" font-size="11.5" fill="currentColor" opacity=".75">A parent's record holds the student's email.</text>
+
+  <line x1="210" y1="464" x2="210" y2="492" stroke="currentColor" stroke-width="1.5" marker-end="url(#a-ar)"/>
+  <text x="218" y="486" font-size="10.5" fill="currentColor" opacity=".65">merge</text>
+
+  <rect x="60" y="492" width="300" height="52" rx="3" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="210" y="513" text-anchor="middle" font-size="12.5" font-weight="600" fill="currentColor">9 &#183; Merge service</text>
+  <text x="210" y="531" text-anchor="middle" font-size="11" fill="currentColor" opacity=".65">new record wins &#183; old one absorbed &#183; audited</text>
+  <line x1="360" y1="518" x2="434" y2="518" stroke="currentColor" stroke-width="1.2" opacity=".45" marker-end="url(#a-arf)"/>
+  <text x="368" y="511" font-size="10.5" fill="currentColor" opacity=".6">fails</text>
+  <rect x="440" y="500" width="300" height="36" rx="3" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4 3" opacity=".5"/>
+  <text x="454" y="523" font-size="11.5" fill="currentColor" opacity=".75">15 &#183; Task + Slack, then stops</text>
+
+  <line x1="210" y1="544" x2="210" y2="600" stroke="currentColor" stroke-width="1.5" marker-end="url(#a-ar)"/>
+
+  <path d="M84,438 H30 V626 H54" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".7" marker-end="url(#a-ar)"/>
+  <text x="6" y="498" font-size="10.5" fill="currentColor" opacity=".7">none</text>
+
+  <rect x="56" y="600" width="308" height="52" rx="3" fill="#C3E62B" stroke="currentColor" stroke-width="2"/>
+  <text x="210" y="621" text-anchor="middle" font-size="13" font-weight="700" fill="#14181F">signup_ready = true</text>
+  <text x="210" y="639" text-anchor="middle" font-size="11" fill="#14181F" opacity=".78">the merge service sets it &#183; this starts Workflow B</text>
+
+  <line x1="210" y1="652" x2="210" y2="672" stroke="currentColor" stroke-width="1.5" marker-end="url(#a-ar)"/>
+  <rect x="60" y="672" width="300" height="36" rx="3" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="210" y="695" text-anchor="middle" font-size="12.5" font-weight="600" fill="currentColor">Workflow A ends</text>
+
+  <text x="60" y="748" font-size="11.5" fill="currentColor" opacity=".7">The merge service sets the flag itself, because by the time the merge</text>
+  <text x="60" y="766" font-size="11.5" fill="currentColor" opacity=".7">returns, HubSpot has already unenrolled the contact and A is dead.</text>
+</svg>
+</div>
+<figcaption><b>The merge is the last thing A does, and it kills the run.</b> That is why the merge service &#8212; not a workflow action &#8212; sets <code>signup_ready</code>. Nothing else is still executing. If the merge succeeds but the flag write fails, the service reports <em>failure</em>: a merged record with nothing coming to collect it is worse than a visible error.</figcaption>
+</figure>
+
+  <h3>Reading the three decisions</h3>
+  <div class="scroller">
+    <table>
+      <thead><tr><th>Decision</th><th>When</th><th>What happens</th></tr></thead>
+      <tbody>
+        <tr><td><code>merge</code></td><td>the student's email is on another record that is not a parent</td><td>Absorb it. The <em>new</em> record is primary, so this submission's values win.</td></tr>
+        <tr><td><code>review</code></td><td>the student's email is on a <strong>Parent-typed</strong> record</td><td><span class="pill cut">stops</span> Merging a parent into a student collapses two people into one and cannot be undone. Never automatic.</td></tr>
+        <tr><td><code>none</code></td><td>no match</td><td>Sets the flag directly. Nothing to merge.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note">
+    <div class="h">How it decides which fields are the student's</div>
+    <p>The form has two field groups — generic and dedicated. Identity resolution decides which is which by <strong>name presence</strong>, never phone. The old version accepted a phone as evidence, and since the student upsert writes <code>student_phone_number</code> on every run, a resubmission left that value sitting there — so the check read stale data as "dedicated student data present" and pulled in a student with a phone and no name, while the real name sat unread in the generic fields.</p>
+  </div>
+</section>
+
+<section>
+  <h2>Workflow B — do the work</h2>
+  <p class="deck">Fourteen actions on one record. Sync, school, trials, comms, finish — with every failure landing somewhere a person will see it.</p>
+
+<figure class="dia">
+<div class="canvas">
+<svg class="wide" viewBox="0 0 760 1080" role="img" aria-label="Workflow B flowchart. Triggered by the ready flag, it syncs the student and guardian, verifies the school, creates trials, builds the comms content, and finishes. Each stage has a branch whose failure legs raise a note and a task on the contact. The send mode branch either sends the email from this workflow or relies on a flag that enrols the record in a separate sending workflow. Every path converges on a Slack check, a review check, and the finish action that clears all three handover properties.">
+  <defs>
+    <marker id="b-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+    </marker>
+    <marker id="b-arf" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="currentColor" opacity=".45"/>
+    </marker>
+  </defs>
+
+  <rect x="40" y="16" width="290" height="52" rx="3" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="185" y="37" text-anchor="middle" font-size="12.5" font-weight="600" fill="currentColor">Trigger: signup_ready is true</text>
+  <text x="185" y="55" text-anchor="middle" font-size="11" fill="currentColor" opacity=".65">one record &#183; nothing left to reconcile</text>
+  <line x1="185" y1="68" x2="185" y2="88" stroke="currentColor" stroke-width="1.5" marker-end="url(#b-ar)"/>
+
+  <rect x="40" y="88" width="290" height="52" rx="3" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="185" y="109" text-anchor="middle" font-size="12.5" font-weight="600" fill="currentColor">1 &#183; Student and guardian sync</text>
+  <text x="185" y="127" text-anchor="middle" font-size="11" fill="currentColor" opacity=".65">reads identity from the blob</text>
+  <line x1="330" y1="114" x2="404" y2="114" stroke="currentColor" stroke-width="1.2" opacity=".45" marker-end="url(#b-arf)"/>
+  <rect x="410" y="80" width="310" height="70" rx="3" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4 3" opacity=".5"/>
+  <text x="424" y="100" font-size="11" fill="currentColor" opacity=".75">2 &#183; failed_step branch</text>
+  <text x="424" y="118" font-size="11" fill="currentColor" opacity=".75">setup / student / unknown &#8594; note + task, stop</text>
+  <text x="424" y="136" font-size="11" fill="currentColor" opacity=".75">guardian &#8594; note + task, <tspan font-weight="600">carry on</tspan></text>
+  <line x1="185" y1="140" x2="185" y2="172" stroke="currentColor" stroke-width="1.5" marker-end="url(#b-ar)"/>
+
+  <rect x="40" y="172" width="290" height="40" rx="3" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="185" y="197" text-anchor="middle" font-size="12.5" font-weight="600" fill="currentColor">3 &#183; School verification</text>
+  <line x1="330" y1="192" x2="404" y2="192" stroke="currentColor" stroke-width="1.2" opacity=".45" marker-end="url(#b-arf)"/>
+  <rect x="410" y="170" width="310" height="44" rx="3" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4 3" opacity=".5"/>
+  <text x="424" y="190" font-size="11" fill="currentColor" opacity=".75">5 &#183; duplicate schools / errored &#8594; task</text>
+  <text x="424" y="207" font-size="11" fill="currentColor" opacity=".75">every leg carries on &#8212; school gates nothing</text>
+  <line x1="185" y1="212" x2="185" y2="244" stroke="currentColor" stroke-width="1.5" marker-end="url(#b-ar)"/>
+
+  <rect x="40" y="244" width="290" height="52" rx="3" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="185" y="265" text-anchor="middle" font-size="12.5" font-weight="600" fill="currentColor">13 &#183; Create trials</text>
+  <text x="185" y="283" text-anchor="middle" font-size="11" fill="currentColor" opacity=".65">gets a student ID inline &#183; builds the Slack text</text>
+  <line x1="330" y1="270" x2="404" y2="270" stroke="currentColor" stroke-width="1.2" opacity=".45" marker-end="url(#b-arf)"/>
+  <rect x="410" y="248" width="310" height="44" rx="3" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4 3" opacity=".5"/>
+  <text x="424" y="268" font-size="11" fill="currentColor" opacity=".75">20 &#183; error &#8594; note + task, no comms</text>
+  <text x="424" y="285" font-size="11" fill="currentColor" opacity=".75">no_subjects &#8594; straight to the tail</text>
+  <line x1="185" y1="296" x2="185" y2="328" stroke="currentColor" stroke-width="1.5" marker-end="url(#b-ar)"/>
+
+  <rect x="40" y="328" width="290" height="52" rx="3" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="185" y="349" text-anchor="middle" font-size="12.5" font-weight="600" fill="currentColor">22 &#183; Build comms</text>
+  <text x="185" y="367" text-anchor="middle" font-size="11" fill="currentColor" opacity=".65">renders both variants &#183; sets the trigger flag</text>
+  <line x1="330" y1="354" x2="404" y2="354" stroke="currentColor" stroke-width="1.2" opacity=".45" marker-end="url(#b-arf)"/>
+  <rect x="410" y="332" width="310" height="44" rx="3" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4 3" opacity=".5"/>
+  <text x="424" y="352" font-size="11" fill="currentColor" opacity=".75">24 &#183; render failed &#8594; note + task</text>
+  <text x="424" y="369" font-size="11" fill="currentColor" opacity=".75">nothing sends &#8212; a blank email is worse</text>
+  <line x1="185" y1="380" x2="185" y2="412" stroke="currentColor" stroke-width="1.5" marker-end="url(#b-ar)"/>
+
+  <polygon points="64,412 306,412 330,438 306,464 64,464 40,438" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="185" y="443" text-anchor="middle" font-size="12.5" font-weight="600" fill="currentColor">25 &#183; send_mode</text>
+
+  <line x1="330" y1="438" x2="404" y2="438" stroke="currentColor" stroke-width="1.2" opacity=".45" marker-end="url(#b-arf)"/>
+  <text x="338" y="431" font-size="10.5" fill="currentColor" opacity=".6">native</text>
+  <rect x="410" y="412" width="310" height="52" rx="3" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="424" y="433" font-size="11.5" font-weight="600" fill="currentColor">27, 28 &#183; Set marketing status, send email</text>
+  <text x="424" y="451" font-size="11" fill="currentColor" opacity=".7">first-time student &#183; sent from this workflow</text>
+
+  <text x="193" y="478" font-size="10.5" fill="currentColor" opacity=".65">handoff / none</text>
+  <path d="M565,464 V492 H185" fill="none" stroke="currentColor" stroke-width="1.2" opacity=".5"/>
+  <line x1="185" y1="464" x2="185" y2="500" stroke="currentColor" stroke-width="1.5" marker-end="url(#b-ar)"/>
+
+  <polygon points="64,500 306,500 330,526 306,552 64,552 40,526" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="185" y="531" text-anchor="middle" font-size="12.5" font-weight="600" fill="currentColor">29 &#183; 2027 signup?</text>
+  <line x1="330" y1="526" x2="404" y2="526" stroke="currentColor" stroke-width="1.2" opacity=".45" marker-end="url(#b-arf)"/>
+  <rect x="410" y="508" width="310" height="36" rx="3" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4 3" opacity=".5"/>
+  <text x="424" y="531" font-size="11.5" fill="currentColor" opacity=".75">32 &#183; Send Slack &#8212; text built in action 13</text>
+  <line x1="185" y1="552" x2="185" y2="588" stroke="currentColor" stroke-width="1.5" marker-end="url(#b-ar)"/>
+
+  <polygon points="64,588 306,588 330,614 306,640 64,640 40,614" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="185" y="619" text-anchor="middle" font-size="12.5" font-weight="600" fill="currentColor">33 &#183; needs_review?</text>
+  <line x1="330" y1="614" x2="404" y2="614" stroke="currentColor" stroke-width="1.2" opacity=".45" marker-end="url(#b-arf)"/>
+  <rect x="410" y="596" width="310" height="36" rx="3" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4 3" opacity=".5"/>
+  <text x="424" y="619" font-size="11.5" fill="currentColor" opacity=".75">35 &#183; Low-priority task, run carries on</text>
+  <line x1="185" y1="640" x2="185" y2="676" stroke="currentColor" stroke-width="1.5" marker-end="url(#b-ar)"/>
+
+  <rect x="36" y="676" width="298" height="56" rx="3" fill="#C3E62B" stroke="currentColor" stroke-width="2"/>
+  <text x="185" y="699" text-anchor="middle" font-size="13" font-weight="700" fill="#14181F">34 &#183; Finish</text>
+  <text x="185" y="717" text-anchor="middle" font-size="11" fill="#14181F" opacity=".78">clears all three handover properties</text>
+  <line x1="334" y1="704" x2="404" y2="704" stroke="currentColor" stroke-width="1.2" opacity=".45" marker-end="url(#b-arf)"/>
+  <rect x="410" y="682" width="310" height="44" rx="3" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4 3" opacity=".5"/>
+  <text x="424" y="702" font-size="11" fill="currentColor" opacity=".75">37 &#183; a newer submission landed mid-run</text>
+  <text x="424" y="719" font-size="11" fill="currentColor" opacity=".75">&#8594; clears nothing, raises a task</text>
+
+  <line x1="185" y1="732" x2="185" y2="752" stroke="currentColor" stroke-width="1.5" marker-end="url(#b-ar)"/>
+  <rect x="40" y="752" width="290" height="36" rx="3" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="185" y="775" text-anchor="middle" font-size="12.5" font-weight="600" fill="currentColor">End</text>
+
+  <line x1="40" y1="828" x2="720" y2="828" stroke="currentColor" stroke-width="1" opacity=".2"/>
+  <text x="40" y="856" font-size="11.5" font-weight="600" fill="currentColor">Every dashed exit writes a note or a task on the contact.</text>
+  <text x="40" y="878" font-size="11.5" fill="currentColor" opacity=".7">None of them is a bare End. In the old workflow, the deepest failure &#8212; trials created,</text>
+  <text x="40" y="896" font-size="11.5" fill="currentColor" opacity=".7">student on the waitlist, nothing sent &#8212; produced one Slack message, and every</text>
+  <text x="40" y="914" font-size="11.5" fill="currentColor" opacity=".7">action upstream of it reported success.</text>
+
+  <text x="40" y="956" font-size="11.5" font-weight="600" fill="currentColor">Everything converges on Finish.</text>
+  <text x="40" y="978" font-size="11.5" fill="currentColor" opacity=".7">Including the failure legs. Without it the record stays flagged, and the next</text>
+  <text x="40" y="996" font-size="11.5" fill="currentColor" opacity=".7">submission cannot enrol properly.</text>
+
+  <text x="40" y="1038" font-size="11.5" font-weight="600" fill="currentColor">The guardian failure is the interesting one.</text>
+  <text x="40" y="1060" font-size="11.5" fill="currentColor" opacity=".7">The student write has already landed and cannot be taken back, so the run carries on.</text>
+</svg>
+</div>
+<figcaption><b>Failures are routed, not swallowed.</b> Four of the thirteen live bugs found during this rebuild were actions returning <code>success: false</code> into a branch nobody read. Here each stage's failure has a named leg, a note on the contact and a task &#8212; and the run still ends at Finish so the record's state is consistent either way.</figcaption>
+</figure>
+
+  <h3>What each stage actually does</h3>
+
+  <div class="flow">
+    <div class="step"><div class="id">1</div><div class="body"><div class="t">Student and guardian sync</div><div class="d">Writes the student. Then finds or creates the guardian, associates them, and points <code>parent_email</code> at whoever is actually primary. <strong>If the guardian's email matches a Student-typed record it changes nothing about that record</strong> — the old version patched <code>contact_type: "Parent"</code> onto whatever it matched, so a parent typing their child's old address converted that student into a parent and overwrote their name.</div></div></div>
+
+    <div class="step branch"><div class="id">2</div><div class="body"><div class="t">Branch — which half broke?</div>
+      <div class="sub">
+        <div class="leg"><b>setup</b>No identity blob. Nothing can be inferred safely. Stop.</div>
+        <div class="leg"><b>student</b>The write was rejected. Nothing downstream is safe. Stop.</div>
+        <div class="leg"><b>guardian</b><strong>Carry on.</strong> The student is already saved; a guardian clash must not cost them their trial and their email.</div>
+        <div class="leg"><b>unknown</b>Unclassified error. Stop, and say the state is unknown.</div>
+      </div>
+    </div></div>
+
+    <div class="step"><div class="id">3</div><div class="body"><div class="t">School verification</div><div class="d">Matches the ACARA ID to a school, marks it current, demotes the previous one to past. Recognises the sentinels the form actually sends — HubSpot ships this form with <code>acara_id</code> defaulted to <code>"1"</code>, which the old version searched for as a real ID. Separates "never asked" (overseas, UK, NZ — the field is not shown) from "asked and unmatched".</div></div></div>
+
+    <div class="step"><div class="id">13</div><div class="body"><div class="t">Create trials</div><div class="d">One Trial per subject. Asks the ID issuer for a <code>student_id</code> if the record has none — no polling. Each subject is processed independently, so one unrecognised code cannot cost the student their other four. A Trial that is created but cannot be associated is deleted again, because a Trial attached to nothing is invisible in the UI forever.</div></div></div>
+
+    <div class="step"><div class="id">22</div><div class="body"><div class="t">Build comms</div><div class="d">Renders the student's HTML and the guardian's, writes both records, and sets the trigger flag for that outcome — <strong>in the same write as the content</strong>, so a record is never flagged for sending with a half-written body. Five actions in the old workflow; one here.</div></div></div>
+
+    <div class="step"><div class="id">34</div><div class="body"><div class="t">Finish</div><div class="d">Clears all three handover properties. It <em>refuses</em> to clear when the blob on the record is newer than the one processed — that means a second submission landed mid-run, HubSpot would not enrol the contact twice, and clearing would discard it silently. It leaves everything alone and raises a task instead.</div></div></div>
+  </div>
+</section>
+
+<section>
+  <h2>One value decides the email</h2>
+  <p class="deck">Create trials collapses its whole classification into <code>outcome</code>. Everything downstream reads that.</p>
+
+  <div class="scroller">
+    <table>
+      <thead><tr><th><code>outcome</code></th><th>Means</th><th>Student</th><th>Guardian</th></tr></thead>
+      <tbody>
+        <tr><td><code>first_time</code></td><td>new student, trials created</td><td><span class="pill keep">native send</span></td><td><code>send_waitlist_confirmation_guardian_mail</code></td></tr>
+        <tr><td><code>first_time_already_enrolled</code></td><td>new trials, already paying</td><td><code>send_already_enrolled_confirmation</code></td><td><code>…_guardian_mail</code></td></tr>
+        <tr><td><code>repeat_new_trials</code></td><td>returning, added subjects</td><td><code>send_waitlist_added_subjects_mail</code></td><td><code>send_waitlist_subject_added_…</code></td></tr>
+        <tr><td><code>repeat_no_new_trials</code></td><td>returning, nothing new</td><td><code>already_on_waitlist_no_new_…</code></td><td><code>…_confirmation_guardian_mail</code></td></tr>
+        <tr><td><code>partial</code></td><td>some subjects worked</td><td colspan="2">resolves to <code>first_time</code> or <code>repeat_new_trials</code></td></tr>
+        <tr><td><code>no_subjects</code></td><td>nothing asked for</td><td colspan="2"><span class="pill cut">nothing sends</span></td></tr>
+        <tr><td><code>error</code></td><td>nothing created</td><td colspan="2"><span class="pill cut">nothing sends</span> — confirming a trial that does not exist is worse than silence</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note good">
+    <div class="h">Why the flags survived the rebuild</div>
+    <p>Every one of those trigger properties existed for a single reason, stated outright in the old action's own header: the enrolled contact might not be the student, so a native send would mail an often email-less temporary record. Merge-first removes that reason entirely — and one leg, <code>send_first_time_confirmation_mail</code>, went with it.</p>
+    <p>The rest stayed because the <em>email templates</em> live in four separate sending workflows, which also set marketing contact status and clear their own flags. Collapsing those into this workflow is a real simplification, but it is a different piece of work from changing the architecture, and doing both at once would make a regression impossible to attribute.</p>
+  </div>
+
+  <div class="note risk">
+    <div class="h">Set marketing contact status is not optional</div>
+    <p>These are marketing emails. HubSpot drops marketing sends to non-marketable contacts <strong>with no error, no branch and no trace</strong> — the workflow reports success. Around 83% of the Student, Parent and Guardian contacts in this portal came from a bulk import, which is exactly the population most likely to be non-marketable.</p>
+  </div>
+</section>
+
+<section>
+  <h2>What handles which edge case</h2>
+  <p class="deck">Each row is a failure that either happens today or would happen without the named guard.</p>
+
+  <div class="scroller">
+    <table>
+      <thead><tr><th>Edge case</th><th>Handled by</th></tr></thead>
+      <tbody>
+        <tr><td>A merge unenrols the contact mid-run</td><td>two workflows; the merge service sets the handover flag</td></tr>
+        <tr><td>The identity write enrols B before the merge</td><td>A clears <code>signup_ready</code> in its first action</td></tr>
+        <tr><td>A parent types their child's old address</td><td>guardian upsert associates but leaves the student record untouched</td></tr>
+        <tr><td>A student's address is on a parent's record</td><td><code>review</code> — never merged automatically</td></tr>
+        <tr><td>Two signups get the same student ID</td><td>a Firestore transaction, not a search against an eventually-consistent index</td></tr>
+        <tr><td>A retry burns an ID</td><td><code>issued/{contactId}</code> returns the same one</td></tr>
+        <tr><td>A malformed subject code pollutes a shared property</td><td>reported in <code>unknown_subject_codes</code>, never added to the schema</td></tr>
+        <tr><td>One bad subject kills the whole batch</td><td>per-subject isolation</td></tr>
+        <tr><td>A Trial is created but not associated</td><td>compensating delete</td></tr>
+        <tr><td>Trials partly fail</td><td><code>partial</code> still sends the right email</td></tr>
+        <tr><td>A second submission lands mid-run</td><td>Finish compares <code>resolvedAt</code> and refuses to clear</td></tr>
+        <tr><td>The contact is not marketable</td><td>Set marketing contact status before every send</td></tr>
+        <tr><td>A guardian is typed <code>Guardian</code>, not <code>Parent</code></td><td>the guardian id comes from the sync action, not an association-label search</td></tr>
+        <tr><td>Two school records share an ACARA ID</td><td>reported, not thrown — a retry finds the same two</td></tr>
+        <tr><td>An overseas student has no school</td><td>distinct status, no task raised</td></tr>
+        <tr><td>A returning student signs up again</td><td>the one-shot flag, with re-enrolment on</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <h2>Outside the workflows</h2>
+  <p class="deck">Three services the workflows call, and four they hand off to.</p>
+
+  <h3>Merge service <span class="pill keep">deployed</span></h3>
+  <p>One implementation behind one endpoint, rather than five copies of a script in five actions. It is the only irreversible code in the system, which makes it the code most worth testing — and a Cloud Function can be tested where a HubSpot custom code action cannot.</p>
+  <p>Idempotent: if the records are already merged it reports success rather than writing a second note and a second audit row, so a HubSpot retry is safe. It captures the absorbed record <em>before</em> the merge, because afterwards that record is unreadable and the capture is the only surviving evidence of what was destroyed.</p>
+
+  <h3>Student ID issuer <span class="pill keep">deployed</span></h3>
+  <p>The old generator ran two HubSpot searches and a patch against an <em>eventually consistent</em> index: read the highest existing ID, add one, search again to check nobody had taken it. An ID written seconds earlier may not be indexed, so both reads can miss it and two signups can be handed the same number — most likely on a busy day. Around it sat a five-attempt collision loop and four workflow actions of polling.</p>
+  <p>A Firestore transaction on one counter is atomic and strongly consistent. Verified against 6,105 live records: the sequence is <strong>global, not per surname</strong>.</p>
+  <pre class="log">PAR157115  Park          13:45
+PAR157114  Park          13:43
+BAJ157113  Bajwa         12:41
+FAH157112  Fahim         12:24
+AL-157110  Al-Shishachi  11:47   <b>&#8592; the old prefix rule</b></pre>
+  <p>The prefix now takes the first three <strong>letters</strong> of the surname. The old rule took the first three characters, which produced <code>AL-157110</code> and — on a surname of "A Kumar" — <code>A K157097</code>, an identifier with a space in it that does not survive a CSV round-trip or a URL.</p>
+  <p>Twenty simultaneous callers were tested: twenty distinct numbers, no gaps. The counter is seeded at <strong>158000</strong>, deliberately clear of the highest live ID, so anything above it is unmistakably ours.</p>
+
+  <h3>Four sending workflows <span class="pill keep">existing</span></h3>
+  <p>They own the email templates, set marketing contact status before each send, and clear their own trigger flag on the way out — which is what makes each flag a one-shot and lets a second signup re-trigger correctly.</p>
+</section>
+
+<section>
+  <h2>Known gaps</h2>
+  <p class="deck">Five things that are not finished. All of them are visible rather than silent, which is the point.</p>
+
+  <ul class="plain open">
+    <li><strong><code>supabase_id</code> is never written by anything we control.</strong> The Trial's own <code>student_id</code> field holds it, so Trials get a blank one. The old workflow polled for it through three retry tiers and then created the Trial with a blank one anyway — so blank ones already ship. Needs the student-accounts team.</li>
+    <li><strong><code>already_enrolled</code> has never been written to a single contact</strong> — not <code>true</code>, not <code>false</code>, no value at all, against 6,112 contacts carrying a student ID. So that outcome has never fired. The intent is worth keeping: do not tell a paying student their waitlist spot is confirmed. It is simply not implemented, and nothing in HubSpot carries the signal.</li>
+    <li><strong>Association type <code>994</code> is unexplained.</strong> The live action links Trials to Courses with it and demonstrably works, but the portal's own association schema reports nothing between those two objects in either direction. That one call is now non-fatal and reports itself, so if it is dead we will see it named rather than watch every subject fail.</li>
+    <li><strong>The old ID generator is still running.</strong> Two things issuing into a unique property will collide eventually. We are 884 numbers clear.</li>
+    <li><strong>Workflow A still triggers on the test property.</strong> Swap it before go-live.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Before it goes live</h2>
+  <p class="deck">Seven runs, one per outcome. Each one is forced by how the test contact is set up.</p>
+
+  <div class="scroller">
+    <table>
+      <thead><tr><th>Path</th><th>How to force it</th><th>Assert</th></tr></thead>
+      <tbody>
+        <tr><td><code>first_time</code></td><td>new contact, valid subjects</td><td>trials exist, email sent, all three flags cleared</td></tr>
+        <tr><td><code>repeat_new_trials</code></td><td>existing student, add a subject</td><td><code>added_subject_list</code> written, handoff flag set</td></tr>
+        <tr><td><code>repeat_no_new_trials</code></td><td>existing student, resubmit the same subjects</td><td>no new Trials, the other flag set</td></tr>
+        <tr><td><code>partial</code></td><td>one valid code plus one with no Course record</td><td>the student still gets the right email</td></tr>
+        <tr><td><code>error</code></td><td>only an invalid subject code</td><td>note + task, <strong>no email</strong>, flags still cleared</td></tr>
+        <tr><td><code>no_subjects</code></td><td>blank subjects</td><td>reaches Finish, nothing sent</td></tr>
+        <tr><td><code>failed_step = setup</code></td><td>tick <code>signup_ready</code> by hand with no blob</td><td>refuses to guess, raises a task</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>One more worth watching on the first real run: whether HubSpot's Slack action passes the announcement's markdown and newlines through intact, or flattens them to a single line. The message is fully formatted by the code, so nothing else should wrap it.</p>
+</section>
+
+<footer>
+  Workflows <code>4885377477</code> (A) and <code>4890614245</code> (B), both off · replacing <code>4671674859</code> · code and the full action-by-action map live in the repo at <code>hubspot/</code>
+</footer>
+
+</div>
