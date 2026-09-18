@@ -215,6 +215,20 @@ function contactFullName(properties) {
     .join(" ");
 }
 
+// Everything the "continue your signup" email renders from (Mani, Slack). The
+// button href is the only one that decides whether the email can be sent at
+// all — without it the mail goes out with a dead button — so it is the hard
+// gate. The rest fill the "Student linked to this email" block, which renders
+// empty rather than broken, so a missing one is logged and not blocked on.
+const SEND_LINK_REQUIRED_PROPERTY = "add_subjects_url";
+const SEND_LINK_CONTENT_PROPERTIES = [
+  "firstname",
+  "student_first_name",
+  "student_last_name",
+  "student_phone_number",
+  "waitlist_subjects"
+];
+
 function classifyContact(contact) {
   if (!contact) return { status: "clear" };
   const properties = contact.properties || {};
@@ -224,7 +238,25 @@ function classifyContact(contact) {
   // against it — "is this you, Annika Hull?" is a question someone can answer,
   // where a bare first name is a guess.
   if (STUDENT_CONTACT_TYPES.includes(contactType)) {
-    return { status: "student", fullName: contactFullName(properties) };
+    // canSendLink is a boolean, not the URL: the link resolves to one
+    // student's record, and handing it to whoever guessed the address would
+    // let them open that record instead of the person who owns the inbox. The
+    // form only needs to know whether to render the button; /send-link looks
+    // the address up again for itself.
+    const hasLink = String(properties[SEND_LINK_REQUIRED_PROPERTY] || "").trim() !== "";
+    const missing = SEND_LINK_CONTENT_PROPERTIES.filter(
+      (name) => String(properties[name] || "").trim() === ""
+    );
+    if (!hasLink) {
+      console.warn(`classify: student match has no ${SEND_LINK_REQUIRED_PROPERTY}`);
+    } else if (missing.length > 0) {
+      console.warn(`classify: student match missing email content: ${missing.join(",")}`);
+    }
+    return {
+      status: "student",
+      fullName: contactFullName(properties),
+      canSendLink: hasLink
+    };
   }
 
   // The guardian branch only needs enough to address them ("Becky, you're
@@ -246,7 +278,9 @@ async function classifyEmail(email) {
     "email",
     "contact_type",
     "firstname",
-    "lastname"
+    "lastname",
+    SEND_LINK_REQUIRED_PROPERTY,
+    ...SEND_LINK_CONTENT_PROPERTIES
   ]);
   return classifyContact(contact);
 }
