@@ -10325,27 +10325,53 @@ var ContourForm1Logic = function () {
       // it belongs to is a 50% tile inside .contour-person-group-host, and a
       // panel carrying the only call to action on screen reads as a footnote
       // at half width. order keeps it last whatever order the rows are in.
-      ".hs-form " + c + " { flex: 0 0 100%; width: 100%; order: 99; box-sizing: border-box; margin: 4px 0 0; padding: 16px 18px; background: #FFF9F1; border: 1px solid rgba(12,49,102,0.18); border-radius: 12px; }" +
+      // Three rows, two columns. The title keeps the full width it had; the
+      // body and the footer share their rows with the button, which spans
+      // both of them and centres against the pair. That is what takes the
+      // height down — the button no longer owns a row of its own — and what
+      // uses the width the panel already had.
+      ".hs-form " + c + " { flex: 0 0 100%; width: 100%; order: 99; box-sizing: border-box; margin: 4px 0 0; padding: 16px 20px; background: #FFF9F1; border: 1px solid rgba(12,49,102,0.18); border-radius: 12px;" +
+      " display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: \'title title\' \'body cta\' \'note cta\' \'hint cta\'; column-gap: 24px; align-items: start; }" +
+      ".hs-form " + c + "__title { grid-area: title; }" +
+      ".hs-form " + c + "__body { grid-area: body; }" +
+      ".hs-form " + c + "__hint { grid-area: hint; }" +
+      // Its own row, not the footer's: the send-failure note and the footer
+      // are both on screen at once when a send fails, and sharing an area
+      // would stack them on top of each other.
+      ".hs-form " + c + "__note { grid-area: note; }" +
+      // Centred against the body and footer it sits beside, and held to its
+      // own width so a long body never squeezes it.
+      ".hs-form " + c + "__cta { grid-area: cta; align-self: center; justify-self: end; }" +
       // Sitting under the card rather than inside a tile, it needs the card's
       // own side gutters back so its edges line up with the fields above.
       // Inside the card it needs the card's own side gutters back, so its
       // edges line up with the fields above it. Both parents it can land on.
       ".hs-form .contour-person-group-host > " + c + ", .hs-form fieldset." + PERSON_CARD_ROW_CLASS + " > " + c + " { margin: 0 24px 24px; width: auto; flex-basis: calc(100% - 48px); }" +
       ".hs-form " + c + "--warning { background: #FFF4EC; border-color: rgba(191,74,36,0.30); }" +
-      ".hs-form " + c + "__title { display: block; margin: 0 0 5px; font-size: 14.5px; font-weight: 700; line-height: 1.35; color: " + navy + "; }" +
+      ".hs-form " + c + "__title { display: block; margin: 0 0 6px; font-size: 15px; font-weight: 700; line-height: 1.3; color: " + navy + "; }" +
       ".hs-form " + c + "__body { display: block; margin: 0; font-size: 13.5px; line-height: 1.5; color: #33475B; }" +
-      ".hs-form " + c + "__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 14px 0 0; }" +
-      ".hs-form button" + c + "__send { appearance: none; -webkit-appearance: none; border: 0; border-radius: 999px; background: " + lime + "; color: " + navy + "; font: inherit; font-size: 14px; font-weight: 700; line-height: 1.2; padding: 11px 22px; cursor: pointer; transition: filter .15s ease; }" +
-      ".hs-form button" + c + "__send:hover { filter: brightness(0.94); }" +
-      ".hs-form button" + c + "__send[disabled] { opacity: 0.55; cursor: default; filter: none; }" +
-      ".hs-form " + c + "__hint { display: block; margin: 12px 0 0; font-size: 12.5px; line-height: 1.4; color: #516383; }" +
+      // Lifted off the panel rather than made louder: the fill is already the
+      // brightest thing in the form, so prominence comes from the shadow and
+      // the whitespace around it.
+      ".hs-form button" + c + "__send { appearance: none; -webkit-appearance: none; white-space: nowrap; border: 0; border-radius: 999px; background: " + lime + "; color: " + navy + "; font: inherit; font-size: 14.5px; font-weight: 700; line-height: 1.2; padding: 13px 26px; cursor: pointer; box-shadow: 0 2px 10px rgba(12,49,102,0.14); transition: transform .15s ease, box-shadow .15s ease, filter .15s ease; }" +
+      ".hs-form button" + c + "__send:hover { filter: brightness(0.96); transform: translateY(-1px); box-shadow: 0 5px 16px rgba(12,49,102,0.20); }" +
+      ".hs-form button" + c + "__send:active { transform: translateY(0); box-shadow: 0 2px 8px rgba(12,49,102,0.16); }" +
+      ".hs-form button" + c + "__send[disabled] { opacity: 0.55; cursor: default; filter: none; transform: none; box-shadow: none; }" +
+      ".hs-form " + c + "__hint { display: block; margin: 10px 0 0; font-size: 12.5px; line-height: 1.4; color: #516383; }" +
       // The guardian message is shown by the panel, but its error list has to
       // stay in the field wrapper AND stay displayed: fieldWrapperInvalid()
       // reads the lists inside a wrapper to decide whether a card is finished
       // and skips any that is display:none. Clipped rather than hidden, so the
       // card still counts as unfinished and the alert still announces once.
       ".hs-form .contour-recognition-muted { position: absolute !important; width: 1px !important; height: 1px !important; margin: -1px !important; padding: 0 !important; overflow: hidden !important; clip-path: inset(50%) !important; white-space: nowrap !important; }" +
-      " @media (max-width: 767px) { .hs-form .contour-person-group-host > " + c + ", .hs-form fieldset." + PERSON_CARD_ROW_CLASS + " > " + c + " { margin: 0 20px 20px; flex-basis: calc(100% - 40px); } }" +
+      // One column below the card's stacking point: beside becomes below, and
+      // the button takes the full width so it stays the obvious next move.
+      " @media (max-width: 767px) {" +
+      " .hs-form .contour-person-group-host > " + c + ", .hs-form fieldset." + PERSON_CARD_ROW_CLASS + " > " + c + " { margin: 0 20px 20px; flex-basis: calc(100% - 40px); }" +
+      " .hs-form " + c + " { grid-template-columns: minmax(0, 1fr); grid-template-areas: \'title\' \'body\' \'cta\' \'note\' \'hint\'; }" +
+      " .hs-form " + c + "__cta { justify-self: stretch; margin: 14px 0 2px; }" +
+      " .hs-form button" + c + "__send { width: 100%; }" +
+      " }" +
       ".hs-form " + c + "__note { display: block; margin: 12px 0 0; font-size: 13px; line-height: 1.45; font-weight: 600; color: " + navy + "; }";
     document.head.appendChild(style);
   }
@@ -10453,7 +10479,7 @@ var ContourForm1Logic = function () {
     studentRecognitionLine(panel, base + "__body", "We already have your details in our system. We can email you a link that picks up where you left off, so you can add subjects without filling this in again.");
 
     var actions = document.createElement("div");
-    actions.className = base + "__actions";
+    actions.className = base + "__cta";
     var button = document.createElement("button");
     // Not a submit: inside a form, a bare <button> submits it.
     button.type = "button";
