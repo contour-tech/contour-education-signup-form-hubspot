@@ -189,6 +189,8 @@ exports.main = async (event, callback) => {
       existing_trial_ids: "",
       new_subject_names: "",
       subject_link_failures: "",
+      needs_review: false,
+      review_reasons: "",
       is_first_time_student: false,
       is_already_enrolled: false,
       student_id: "",
@@ -375,13 +377,29 @@ exports.main = async (event, callback) => {
     if (!token) return out({ error_type: "missing_token", error_message: "No HubSpot token secret selected on this action." });
     if (!contactId) return out({ error_type: "missing_contact_id", error_message: "The enrolled contact had no record ID." });
 
+    /*
+     * Carried through from the sync action purely so the workflow can branch
+     * on ONE value at the end. A HubSpot if/then branch filters on record
+     * properties; action outputs only work with a value-equals branch, which
+     * takes a single value. Three separate flags therefore meant three nested
+     * branches and two go-tos to reassemble one question: is any of this worth
+     * a human's time? Answering it here costs two input mappings.
+     */
+    const hasUnknownSubjects = parseBoolean(input.has_unknown_subjects);
+    const guardianMatchedStudent = parseBoolean(input.guardian_matched_student_record);
+
     const submittedSubjects = uniqueCaseInsensitive(splitList(input.interested_subjects_resolved));
     if (!submittedSubjects.length) {
+      const earlyReasons = [];
+      if (hasUnknownSubjects) earlyReasons.push("Unrecognised subject codes were submitted.");
+      if (guardianMatchedStudent) earlyReasons.push("The guardian's email address belongs to a Student-typed contact.");
       return out({
         trials_success: true,
         outcome: "no_subjects",
         student_trial_status: "No Subjects Submitted",
-        trials_status: "No subjects were submitted, so no trials were created."
+        trials_status: "No subjects were submitted, so no trials were created.",
+        needs_review: earlyReasons.length > 0,
+        review_reasons: earlyReasons.join(" ")
       });
     }
 
@@ -707,9 +725,27 @@ exports.main = async (event, callback) => {
       shouldSendSlack = true;
     }
 
+    /*
+     * One sentence per thing that went through deliberately but is worth a
+     * look. Assembled here rather than as three tokens in the task body, which
+     * would print blanks for whichever did not apply.
+     */
+    const reviewReasons = [];
+    if (hasUnknownSubjects) {
+      reviewReasons.push("Unrecognised subject codes were submitted and left off the record rather than added to the subject property as new permanent options.");
+    }
+    if (guardianMatchedStudent) {
+      reviewReasons.push("The guardian's email address belongs to a Student-typed contact. They were associated as guardian but that record was left untouched.");
+    }
+    if (subjectLinkFailures.length) {
+      reviewReasons.push(`These subjects could not be linked to their Course record: ${subjectLinkFailures.join(", ")}. If this appears on every signup, the Trial-to-Course association type is stale rather than any one signup being wrong.`);
+    }
+
     return out({
       trials_success: errorCount === 0,
       outcome,
+      needs_review: reviewReasons.length > 0,
+      review_reasons: reviewReasons.join(" "),
       student_trial_status: studentTrialStatus,
       trials_status: trialsStatus,
       trials_created: createdCount,
