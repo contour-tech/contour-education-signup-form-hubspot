@@ -40,6 +40,12 @@ const HUBSPOT_BASE = "https://api.hubapi.com";
 // Set it explicitly at deploy time.
 const SEND_TRIGGER_PROPERTY = String(process.env.SEND_TRIGGER_PROPERTY || "").trim();
 
+// Local testing only. Everything runs — the address is resolved, the record is
+// checked, the answer is the one the form would get — except the write. Without
+// it, exercising the button against the real portal would put actual mail in a
+// real family's inbox, which is not a thing to find out by trying.
+const DRY_RUN = String(process.env.DRY_RUN || "").trim().toLowerCase() === "true";
+
 // Same allowlist as the prefetch function — the form is the only caller.
 const ALLOWED_ORIGINS = [
   "https://contour-staging.webflow.io",
@@ -139,6 +145,10 @@ functions.http("sendLink", async (req, res) => {
     const already = String(contact.properties[SEND_TRIGGER_PROPERTY] || "").toLowerCase() === "true";
     if (already) return res.json({ sent: true, alreadyQueued: true });
 
+    if (DRY_RUN) {
+      console.log(`send-link: DRY RUN, would set ${SEND_TRIGGER_PROPERTY} on contact ${contact.id}`);
+      return res.json({ sent: true, alreadyQueued: false, dryRun: true });
+    }
     await hubspotFetch(`/crm/v3/objects/contacts/${contact.id}`, {
       method: "PATCH",
       body: JSON.stringify({ properties: { [SEND_TRIGGER_PROPERTY]: "true" } })
