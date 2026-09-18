@@ -6,10 +6,20 @@ const axios = require("axios");
  * Decides whether the "continue your signup" email can be sent to this record,
  * and makes sure the button in it will work.
  *
- * The send-link Cloud Function has already checked the address and set
- * send_prefill_link. This re-checks rather than trusting it, for two reasons:
- * the flag is an ordinary boolean anyone can tick by hand, and something has
- * to be true at SEND time rather than at request time.
+ * The send-link Cloud Function is the real gate. It resolves the address
+ * itself, refuses anything that is not a Student with a link, rate-limits per
+ * IP, and never tells the caller anything about the record. This action is
+ * defence in depth, not the main check: the flag is an ordinary boolean anyone
+ * can tick by hand, and state can change between the request and the send.
+ *
+ * ONE THING THE WORKFLOW MUST GET RIGHT. The function treats the uncleared
+ * flag as its per-recipient cap — "once it is true the workflow already owes
+ * this contact an email, so a second click cannot queue a second send".
+ * Clearing the flag immediately after sending removes that cap and every click
+ * queues another email. The workflow therefore waits before clearing, so the
+ * delay becomes the per-recipient rate limit: durable, on the record, and
+ * unaffected by cold starts in a way the function's own in-memory IP bucket
+ * is not.
  *
  * Three gates:
  *
@@ -118,6 +128,12 @@ exports.main = async (event, callback) => {
      * is strictly better than refusing: the person asked for their link and
      * the only thing standing in the way is a property nobody happened to
      * write.
+     *
+     * Note this is deliberately MORE permissive than the function, which
+     * treats a missing link as "not eligible" and stops. It only diverges for
+     * a flag set by hand, since the function never sets one on a record
+     * without a link — and a human ticking it has made a decision the function
+     * was not in a position to make.
      */
     let prefillUrl = clean(props[LINK_PROPERTY]);
     let linkWasBuilt = false;
