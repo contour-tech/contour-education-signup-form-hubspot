@@ -10330,7 +10330,14 @@ var ContourForm1Logic = function () {
       // both of them and centres against the pair. That is what takes the
       // height down — the button no longer owns a row of its own — and what
       // uses the width the panel already had.
-      ".hs-form " + c + " { flex: 0 0 100%; width: 100%; order: 99; box-sizing: border-box; margin: 4px 0 0; padding: 16px 20px; background: #FFF9F1; border: 1px solid rgba(12,49,102,0.18); border-radius: 12px;" +
+      // A band across the card, not a box floating inside one. The fields
+      // above already sit on the card's 24px gutter; insetting the panel on
+      // top of that and then padding it again indented its text about 44px
+      // further than the Email box it belongs to. So the side inset is the
+      // padding and nothing else, and the text lines up with the fields.
+      // Side borders go with it — the card already draws those, and a second
+      // pair a pixel inside them reads as a double rule.
+      ".hs-form " + c + " { flex: 0 0 100%; width: 100%; order: 99; box-sizing: border-box; margin: 0; padding: 16px 24px 20px; background: #FFF9F1; border: 0; border-top: 1px solid rgba(12,49,102,0.14); border-radius: 0;" +
       " display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: \'title title\' \'body cta\' \'note cta\' \'hint cta\'; column-gap: 24px; align-items: start; }" +
       ".hs-form " + c + "__title { grid-area: title; }" +
       ".hs-form " + c + "__body { grid-area: body; }" +
@@ -10344,9 +10351,9 @@ var ContourForm1Logic = function () {
       ".hs-form " + c + "__cta { grid-area: cta; align-self: center; justify-self: end; }" +
       // Sitting under the card rather than inside a tile, it needs the card's
       // own side gutters back so its edges line up with the fields above.
-      // Inside the card it needs the card's own side gutters back, so its
-      // edges line up with the fields above it. Both parents it can land on.
-      ".hs-form .contour-person-group-host > " + c + ", .hs-form fieldset." + PERSON_CARD_ROW_CLASS + " > " + c + " { margin: 0 24px 24px; width: auto; flex-basis: calc(100% - 48px); }" +
+      // Last thing in the card, so it inherits the card's bottom corners —
+      // square ones would sit outside the rounded edge the row draws.
+      ".hs-form " + c + ":last-child { border-radius: 0 0 15px 15px; }" +
       ".hs-form " + c + "--warning { background: #FFF4EC; border-color: rgba(191,74,36,0.30); }" +
       ".hs-form " + c + "__title { display: block; margin: 0 0 6px; font-size: 15px; font-weight: 700; line-height: 1.3; color: " + navy + "; }" +
       ".hs-form " + c + "__body { display: block; margin: 0; font-size: 13.5px; line-height: 1.5; color: #33475B; }" +
@@ -10367,7 +10374,7 @@ var ContourForm1Logic = function () {
       // One column below the card's stacking point: beside becomes below, and
       // the button takes the full width so it stays the obvious next move.
       " @media (max-width: 767px) {" +
-      " .hs-form .contour-person-group-host > " + c + ", .hs-form fieldset." + PERSON_CARD_ROW_CLASS + " > " + c + " { margin: 0 20px 20px; flex-basis: calc(100% - 40px); }" +
+      " .hs-form " + c + " { padding: 14px 20px 18px; }" +
       " .hs-form " + c + " { grid-template-columns: minmax(0, 1fr); grid-template-areas: \'title\' \'body\' \'cta\' \'note\' \'hint\'; }" +
       " .hs-form " + c + "__cta { justify-self: stretch; margin: 14px 0 2px; }" +
       " .hs-form button" + c + "__send { width: 100%; }" +
