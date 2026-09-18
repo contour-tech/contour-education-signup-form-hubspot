@@ -97,11 +97,12 @@ Live today. Not caused by the rebuild.
    the contact gets an email with empty body tokens and the workflow reports
    success.
 
-3. **The trigger flags are never reset.** Each action PATCHes `true`
-   unconditionally, and the receiving workflow enrols on the property
-   *becoming* true. Setting an already-true property to true is not a change,
-   so **the second time a student adds subjects, nothing enrols and no email
-   goes out.** Unless a receiving workflow resets its own flag — open question.
+3. ~~The trigger flags are never reset.~~ **Not a bug.** The receiving
+   workflows clear their own flag after sending — "Waitlist Added Subjects
+   comms" action 32 clears `send_waitlist_added_subjects_mail` and action 47
+   clears `send_already_enrolled_confirmation`, both as Edit record / Clear. So
+   each flag is already a one-shot and a second signup re-triggers correctly.
+   The new comms action sets the flag the same way: a plain write to `true`.
 
 4. **Action descriptions do not match their code.** 44 reads "render mail for
    new waitlist students" but sets `send_already_enrolled_confirmation`. 46
@@ -109,14 +110,18 @@ Live today. Not caused by the rebuild.
    `send_first_time_confirmation_mail`. Anyone reading the canvas gets the
    wrong picture of what the workflow does.
 
-5. **The confirmation email is a marketing email.** HubSpot silently drops
-   marketing sends to non-marketable contacts — no error, no branch, and the
-   workflow reports success. Only the manual-review path sets marketing contact
-   status first (action 70); the standard path goes straight from branch 48 to
-   send 55 with no equivalent anywhere upstream. Around 83% of Student, Parent
-   and Guardian contacts in this portal came from data import, which is exactly
-   the population most likely to be non-marketable. This is a second, live
-   "signed up and heard nothing" path, independent of bug 3.
+5. ~~Only the manual-review path sets marketing contact status.~~ **Largely not
+   a bug.** The receiving workflows set marketing contact status before every
+   send — "Waitlist Added Subjects comms" actions 26, 34 and 43 each sit
+   directly before their email. The concern was real in principle: these are
+   marketing emails, and HubSpot drops marketing sends to non-marketable
+   contacts silently, with no error and no branch. It is already handled.
+
+   **Carried forward as a requirement:** every send in the rebuild must be
+   preceded by Set marketing contact status. Around 83% of Student, Parent and
+   Guardian contacts here came from data import, which is the population most
+   likely to be non-marketable, so a missing one fails silently and looks like
+   success.
 
 6. **`48. Branch → None met → Slack → End`.** Trials created, student on the
    waitlist, confirmation email and SMS both skipped. Only trace is a Slack
@@ -155,7 +160,12 @@ Live today. Not caused by the rebuild.
 - What sets `send_waitlist_confirmation_guardian_mail`?
 - Do the receiving workflows reset their own trigger flags? (bug 3)
 - Does `send_already_enrolled_confirmation` have an email at all? It is in no
-  row of the comms mapping document.
-- The SMS is being moved to a single generic send in Workflow A. The mapping
-  document has an SMS on all four receiving workflows, so parents currently get
-  one and would stop. Deliberate?
+  row of the comms mapping document, though a receiving workflow clears the
+  flag, so something consumes it.
+- The SMS is now a single generic send in Workflow A. The mapping document has
+  an SMS on all four receiving workflows, so parents currently get one and
+  would stop. Deliberate?
+- Workflow A sends that SMS to the enrolled record's `phone`. On a guardian
+  submission that is the guardian's number, not the student's. Intended?
+- `Waitlist SMS Sent` is set true and never cleared, unlike the comms flags.
+  One welcome SMS ever, or one per signup?
