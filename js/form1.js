@@ -10330,14 +10330,13 @@ var ContourForm1Logic = function () {
       // both of them and centres against the pair. That is what takes the
       // height down — the button no longer owns a row of its own — and what
       // uses the width the panel already had.
-      // A band across the card, not a box floating inside one. The fields
-      // above already sit on the card's 24px gutter; insetting the panel on
-      // top of that and then padding it again indented its text about 44px
-      // further than the Email box it belongs to. So the side inset is the
-      // padding and nothing else, and the text lines up with the fields.
-      // Side borders go with it — the card already draws those, and a second
-      // pair a pixel inside them reads as a double rule.
-      ".hs-form " + c + " { flex: 0 0 100%; width: 100%; order: 99; box-sizing: border-box; margin: 0; padding: 16px 24px 20px; background: #FFF9F1; border: 0; border-top: 1px solid rgba(12,49,102,0.14); border-radius: 0;" +
+      // Outlined, but not inset on top of the card's own gutter. The fields
+      // above sit 24px in; the panel's border sits at 12px and its padding
+      // adds the other 12px, so the text lines up with the Email box it is
+      // talking about while the outline still reads as its own section. The
+      // earlier version put a 24px margin AND 20px of padding on top of that
+      // gutter and indented the text about 44px further than the field.
+      ".hs-form " + c + " { flex: 0 0 100%; width: 100%; order: 99; box-sizing: border-box; margin: 2px 12px 16px; padding: 18px 12px 16px; background: #FFF9F1; border: 1px solid rgba(12,49,102,0.20); border-radius: 12px; flex-basis: calc(100% - 24px);" +
       " display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: \'title title\' \'body cta\' \'note cta\' \'hint cta\'; column-gap: 24px; align-items: start; }" +
       ".hs-form " + c + "__title { grid-area: title; }" +
       ".hs-form " + c + "__body { grid-area: body; }" +
@@ -10351,20 +10350,24 @@ var ContourForm1Logic = function () {
       ".hs-form " + c + "__cta { grid-area: cta; align-self: center; justify-self: end; }" +
       // Sitting under the card rather than inside a tile, it needs the card's
       // own side gutters back so its edges line up with the fields above.
-      // Last thing in the card, so it inherits the card's bottom corners —
-      // square ones would sit outside the rounded edge the row draws.
-      ".hs-form " + c + ":last-child { border-radius: 0 0 15px 15px; }" +
+
       ".hs-form " + c + "--warning { background: #FFF4EC; border-color: rgba(191,74,36,0.30); }" +
-      ".hs-form " + c + "__title { display: block; margin: 0 0 6px; font-size: 15px; font-weight: 700; line-height: 1.3; color: " + navy + "; }" +
+      // Bigger, with room under it, and the weight carried by the name alone
+      // — "Is this you, <b>Priya Shah</b>?" puts the emphasis on the only
+      // part the reader has to check.
+      ".hs-form " + c + "__title { display: block; margin: 0 0 12px; font-size: 17px; font-weight: 600; line-height: 1.32; color: " + navy + "; }" +
+      ".hs-form " + c + "__name { font-weight: 800; }" +
       ".hs-form " + c + "__body { display: block; margin: 0; font-size: 13.5px; line-height: 1.5; color: #33475B; }" +
       // Lifted off the panel rather than made louder: the fill is already the
       // brightest thing in the form, so prominence comes from the shadow and
       // the whitespace around it.
-      ".hs-form button" + c + "__send { appearance: none; -webkit-appearance: none; white-space: nowrap; border: 0; border-radius: 999px; background: " + lime + "; color: " + navy + "; font: inherit; font-size: 14.5px; font-weight: 700; line-height: 1.2; padding: 13px 26px; cursor: pointer; box-shadow: 0 2px 10px rgba(12,49,102,0.14); transition: transform .15s ease, box-shadow .15s ease, filter .15s ease; }" +
+      ".hs-form button" + c + "__send { appearance: none; -webkit-appearance: none; white-space: nowrap; display: inline-flex; align-items: center; gap: 9px; border: 0; border-radius: 999px; background: " + lime + "; color: " + navy + "; font: inherit; font-size: 14.5px; font-weight: 700; line-height: 1.2; padding: 13px 26px; cursor: pointer; box-shadow: 0 2px 10px rgba(12,49,102,0.14); transition: transform .15s ease, box-shadow .15s ease, filter .15s ease; }" +
       ".hs-form button" + c + "__send:hover { filter: brightness(0.96); transform: translateY(-1px); box-shadow: 0 5px 16px rgba(12,49,102,0.20); }" +
       ".hs-form button" + c + "__send:active { transform: translateY(0); box-shadow: 0 2px 8px rgba(12,49,102,0.16); }" +
       ".hs-form button" + c + "__send[disabled] { opacity: 0.55; cursor: default; filter: none; transform: none; box-shadow: none; }" +
-      ".hs-form " + c + "__hint { display: block; margin: 10px 0 0; font-size: 12.5px; line-height: 1.4; color: #516383; }" +
+      // The rule sits on the footer itself, so it stays inside the text
+      // column and never runs under the button beside it.
+      ".hs-form " + c + "__hint { display: block; margin: 14px 0 0; padding: 12px 0 0; border-top: 1px solid rgba(12,49,102,0.12); font-size: 12.5px; line-height: 1.4; color: #516383; }" +
       // The guardian message is shown by the panel, but its error list has to
       // stay in the field wrapper AND stay displayed: fieldWrapperInvalid()
       // reads the lists inside a wrapper to decide whether a card is finished
@@ -10374,7 +10377,7 @@ var ContourForm1Logic = function () {
       // One column below the card's stacking point: beside becomes below, and
       // the button takes the full width so it stays the obvious next move.
       " @media (max-width: 767px) {" +
-      " .hs-form " + c + " { padding: 14px 20px 18px; }" +
+      " .hs-form " + c + " { margin: 2px 8px 14px; padding: 16px 12px 14px; flex-basis: calc(100% - 16px); }" +
       " .hs-form " + c + " { grid-template-columns: minmax(0, 1fr); grid-template-areas: \'title\' \'body\' \'cta\' \'note\' \'hint\'; }" +
       " .hs-form " + c + "__cta { justify-self: stretch; margin: 14px 0 2px; }" +
       " .hs-form button" + c + "__send { width: 100%; }" +
@@ -10445,6 +10448,52 @@ var ContourForm1Logic = function () {
   // Every name that reaches the page goes in as text. It comes from a CRM
   // record this visitor only guessed the address of, so it is not ours to
   // trust with markup.
+  // "Is this you, <b>Priya Shah</b>?" — the lead and the question mark are
+  // plain, the name is the bold part, because the name is the only thing the
+  // reader has to check. Built from nodes rather than markup: the name comes
+  // off a CRM record whose address this visitor only guessed.
+  function studentRecognitionTitle(parent, base, lead, name, tail) {
+    var el = document.createElement("span");
+    el.className = base + "__title";
+    if (lead) el.appendChild(document.createTextNode(lead));
+    if (name) {
+      var strong = document.createElement("span");
+      strong.className = base + "__name";
+      strong.textContent = name;
+      el.appendChild(strong);
+    }
+    if (tail) el.appendChild(document.createTextNode(tail));
+    parent.appendChild(el);
+    return el;
+  }
+  // An envelope ahead of the label, so the button says what it does before it
+  // is read. Inline rather than a font or an image: one fewer request, and it
+  // inherits the button's colour.
+  function studentRecognitionMailIcon() {
+    var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("viewBox", "0 0 20 20");
+    svg.setAttribute("width", "17");
+    svg.setAttribute("height", "17");
+    svg.setAttribute("aria-hidden", "true");
+    svg.setAttribute("focusable", "false");
+    var rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    rect.setAttribute("x", "2.2"); rect.setAttribute("y", "4.2");
+    rect.setAttribute("width", "15.6"); rect.setAttribute("height", "11.6");
+    rect.setAttribute("rx", "2.2");
+    rect.setAttribute("fill", "none");
+    rect.setAttribute("stroke", "currentColor");
+    rect.setAttribute("stroke-width", "1.7");
+    var flap = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    flap.setAttribute("d", "M3.2 5.6 10 10.9l6.8-5.3");
+    flap.setAttribute("fill", "none");
+    flap.setAttribute("stroke", "currentColor");
+    flap.setAttribute("stroke-width", "1.7");
+    flap.setAttribute("stroke-linecap", "round");
+    flap.setAttribute("stroke-linejoin", "round");
+    svg.appendChild(rect);
+    svg.appendChild(flap);
+    return svg;
+  }
   function studentRecognitionLine(parent, className, text) {
     var el = document.createElement("span");
     el.className = className;
@@ -10466,7 +10515,7 @@ var ContourForm1Logic = function () {
     panel.removeAttribute("role");
     panel.setAttribute("aria-hidden", "true");
     var base = STUDENT_RECOGNITION_PANEL_CLASS;
-    studentRecognitionLine(panel, base + "__title", STUDENT_RECOGNITION_GUARDIAN_TITLE);
+    studentRecognitionTitle(panel, base, STUDENT_RECOGNITION_GUARDIAN_TITLE, "", "");
     studentRecognitionLine(panel, base + "__body", studentRecognitionGuardianBody());
   }
   function renderStudentRecognitionPanel(input, value, verdict) {
@@ -10485,16 +10534,18 @@ var ContourForm1Logic = function () {
     // A matched record with no name is common — a third of them carry no
     // firstname at all — so the greeting degrades to something that still
     // makes sense rather than addressing an empty string.
-    var title = verdict.fullName ? "Is this you, " + verdict.fullName + "?" : "We already have your details";
-
     if (sendState === "sent") {
-      studentRecognitionLine(panel, base + "__title", "Check your inbox");
+      studentRecognitionTitle(panel, base, "Check your inbox", "", "");
       studentRecognitionLine(panel, base + "__body", "We've emailed your sign-up link to " + value + ". Open it to pick up where you left off and add subjects.");
       studentRecognitionLine(panel, base + "__hint", "Not your account? Enter a different email address to sign up as someone new.");
       return;
     }
 
-    studentRecognitionLine(panel, base + "__title", title);
+    if (verdict.fullName) {
+      studentRecognitionTitle(panel, base, "Is this you, ", verdict.fullName, "?");
+    } else {
+      studentRecognitionTitle(panel, base, "We already have your details", "", "");
+    }
     if (!verdict.canSendLink) {
       // A student record with no add_subjects_url on it. There is nothing to
       // send, so the panel stops promising one and hands them to the team.
@@ -10510,7 +10561,10 @@ var ContourForm1Logic = function () {
     // Not a submit: inside a form, a bare <button> submits it.
     button.type = "button";
     button.className = base + "__send";
-    button.textContent = sendState === "sending" ? "Sending…" : "Email me my link";
+    button.appendChild(studentRecognitionMailIcon());
+    var buttonLabel = document.createElement("span");
+    buttonLabel.textContent = sendState === "sending" ? "Sending…" : "Email me my link";
+    button.appendChild(buttonLabel);
     button.disabled = sendState === "sending";
     button.addEventListener("click", function () {
       sendStudentRecognitionLink(input, value);
