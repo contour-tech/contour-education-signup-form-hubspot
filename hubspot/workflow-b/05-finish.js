@@ -27,6 +27,14 @@ const CONTACT = "0-1";
 const RESOLVED_PROPERTY = "lgm04_resolved_identity";
 const READY_PROPERTY = "signup_ready";
 
+/*
+ * Cleared here rather than at the start of Workflow A. If the merge fails, the
+ * record stalls and B never runs — clearing at A's start would send a second
+ * welcome SMS to the same student the moment anyone re-triggered it. Clearing
+ * at the end of a completed run means one SMS per completed signup.
+ */
+const SMS_SENT_PROPERTY = "waitlist_sms_sent";
+
 function clean(v) {
   return String(v ?? "").trim();
 }
@@ -95,14 +103,14 @@ exports.main = async (event, callback) => {
 
     await axios.patch(
       `https://api.hubapi.com/crm/v3/objects/${CONTACT}/${contactId}`,
-      { properties: { [READY_PROPERTY]: "false", [RESOLVED_PROPERTY]: "" } },
+      { properties: { [READY_PROPERTY]: "false", [SMS_SENT_PROPERTY]: "false", [RESOLVED_PROPERTY]: "" } },
       { headers }
     );
 
     return out({
       finish_success: true,
       cleared: true,
-      finish_status: "Ready flag cleared and resolved identity removed."
+      finish_status: "Ready flag and SMS flag cleared, resolved identity removed."
     });
   } catch (error) {
     if (isTemporary(error)) throw error;

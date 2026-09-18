@@ -993,12 +993,24 @@ exports.main = async (event, callback) => {
 
   const contactId = clean(event.object?.objectId || inputFields.hs_object_id?.value || inputFields.hs_object_id);
   const guardianContactId = clean(inputFields.guardian_contact_id);
-  const outcome = clean(inputFields.outcome);
+  const rawOutcome = clean(inputFields.outcome);
+  const isFirstTimeStudent = ["true", "yes", "1"].includes(clean(inputFields.is_first_time_student).toLowerCase());
+
+  /*
+   * "partial" means some subjects got trials and some did not. The student is
+   * owed the same email either way — which one depends on whether they are new,
+   * not on whether every subject worked. Left unmapped it would set no flag and
+   * trigger no native send, and the student would hear nothing precisely when
+   * something had already gone wrong.
+   */
+  const outcome = rawOutcome === "partial" ? (isFirstTimeStudent ? "first_time" : "repeat_new_trials") : rawOutcome;
 
   function returnOutputs(fields) {
     const payload = {
       comms_success: false,
       comms_status: "",
+      send_mode: "none",
+      resolved_outcome: "",
       subject_list: "",
       sms_key_date_line: "",
       subject_count: 0,
@@ -1579,8 +1591,17 @@ exports.main = async (event, callback) => {
       }
     }
 
+    /*
+     * One value for the workflow to branch on, so it never has to know which
+     * outcome names imply a native send. "native" is this workflow sending it;
+     * "handoff" is a flag that enrols the record in a sending workflow.
+     */
+    const sendMode = flags.student || flags.guardian ? (flags.student ? "handoff" : "native") : "none";
+
     return returnOutputs({
       comms_success: true,
+      send_mode: sendMode,
+      resolved_outcome: outcome,
       comms_status: flags.student
         ? `Rendered; ${flags.student} set${guardianUpdated ? ` and ${flags.guardian} set on the guardian` : ""}`
         : `Rendered for a native send${guardianUpdated ? `; ${flags.guardian} set on the guardian` : ""}`,
