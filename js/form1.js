@@ -195,7 +195,13 @@ var ContourForm1Logic = function () {
     //   "wipe-radial" — a circle grows out from the centre until it covers
     //   "wipe-left"   — the fill sweeps in from the left, the program cards'
     //                   logo-tint wipe
-    animationStyle: "fade"
+    animationStyle: "fade",
+    // Where the form's three Cloud Functions live. Overridden only by the
+    // local test page (test/local-test.html?api=local), which runs them on
+    // localhost so a change can be exercised before it is deployed.
+    prefetchEndpoint: "https://australia-southeast1-hubspot-signup-form.cloudfunctions.net/contour-form1-prefetch",
+    sendLinkEndpoint: "https://australia-southeast1-hubspot-signup-form.cloudfunctions.net/contour-form1-send-link",
+    emailVerifyEndpoint: "https://australia-southeast1-hubspot-signup-form.cloudfunctions.net/contour-form1-email-verify"
   };
   function settingValue(name) {
     var overrides = window.ContourForm1Config;
@@ -3808,13 +3814,17 @@ var ContourForm1Logic = function () {
       }, true);
     });
   }
-  var PREFETCH_ENDPOINT = "https://australia-southeast1-hubspot-signup-form.cloudfunctions.net/contour-form1-prefetch";
+  // Overridable so the local test page can point at functions running on
+  // localhost — one port each, which is why these are three settings and not
+  // one base. Read at load, so window.ContourForm1Config has to be set BEFORE
+  // this file (both embeds already do that; see webflow/embed.html).
+  var PREFETCH_ENDPOINT = settingValue("prefetchEndpoint");
   // Flips the one property a HubSpot workflow enrols on to send the "continue
   // your signup" email. Separate function, not a prefetch route, so the only
   // endpoint holding a write-scoped token is the one that needs it.
-  var SEND_LINK_ENDPOINT = "https://australia-southeast1-hubspot-signup-form.cloudfunctions.net/contour-form1-send-link";
+  var SEND_LINK_ENDPOINT = settingValue("sendLinkEndpoint");
   // functions/email-verify — domain-level deliverability verdict for an address.
-  var EMAIL_VERIFY_ENDPOINT = "https://australia-southeast1-hubspot-signup-form.cloudfunctions.net/contour-form1-email-verify";
+  var EMAIL_VERIFY_ENDPOINT = settingValue("emailVerifyEndpoint");
   // Shared by the school search and by the completeness test that decides
   // whether Academic Details is finished.
   var SCHOOL_MIN_SEARCH_CHARS = 2;
