@@ -1,0 +1,77 @@
+name: Build the production file
+
+# Production downloads js/prod/form1.js, which is minified and therefore not
+# hand-editable. A hotfix is still one edit and one push: change
+# js/prod/form1.src.js on main and this rebuilds the served file behind it, so
+# the hotfix path keeps working without anyone running a build locally.
+#
+# Running scripts/build-prod.sh before pushing is fine too — this then finds
+# nothing to do. Releases go through promote-to-production.yml instead.
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "js/prod/form1.src.js"
+      - "js/prod/staff-gate.src.js"
+      - "scripts/build-prod.sh"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# promote-to-production writes the same files. Serialise every writer of the
+# production path so two of them cannot interleave commits.
+concurrency:
+  group: production-path
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Rebuild the production files from the source copies
+        run: scripts/build-prod.sh
+
+      - name: Commit the artifact if it moved
+        run: |
+          if git diff --quiet -- js/prod/form1.js js/prod/staff-gate.js; then
+            echo "Artifacts already match the sources — nothing to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add js/prod/form1.js js/prod/staff-gate.js
+          git commit -m "Rebuild the production files"
+          # A person may have pushed to main while this ran; rebase onto them
+          # rather than failing the hotfix.
+          for i in 1 2 3; do
+            git pull --rebase origin main && git push origin main && exit 0
+            echo "Push raced (attempt $i/3), retrying..."
+          done
+          echo "Could not push the rebuilt artifact." >&2
+          exit 1
+
+      - name: Wait for Pages to serve it
+        run: |
+          URL="https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}/js/prod/form1.js"
+          echo "Verifying ${URL}"
+          for i in $(seq 1 20); do
+            if curl -fsS "$URL" -o /tmp/live.js && cmp -s /tmp/live.js js/prod/form1.js; then
+              echo "Production path is live and byte-identical."
+              exit 0
+            fi
+            echo "Not ready yet (attempt $i/20), retrying in 15s..."
+            sleep 15
+          done
+          echo "Pages did not serve the rebuilt file within 5 minutes." >&2
+          exit 1
