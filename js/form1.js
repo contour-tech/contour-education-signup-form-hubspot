@@ -2035,6 +2035,7 @@ var ContourForm1Logic = function () {
     // already runs everywhere one is needed: init, prefill, the radio change,
     // and the contact-field MutationObserver.
     enforcePrefillLinkPresentation();
+    ensureReferralCodeBeforeContactMethod();
     var guardian = isGuardianContactType();
     var enabled = featureEnabled("personGroups");
     var variant = personGroupsVariant();
@@ -14430,6 +14431,20 @@ var ContourForm1Logic = function () {
     divider.className = "contour-section-divider";
     wrap.parentNode.insertBefore(divider, wrap);
   }
+  // Staff answer the referral code before saying how the family reached us.
+  // The live form already orders them that way; the staging form
+  // (35860477…) has how_did_they_contact_us first. Top-level fieldsets move
+  // safely — React only removes those at unmount, unlike dependent fields.
+  function ensureReferralCodeBeforeContactMethod() {
+    var code = fieldWrapper(q(FIELD_SELECTORS.referralCodeEntered));
+    var contact = fieldWrapper(q(FIELD_SELECTORS.contactMethod));
+    if (!code || !contact) return;
+    var codeRow = code.closest("fieldset") || code;
+    var contactRow = contact.closest("fieldset") || contact;
+    if (codeRow === contactRow || !contactRow.parentNode) return;
+    if (codeRow.compareDocumentPosition(contactRow) & Node.DOCUMENT_POSITION_FOLLOWING) return;
+    contactRow.parentNode.insertBefore(codeRow, contactRow);
+  }
   function init(formElement) {
     formRoot = formElement;
     enhanceProgramInterestCards();
@@ -14456,6 +14471,7 @@ var ContourForm1Logic = function () {
     // divider before the campus field lands right after it (Amitav).
     ensureDividerBefore(q(FIELD_SELECTORS.campus), "contour-divider-campus");
     ensureDividerBefore(q(FIELD_SELECTORS.referral), "contour-divider-referral");
+    ensureReferralCodeBeforeContactMethod();
     fixRadioCardClickArea();
     guardLockedCampusOptions();
     fixCheckboxCardClickArea();
