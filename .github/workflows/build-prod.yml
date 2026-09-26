@@ -6,7 +6,8 @@ name: Build the production file
 # the hotfix path keeps working without anyone running a build locally.
 #
 # Running scripts/build-prod.sh before pushing is fine too — this then finds
-# nothing to do. Releases go through promote-to-production.yml instead.
+# nothing to do. Releases go through scripts/sync-public.sh release, which
+# builds locally and pushes the source and the build together.
 
 on:
   push:
@@ -21,8 +22,8 @@ on:
 permissions:
   contents: write
 
-# promote-to-production writes the same files. Serialise every writer of the
-# production path so two of them cannot interleave commits.
+# Two pushes touching the production source close together must not
+# interleave their rebuild commits.
 concurrency:
   group: production-path
   cancel-in-progress: false
