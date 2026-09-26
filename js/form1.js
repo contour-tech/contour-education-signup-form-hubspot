@@ -13397,6 +13397,7 @@ var ContourForm1Logic = function () {
      would blank signed_up_by entirely — the opposite of the point.
      ========================================================= */
   var STAFF_LOCK_CLASS = "contour-signed-up-by--locked";
+  var STAFF_LOCK_INPUT_CLASS = "contour-signed-up-by--locked-input";
   var STAFF_HINT_CLASS = "contour-signed-up-by-hint";
   var STAFF_PAD_CLASS = "contour-signed-up-by-padded";
   /*
@@ -13444,7 +13445,24 @@ var ContourForm1Logic = function () {
     var style = document.createElement("style");
     style.id = "contour-staff-identity-styles";
     style.textContent = [
-      "." + STAFF_LOCK_CLASS + "{pointer-events:none;background:#f6f7f9;color:#0C3166}",
+      /*
+       * Only pointer-events. A background here landed on the combobox WRAPPER,
+       * which has square corners, while the input inside it is rounded — so a
+       * grey right-angle peeked out at each corner of the field.
+       */
+      "." + STAFF_LOCK_CLASS + "{pointer-events:none}",
+      /*
+       * The disabled look goes on the input itself, which is what a person
+       * actually sees. !important because the Webflow page header styles
+       * inputs with !important of its own.
+       *
+       * The input carries no name and is never submitted — the hidden <select>
+       * is — so disabling it is safe. Disabling the SELECT would submit
+       * nothing at all and blank signed_up_by.
+       */
+      "." + COMBOBOX_CLASS + " input." + STAFF_LOCK_INPUT_CLASS + "{",
+      "background:#f1f3f6!important;color:#6b7280!important;-webkit-text-fill-color:#6b7280;",
+      "cursor:not-allowed;opacity:1}",
       // Anchored to the combobox wrapper, so the icon rides inside the input's
       // right edge instead of adding a line of text under the field.
       "." + COMBOBOX_CLASS + ":has(." + STAFF_HINT_CLASS + "){position:relative}",
@@ -13635,6 +13653,23 @@ var ContourForm1Logic = function () {
    * runs on every MutationObserver pass, and rebuilding the node each time
    * would be a mutation that wakes the observer that called it.
    */
+  // Only reachable if a session stops matching mid-page — but a field left
+  // disabled with nobody able to change it would be unusable, so undo it.
+  function unlockStaffField(select) {
+    var wrapper = comboboxWrapperOf(select);
+    if (!wrapper) return;
+    wrapper.classList.remove(STAFF_LOCK_CLASS);
+    select.classList.remove(STAFF_LOCK_CLASS);
+    select.removeAttribute("aria-readonly");
+    var input = wrapper.querySelector("input");
+    if (!input) return;
+    input.classList.remove(STAFF_LOCK_INPUT_CLASS);
+    input.disabled = false;
+    input.readOnly = false;
+    input.removeAttribute("aria-readonly");
+    input.tabIndex = 0;
+  }
+
   function applyStaffFieldIcon(select, matched, text) {
     var anchor = comboboxWrapperOf(select) || fieldWrapper(select);
     if (!anchor) return;
@@ -13671,10 +13706,12 @@ var ContourForm1Logic = function () {
     wrapper.classList.add(STAFF_LOCK_CLASS);
     var input = wrapper.querySelector("input");
     if (!input) return;
+    input.classList.add(STAFF_LOCK_INPUT_CLASS);
+    // Genuinely disabled, not merely styled: no focus, no typing, no stray
+    // keystroke reopening the list. Safe because this input has no name.
+    input.disabled = true;
     input.readOnly = true;
     input.setAttribute("aria-readonly", "true");
-    // pointer-events alone leaves it reachable by keyboard, where arrow keys
-    // would still change it.
     input.tabIndex = -1;
     syncComboboxInput(select);
   }
@@ -13735,6 +13772,7 @@ var ContourForm1Logic = function () {
      * picked their own name — clearing here would strip the owner id back off
      * a name they had just chosen.
      */
+    unlockStaffField(select);
     writeOwnerId(ownerIdFromOption(select.value));
     applyStaffFieldIcon(select, false, STAFF_UNMATCHED_TEXT);
   }
