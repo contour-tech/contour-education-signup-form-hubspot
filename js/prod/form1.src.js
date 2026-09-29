@@ -357,7 +357,7 @@ var ContourForm1Logic = function () {
   // 12 Aug 2026). While closed, the Welcome Consultation scheduler is hidden
   // for UCAT students. Flip UCAT_ENROLMENTS_OPEN back to true when enrolments
   // reopen — nothing else needs changing.
-  var UCAT_ENROLMENTS_OPEN = false;
+  var UCAT_ENROLMENTS_OPEN = true;
   var UCAT_SUBJECT_CODES = ["UCAT-ANZ-CORE", "UCAT-ANZ-MAST", "UCAT-UK-CORE", "UCAT-UK-MAST"];
   // Only the 2026 intake gets a notice (Ramodh via Amitav, 19 Aug 2026). The
   // 2026 program has closed, so a 2026 UCAT signup is really a 2027 one and
@@ -371,7 +371,7 @@ var ContourForm1Logic = function () {
   // students see the yellow "open soon" note instead of the Calendly
   // scheduler. Flip WC_BOOKINGS_OPEN back to true to restore the scheduler —
   // nothing else needs changing.
-  var WC_BOOKINGS_OPEN = false;
+  var WC_BOOKINGS_OPEN = true;
   var WC_OPEN_SOON_NOTE = "Welcome Consultation bookings open soon. You can still submit this form now. We'll be in touch once bookings open.";
   var CATEGORY_DISPLAY_ORDER = ["Mathematics", "Science", "English", "TestPrep", "MedPrep", "Other"];
   var CATEGORY_DISPLAY_NAMES = {
@@ -678,6 +678,11 @@ var ContourForm1Logic = function () {
     }));
   }
   function matchCardConfig(inputEl, index) {
+    // The value names the program outright; the label text carries card copy ("UCAT tutoring")
+    // that another card's pattern can catch.
+    for (var v = 0; v < PROGRAM_CARD_CONFIG.length; v++) {
+      if (PROGRAM_CARD_CONFIG[v].match.test(inputEl.value || "")) return PROGRAM_CARD_CONFIG[v];
+    }
     var haystack = (inputEl.value || "") + " " + optionLabelText(inputEl);
     for (var i = 0; i < PROGRAM_CARD_CONFIG.length; i++) {
       if (PROGRAM_CARD_CONFIG[i].match.test(haystack)) return PROGRAM_CARD_CONFIG[i];
@@ -5408,10 +5413,23 @@ var ContourForm1Logic = function () {
       if (document.visibilityState === "hidden") flushDraftSave();
     });
   }
-  var CALENDLY_URLS = {
-    anz: "https://calendly.com/contourmedprep/welcome-consultation-anz",
-    uk: "https://calendly.com/contourmedprep/welcome-consultation-uk"
-  };
+  // Welcome Consultations are booked through HubSpot's own scheduler, framed from the Contour page
+  // on the link domain. That page skins it and posts its height and the finished booking back here.
+  // Only UCAT outside the UK books here: the UK team is not on HubSpot yet, so UK families keep the
+  // open-soon note and are never shown the calendar, and Selective & Scholarship keeps its note too.
+  var WC_EMBED_ORIGIN = "https://www.link.contoureducation.com.au";
+  var WC_EMBED_PAGE = WC_EMBED_ORIGIN + "/book/medprep-welcome-consultation-anz";
+  var WC_EMBED_AUDIENCES = ["UCAT"];
+  var WC_BOOKED_MESSAGE = "contour-wc-booked";
+  var WC_BOOKING_STORAGE_KEY = "contour_form1_wc_bookings";
+  var WC_BOOKINGS_KEPT = 5;
+  var WC_WAITING_NOTE = "Fill in your details above to book your Welcome Consultation.";
+  var WC_BOOKED_TITLE = "Your Welcome Consultation is booked";
+  var WC_BOOKED_SENT = "The invitation has been emailed to you.";
+  var WC_LOCKED_NOTE = "Your Welcome Consultation is booked under these details, so they can no longer be changed.";
+  // The answers a booking is filed under, as [FIELD_SELECTORS key, identity key].
+  var WC_LOCKED_FIELDS = [["firstName", "firstname"], ["lastName", "lastname"], ["emailTemp", "email"], ["studentFirstName", "wc_student_first_name"], ["studentLastName", "wc_student_last_name"], ["studentEmail", "wc_student_email"]];
+  var wcEmbed = { key: "", values: null, booked: false, restored: false, start: 0, watching: false, listening: false };
   // Held subjects are skipped in both: a student already trialling UCAT has
   // had their Welcome Consultation, so their hidden tick must not resurrect
   // the Calendly block or the TestPrep booking restriction on a prefill visit.
@@ -5433,22 +5451,229 @@ var ContourForm1Logic = function () {
     }
     return false;
   }
-  function loadCalendlyScript(callback) {
-    if (window.Calendly) {
-      callback();
-      return;
+  // The booking has to carry exactly the identity the signup will submit. LGM-04/05 files the
+  // signup under the booking's contact only when the email and both names match; the same email
+  // under another name goes to manual review as a separate record.
+  function wcIdentity() {
+    var guardian = isGuardianContactType();
+    var values = {
+      firstname: getValue(FIELD_SELECTORS.firstName).trim(),
+      lastname: getValue(FIELD_SELECTORS.lastName).trim(),
+      email: getValue(FIELD_SELECTORS.emailTemp).trim(),
+      phone: getValue(FIELD_SELECTORS.guardianPhone).trim(),
+      wc_booked_by: guardian ? "parent" : "student"
+    };
+    if (guardian) {
+      values.wc_student_first_name = getValue(FIELD_SELECTORS.studentFirstName).trim();
+      values.wc_student_last_name = getValue(FIELD_SELECTORS.studentLastName).trim();
+      values.wc_student_email = getValue(FIELD_SELECTORS.studentEmail).trim();
     }
-    var existing = document.getElementById("contour-calendly-script");
-    if (existing) {
-      existing.addEventListener("load", callback);
-      return;
+    return values;
+  }
+  // The UK check reads the location on every render, so a family that switches to the UK after the
+  // calendar has loaded loses it straight away.
+  function wcBookableAudiences(audiences) {
+    if (!WC_BOOKINGS_OPEN || getValue(FIELD_SELECTORS.location) === UK_TOKEN) return [];
+    return audiences.filter(function (audience) {
+      return WC_EMBED_AUDIENCES.indexOf(audience) !== -1;
+    });
+  }
+  function wcIdentityReady(values) {
+    var email = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+    if (!values.firstname || !values.lastname || !email.test(values.email)) return false;
+    if (values.wc_booked_by === "parent") {
+      return !!values.wc_student_first_name && !!values.wc_student_last_name && email.test(values.wc_student_email);
     }
-    var script = document.createElement("script");
-    script.id = "contour-calendly-script";
-    script.src = "https://assets.calendly.com/assets/external/widget.js";
-    script.async = true;
-    script.onload = callback;
-    document.body.appendChild(script);
+    return true;
+  }
+  // Everything the booking is filed under. The phone is left out: it is prefilled but stays the
+  // visitor's to change, and changing it must not restart a booking they are part way through.
+  function wcIdentityKey(values) {
+    return [values.wc_booked_by, values.firstname, values.lastname, values.email, values.wc_student_first_name || "", values.wc_student_last_name || "", values.wc_student_email || ""].join("|").toLowerCase();
+  }
+  // A booking is remembered by a fingerprint of those details rather than the names and addresses
+  // themselves: enough to recognise the same details coming back, nothing to read off the device.
+  function wcFingerprint(text) {
+    var hash = 0x811c9dc5;
+    for (var i = 0; i < text.length; i++) {
+      hash ^= text.charCodeAt(i);
+      hash = (hash + (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24)) >>> 0;
+    }
+    return hash.toString(16);
+  }
+  // Kept beside the draft and under its rules: never for internal sessions, gone after the draft's
+  // TTL. It outlives the submit on purpose. A refresh, a closed tab or a second visit brings the
+  // same details back, and that family already has its consultation; offering the scheduler again
+  // is how a second booking gets made.
+  function readWcBookings() {
+    if (!draftCacheEnabled()) return [];
+    var parsed = null;
+    try {
+      parsed = JSON.parse(draftStorage().getItem(WC_BOOKING_STORAGE_KEY) || "[]");
+    } catch (err) {
+      parsed = null;
+    }
+    if (!Array.isArray(parsed)) return [];
+    var now = Date.now();
+    return parsed.filter(function (entry) {
+      return entry && typeof entry.key === "string" && typeof entry.savedAt === "number" && now - entry.savedAt <= DRAFT_TTL_MS;
+    });
+  }
+  function rememberWcBooking(values, start) {
+    if (!draftCacheEnabled()) return;
+    var key = wcFingerprint(wcIdentityKey(values));
+    var kept = readWcBookings().filter(function (entry) {
+      return entry.key !== key;
+    });
+    kept.unshift({ key: key, start: start, savedAt: Date.now() });
+    try {
+      draftStorage().setItem(WC_BOOKING_STORAGE_KEY, JSON.stringify(kept.slice(0, WC_BOOKINGS_KEPT)));
+    } catch (err) { }
+  }
+  function findWcBooking(values) {
+    var key = wcFingerprint(wcIdentityKey(values));
+    return readWcBookings().filter(function (entry) {
+      return entry.key === key;
+    })[0] || null;
+  }
+  function wcBookedWhen(start) {
+    if (!start) return "";
+    try {
+      return new Date(start).toLocaleString("en-AU", { weekday: "long", day: "numeric", month: "long", hour: "numeric", minute: "2-digit" });
+    } catch (err) {
+      return "";
+    }
+  }
+  function wcEmbedUrl(base, audiences, values) {
+    var params = ["context=signup", "audience=" + encodeURIComponent(audiences.join("|"))];
+    Object.keys(values).forEach(function (key) {
+      if (values[key]) params.push(key + "=" + encodeURIComponent(values[key]));
+    });
+    return base + "?" + params.join("&");
+  }
+  // Delegated from the form root, so the listener outlives HubSpot's re-renders of the inputs.
+  function watchWcIdentity() {
+    if (wcEmbed.watching) return;
+    wcEmbed.watching = true;
+    var selectors = [FIELD_SELECTORS.contactType];
+    WC_LOCKED_FIELDS.forEach(function (pair) {
+      selectors.push(FIELD_SELECTORS[pair[0]]);
+    });
+    var watched = selectors.join(", ");
+    formRoot.addEventListener("change", function (e) {
+      if (e.target && e.target.matches && e.target.matches(watched)) renderWelcomeConsultation();
+    });
+  }
+  // Re-applied on every render while booked: a HubSpot re-render can hand back a fresh, empty,
+  // unlocked box, and the booked answer goes back into it before it is locked again.
+  function lockWcIdentity(wrapper) {
+    var values = wcEmbed.values || {};
+    WC_LOCKED_FIELDS.forEach(function (pair) {
+      var selector = FIELD_SELECTORS[pair[0]];
+      var booked = values[pair[1]] || "";
+      if (!q(selector)) return;
+      if (booked && (q(selector).value || "").trim() === "") setSelectOrTextValue(selector, booked);
+      var input = q(selector);
+      if ((input.value || "").trim() === "" || input.readOnly) return;
+      input.readOnly = true;
+      input.setAttribute("aria-readonly", "true");
+      input.classList.add("contour-prefill-locked");
+    });
+    qAll(FIELD_SELECTORS.contactType).forEach(function (radio) {
+      radio.setAttribute("tabindex", "-1");
+      radio.setAttribute("aria-disabled", "true");
+      var wrap = fieldWrapper(radio);
+      if (wrap) wrap.classList.add("contour-wc-locked");
+    });
+    var note = wrapper.querySelector(".contour-welcome-consultation__locked-note");
+    if (note) note.style.display = "";
+  }
+  function listenForWcEmbed() {
+    if (wcEmbed.listening) return;
+    wcEmbed.listening = true;
+    window.addEventListener("message", function (event) {
+      if (event.origin !== WC_EMBED_ORIGIN) return;
+      var frame = formRoot && formRoot.querySelector(".contour-welcome-consultation__frame");
+      if (!frame || event.source !== frame.contentWindow) return;
+      var data = event.data;
+      if (!data || typeof data !== "object") return;
+      if (typeof data.height === "number" && data.height > 0) frame.style.height = Math.ceil(data.height) + "px";
+      if (data.type !== WC_BOOKED_MESSAGE || wcEmbed.booked) return;
+      wcEmbed.booked = true;
+      wcEmbed.start = Number(data.start) || 0;
+      rememberWcBooking(wcEmbed.values, wcEmbed.start);
+      renderWelcomeConsultation();
+    });
+  }
+  // Reloads only when the page or the identity changes. Phone edits and the form's frequent
+  // re-renders leave the scheduler, and whatever the visitor has picked in it, where it is.
+  function mountWcEmbed(container, base, audiences, values) {
+    var key = base + "#" + wcIdentityKey(values);
+    var frame = container.querySelector(".contour-welcome-consultation__frame");
+    if (frame && wcEmbed.key === key) return;
+    wcEmbed.key = key;
+    wcEmbed.values = values;
+    if (!frame) {
+      container.innerHTML = "";
+      frame = document.createElement("iframe");
+      frame.className = "contour-welcome-consultation__frame";
+      frame.title = "Book your Welcome Consultation";
+      container.appendChild(frame);
+    }
+    frame.src = wcEmbedUrl(base, audiences, values);
+  }
+  // Booked in this visit, HubSpot's own confirmation stays on screen in the frame. Booked on an
+  // earlier load, the frame would only offer the calendar again, so the form says it instead.
+  function renderWcBooked(wrapper) {
+    var widget = wrapper.querySelector(".contour-welcome-consultation__widget");
+    var waiting = wrapper.querySelector(".contour-welcome-consultation__waiting");
+    var banner = wrapper.querySelector(".contour-welcome-consultation__booked");
+    if (waiting) waiting.style.display = "none";
+    if (wcEmbed.restored) {
+      widget.innerHTML = "";
+      widget.style.display = "none";
+      var when = wcBookedWhen(wcEmbed.start);
+      banner.querySelector(".contour-prefill-banner__text").textContent = (when ? when + ". " : "") + WC_BOOKED_SENT;
+      banner.style.display = "";
+    } else {
+      widget.style.display = "";
+      banner.style.display = "none";
+    }
+    lockWcIdentity(wrapper);
+  }
+  function buildWcBookedBanner() {
+    var banner = document.createElement("div");
+    banner.className = "contour-prefill-banner contour-welcome-consultation__booked";
+    banner.style.display = "none";
+    var badge = document.createElement("div");
+    badge.className = "contour-prefill-banner__badge";
+    badge.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>';
+    banner.appendChild(badge);
+    var content = document.createElement("div");
+    content.className = "contour-prefill-banner__content";
+    var title = document.createElement("p");
+    title.className = "contour-prefill-banner__title";
+    title.textContent = WC_BOOKED_TITLE;
+    content.appendChild(title);
+    var text = document.createElement("p");
+    text.className = "contour-prefill-banner__text";
+    content.appendChild(text);
+    banner.appendChild(content);
+    return banner;
+  }
+  function ensureWcEmbedStyle() {
+    if (document.getElementById("contour-wc-embed-style")) return;
+    var style = document.createElement("style");
+    style.id = "contour-wc-embed-style";
+    style.textContent = "#contour-welcome-consultation .contour-welcome-consultation__heading, #contour-welcome-consultation .contour-welcome-consultation__copy { display: none !important; }"
+      + "#contour-welcome-consultation .contour-welcome-consultation__widget { height: auto; min-width: 0; }"
+      + ".contour-welcome-consultation__frame { display: block; width: 100%; height: 560px; border: 0; background: transparent; }"
+      + ".contour-welcome-consultation__waiting { margin: 0; padding: 14px 18px; border: 1px solid rgba(12, 49, 102, 0.12); border-radius: 12px; background: #FFFFFF; color: #3a3a3a; font-size: 14px; line-height: 1.5; }"
+      + ".contour-welcome-consultation__booked { margin: 0; }"
+      + ".contour-welcome-consultation__booked .contour-prefill-banner__text { margin: 0; }"
+      + ".contour-welcome-consultation__locked-note { margin: 12px 0 0; color: #3a3a3a; font-size: 13px; line-height: 1.5; }"
+      + ".contour-wc-locked { pointer-events: none; opacity: 0.55; }";
+    document.head.appendChild(style);
   }
   function ensureWelcomeConsultationContainer() {
     var existing = formRoot.querySelector("#contour-welcome-consultation");
@@ -5464,14 +5689,27 @@ var ContourForm1Logic = function () {
     copy.className = "contour-welcome-consultation__copy";
     copy.textContent = "New UCAT students are required to book a Welcome Consultation before a trial can be booked. Please register your consultation below before completing the rest of this form.";
     wrapper.appendChild(copy);
+    var waiting = document.createElement("p");
+    waiting.className = "contour-welcome-consultation__waiting";
+    waiting.textContent = WC_WAITING_NOTE;
+    waiting.style.display = "none";
+    wrapper.appendChild(waiting);
+    wrapper.appendChild(buildWcBookedBanner());
     var widgetContainer = document.createElement("div");
     widgetContainer.className = "contour-welcome-consultation__widget";
     wrapper.appendChild(widgetContainer);
-    var campusField = q(FIELD_SELECTORS.campus);
-    var campusFieldWrap = campusField ? fieldWrapper(campusField) : null;
+    var lockedNote = document.createElement("p");
+    lockedNote.className = "contour-welcome-consultation__locked-note";
+    lockedNote.textContent = WC_LOCKED_NOTE;
+    lockedNote.style.display = "none";
+    wrapper.appendChild(lockedNote);
+    // Pinned to Programs and Subjects, directly under the subject summary: UCAT is online, so the
+    // campus section it used to follow stays hidden for exactly the students who book.
+    wrapper.setAttribute("data-contour-section", "programs");
+    var summary = ensureSubjectSummary();
     var submitBlock = formRoot.querySelector(".hs-submit");
-    if (campusFieldWrap && campusFieldWrap.parentNode) {
-      campusFieldWrap.parentNode.insertBefore(wrapper, campusFieldWrap.nextSibling);
+    if (summary && summary.parentNode) {
+      summary.parentNode.insertBefore(wrapper, summary.nextSibling);
     } else if (submitBlock && submitBlock.parentNode) {
       submitBlock.parentNode.insertBefore(wrapper, submitBlock);
     } else {
@@ -5503,8 +5741,10 @@ var ContourForm1Logic = function () {
     var audiences = [];
     if (ucat && UCAT_ENROLMENTS_OPEN) audiences.push("UCAT");
     if (testprep) audiences.push("Selective & Scholarship");
-    var showScheduler = audiences.length > 0 && WC_BOOKINGS_OPEN;
-    var showOpenSoonNote = audiences.length > 0 && !WC_BOOKINGS_OPEN;
+    var bookable = wcBookableAudiences(audiences);
+    // A booking made stands whatever is ticked afterwards.
+    var showScheduler = bookable.length > 0 || wcEmbed.booked;
+    var showOpenSoonNote = audiences.length > 0 && !showScheduler;
     var noteEl = ensureWcOpenSoonNote();
     if (noteEl) {
       noteEl.textContent = WC_OPEN_SOON_NOTE;
@@ -5527,27 +5767,31 @@ var ContourForm1Logic = function () {
       copyEl.style.display = "";
       copyEl.textContent = "New " + audiences.join(" and ") + " students are required to book a Welcome Consultation before a trial can be booked. Please register your consultation below before completing the rest of this form.";
     }
-    var schedulerContainer = wrapper.querySelector(".contour-welcome-consultation__widget");
-    schedulerContainer.style.display = "";
-    var location = getValue(FIELD_SELECTORS.location);
-    var isUk = location === UK_TOKEN;
-    var baseUrl = isUk ? CALENDLY_URLS.uk : CALENDLY_URLS.anz;
-    var firstname = getValue('[name="firstname"]');
-    var lastname = getValue('[name="lastname"]');
-    var email = getValue(FIELD_SELECTORS.emailTemp);
-    var fullName = (firstname + " " + lastname).trim();
-    var params = [];
-    if (fullName) params.push("name=" + encodeURIComponent(fullName));
-    if (email) params.push("email=" + encodeURIComponent(email));
-    var queryString = params.join("&");
-    var fullUrl = baseUrl + (queryString ? "?" + queryString : "");
-    schedulerContainer.innerHTML = "";
-    loadCalendlyScript(function () {
-      Calendly.initInlineWidget({
-        url: fullUrl,
-        parentElement: schedulerContainer
-      });
-    });
+    ensureWcEmbedStyle();
+    listenForWcEmbed();
+    watchWcIdentity();
+    if (!wcEmbed.booked) {
+      var schedulerContainer = wrapper.querySelector(".contour-welcome-consultation__widget");
+      var waitingEl = wrapper.querySelector(".contour-welcome-consultation__waiting");
+      var values = wcIdentity();
+      if (!wcIdentityReady(values)) {
+        schedulerContainer.style.display = "none";
+        if (waitingEl) waitingEl.style.display = "";
+        return;
+      }
+      var earlier = findWcBooking(values);
+      if (!earlier) {
+        if (waitingEl) waitingEl.style.display = "none";
+        schedulerContainer.style.display = "";
+        mountWcEmbed(schedulerContainer, WC_EMBED_PAGE, bookable, values);
+        return;
+      }
+      wcEmbed.booked = true;
+      wcEmbed.restored = true;
+      wcEmbed.values = values;
+      wcEmbed.start = Number(earlier.start) || 0;
+    }
+    renderWcBooked(wrapper);
   }
   function subjectCodeToLabel(code) {
     var options = qAll(FIELD_SELECTORS.interestedSubjects);
