@@ -5,6 +5,12 @@
     "53247": "Haileybury",
     "52627": "Sirius"
   },
+  "_replace_comment": "Codes that replace the CSV code, keyed by acara_id. Camberwell Girls Grammar (and its Junior Campus) and Camberwell Grammar (boys) are two schools the CSV gives the one code Camberwell; AY27 UCAT classes group them apart (30 Sep 2026).",
+  "replace": {
+    "46204": "CGGS",
+    "46205": "CGGS",
+    "46199": "CGS"
+  },
   "extra": [
     {
       "name": "Sirius College - Geelong Campus",

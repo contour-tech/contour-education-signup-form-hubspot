@@ -34,13 +34,19 @@ def build():
 
     overrides = json.loads(OVERRIDES.read_text(encoding="utf-8"))
     codes = overrides["codes"]
+    # "replace" wins over the CSV's own code: two different schools the
+    # CSV gives one code to must carry distinct codes, or class matching
+    # cannot tell them apart. A CSV refresh cannot undo it.
+    replace = overrides.get("replace", {})
 
     entries = []
     for row in rows:
         entries.append({
             "name": row["school_name"].strip(),
             "acara_id": row["source_id"].strip(),
-            "school_code": row["school_code"].strip() or codes.get(row["source_id"].strip(), ""),
+            "school_code": replace.get(row["source_id"].strip())
+                           or row["school_code"].strip()
+                           or codes.get(row["source_id"].strip(), ""),
             "state": row["state"].strip(),
             "suburb": row["suburb"].strip(),
             "type": row["type"].strip(),
@@ -53,7 +59,7 @@ def build():
 
     # Sorted so a regenerated file diffs by content, not by row order.
     entries.sort(key=lambda e: (e["name"].lower(), e["state"], e["acara_id"]))
-    OUTPUT.write_text(json.dumps(entries, ensure_ascii=False, separators=(",", ":")) + "\n", encoding="utf-8")
+    OUTPUT.write_text(json.dumps(entries, ensure_ascii=False, separators=(",", ":")) + "\n", encoding="utf-8", newline="\n")
 
     universities = sum(1 for e in entries if e["type"] == "University")
     print("%s: %d entries (%d universities, %d schools), %.1f KB"
