@@ -227,9 +227,8 @@ var ContourForm1Logic = function () {
     // Information card below it, instead of waiting for Academic Details to
     // unlock. Off by default: Angad flagged it repeatedly (14-20 Sep 2026) as
     // making it hard to get back and change the year once it auto-closes.
-    // The gate still folds when `sectionUnlocked.study` goes true, and its
-    // header still folds/reopens on press either way — this only switches
-    // off the early, touch-triggered fold.
+    // With it off the card only folds on arrival (pre-fill, restored draft)
+    // or from its own header — see intakeGateFoldable.
     intakeYearAutoFoldOnContact: false,
     // Whether a student-email check that could NOT be resolved holds the
     // submit. Off: an address we failed to look up goes through, the way it
@@ -14477,7 +14476,14 @@ var ContourForm1Logic = function () {
   }
   function intakeGateFoldable() {
     if (!intakeGateAnsweredNow()) return false;
-    return !stepModeEnabled() || intakeGateContactTouched || !!sectionUnlocked.study;
+    if (!stepModeEnabled() || intakeGateContactTouched) return true;
+    // Academic Details unlocking folds the card only on arrival — a pre-fill
+    // or restored draft that lands with it unlocked. Once the visitor is
+    // working the form the card stays open until they fold it themselves:
+    // finishing Contact (the phone number is usually the last field) used to
+    // fold it under them, the same complaint the contact-touch flag answered
+    // (Angad, 1 Oct 2026).
+    return !stepUserActed && !!sectionUnlocked.study;
   }
   // The contact card's fields are watched from the form root, on capture:
   // HubSpot re-renders the fields themselves, and the person pills are
@@ -14612,6 +14618,10 @@ var ContourForm1Logic = function () {
           if (hadFocus && header) focusQuietly(header);
         }, prefersReducedMotion() ? 0 : 420);
       } else {
+        // An arrival fold holds like one the visitor made, so the passes
+        // after their first move, when it stops counting as foldable, leave
+        // it shut rather than spring it open.
+        intakeGateManualFold = true;
         setIntakeGateFolded(true);
       }
     }

@@ -174,7 +174,14 @@ var ContourForm1Logic = function () {
     // The navy tick disc on the picked intake tile's top-right corner. Off
     // by default: the blue fill and the white figure already say "picked"
     // (Amrit, 8 Sep 2026); on adds the badge for a trial.
-    intakeYearBadge: false
+    intakeYearBadge: false,
+    // Folds the Intake Year card the moment the visitor touches the Contact
+    // Information card below it, instead of waiting for Academic Details to
+    // unlock. Off by default: Angad flagged it repeatedly (14-20 Sep 2026) as
+    // making it hard to get back and change the year once it auto-closes.
+    // With it off the card only folds on arrival (pre-fill, restored draft)
+    // or from its own header — see intakeGateFoldable.
+    intakeYearAutoFoldOnContact: false
   };
   function featureEnabled(name) {
     var overrides = window.ContourForm1Config;
@@ -11786,7 +11793,14 @@ var ContourForm1Logic = function () {
   }
   function intakeGateFoldable() {
     if (!intakeGateAnsweredNow()) return false;
-    return !stepModeEnabled() || intakeGateContactTouched || !!sectionUnlocked.study;
+    if (!stepModeEnabled() || intakeGateContactTouched) return true;
+    // Academic Details unlocking folds the card only on arrival — a pre-fill
+    // or restored draft that lands with it unlocked. Once the visitor is
+    // working the form the card stays open until they fold it themselves:
+    // finishing Contact (the phone number is usually the last field) used to
+    // fold it under them, the same complaint the contact-touch flag answered
+    // (Angad, 1 Oct 2026).
+    return !stepUserActed && !!sectionUnlocked.study;
   }
   // The contact card's fields are watched from the form root, on capture:
   // HubSpot re-renders the fields themselves, and the person pills are
@@ -11803,6 +11817,7 @@ var ContourForm1Logic = function () {
     if (intakeGateContactWatched || !formRoot) return;
     intakeGateContactWatched = true;
     function onContact(e) {
+      if (!featureEnabled("intakeYearAutoFoldOnContact")) return;
       if (!e.isTrusted || isProgrammaticEdit()) return;
       var gate = formRoot.querySelector("." + INTAKE_GATE_CLASS);
       if (!gate || gate.classList.contains(INTAKE_GATE_FOLDED_CLASS)) return;
@@ -11920,6 +11935,10 @@ var ContourForm1Logic = function () {
           if (hadFocus && header) focusQuietly(header);
         }, prefersReducedMotion() ? 0 : 420);
       } else {
+        // An arrival fold holds like one the visitor made, so the passes
+        // after their first move, when it stops counting as foldable, leave
+        // it shut rather than spring it open.
+        intakeGateManualFold = true;
         setIntakeGateFolded(true);
       }
     }
