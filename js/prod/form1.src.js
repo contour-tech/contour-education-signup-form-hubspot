@@ -8508,6 +8508,10 @@ var ContourForm1Logic = function () {
       var box = sectionBoxes[def.id];
       var outside = groups[index].filter(function (node) {
         if (node.classList && node.classList.contains("hs_submit")) return false;
+        // HubSpot's own error rollup stays where React rendered it. Adopted into
+        // a card, React's removeChild on the form throws once the last error
+        // clears, and the whole form unmounts (4 Oct 2026).
+        if (node.classList && node.classList.contains("hs_error_rollup")) return false;
         // Page-level furniture rides above the cards, whatever section the
         // context walk files it under.
         // The error summary is pinned to the closing section so disclosure
