@@ -50,6 +50,10 @@ var ContourForm1Logic = function () {
      the same file.
      ========================================================= */
   var FEATURE_DEFAULTS = {
+    // Campaign links pre-fill a visitor HubSpot already knows. See CAMPAIGN
+    // RECOGNITION. Only from a HubSpot email click unless the second is off.
+    campaignRecognition: true,
+    recognitionNeedsEmailClick: true,
     // Discloses the form a section at a time, each one arriving as the one
     // before it is answered. Switched on 22 Aug 2026 (Angad/Amitav liked the
     // brand-section reveal and asked for the section-by-section flow; Amrit),
@@ -4654,11 +4658,77 @@ var ContourForm1Logic = function () {
     if (!code) return false;
     return prefetchedTrialSubjectCodes.indexOf(code) !== -1 || prefetchedEnrolledSubjectCodes.indexOf(code) !== -1;
   }
+  /* =========================================================
+     CAMPAIGN RECOGNITION — one shared campaign link, pre-filled for a
+     visitor HubSpot already knows
+     -----------------------------------------------------------
+     A visitor who reaches a campaign link (a valid preset, see LINK PRESETS)
+     from a HubSpot marketing email click (_hsenc or _hsmi on the URL), in a
+     browser HubSpot already ties to a contact (the hubspotutk cookie, set by
+     the tracking code once the visitor has submitted a HubSpot form or a
+     click has been processed), is pre-filled from that contact through
+     functions/prefetch ?utk= — the signed-link path exactly: the record wins
+     over a local draft, the email is locked and the presets still apply.
+     Started at script load, like the signed-link fetch, so the answer is
+     usually back before the form renders.
+
+     Safeguards, because a cookie is weaker than a signed link (a forwarded
+     email or a shared computer can tie the browser to someone else):
+       - campaign links only, never internal mode, and only from an email
+         click (switch recognitionNeedsEmailClick off to accept any visit);
+       - the server returns the recognised person's own details only: no
+         guardian, no student on a guardian's record;
+       - "Not you? Clear the form" ends recognition for the tab, and so does
+         the visitor's first edit, so a refresh restores their own answers
+         instead of the record;
+       - off with campaignRecognition, or server side with RECOGNITION=off.
+     ========================================================= */
+  var CAMPAIGN_YEAR_PARAM = "preset_year";
+  var CAMPAIGN_LOCATION_PARAM = "preset_location";
+  var CAMPAIGN_LOCATIONS = ["VIC", "NSW", "QLD", "WA", "SA", "TAS", "ACT", "NT", "New Zealand"];
+  var RECOGNITION_DECLINED_KEY = "contour_form1_recognition_declined";
+  var RECOGNITION_DONE_KEY = "contour_form1_recognition_done";
+  var HUBSPOT_UTK = /(?:^|;\s*)hubspotutk=([0-9a-f]{32})(?=;|$)/i;
+  var recognitionRequested = false;
+  function campaignPresetInUrl() {
+    if (/^\d{4}$/.test(getUrlParam(CAMPAIGN_YEAR_PARAM, true).trim())) return true;
+    var asked = getUrlParam(CAMPAIGN_LOCATION_PARAM, true).trim().toLowerCase();
+    return CAMPAIGN_LOCATIONS.some(function (value) {
+      return value.toLowerCase() === asked;
+    });
+  }
+  function tabFlag(key) {
+    try {
+      return window.sessionStorage.getItem(key) === "1";
+    } catch (err) {
+      return false;
+    }
+  }
+  function setTabFlag(key) {
+    try {
+      window.sessionStorage.setItem(key, "1");
+    } catch (err) { }
+  }
+  // The query for ?utk= when this visit may be recognised, "" when not. Read
+  // at script load: the internal-mode constants are not assigned yet, so the
+  // type parameter is read directly.
+  function recognitionQuery() {
+    if (!featureEnabled("campaignRecognition")) return "";
+    if (getUrlParam("type").trim().toLowerCase() === "internal") return "";
+    if (!campaignPresetInUrl()) return "";
+    if (featureEnabled("recognitionNeedsEmailClick") && !getUrlParam("_hsenc") && !getUrlParam("_hsmi")) return "";
+    if (tabFlag(RECOGNITION_DECLINED_KEY) || tabFlag(RECOGNITION_DONE_KEY)) return "";
+    var match = HUBSPOT_UTK.exec(document.cookie || "");
+    if (!match) return "";
+    recognitionRequested = true;
+    return "utk=" + match[1].toLowerCase();
+  }
   function startUrlPrefetch() {
     if (!PREFETCH_ENDPOINT) return null;
     var studentId = getUrlParam(STUDENT_ID_PARAM);
-    if (!studentId) return null;
-    var request = fetch(PREFETCH_ENDPOINT + "/prefetch?studentId=" + encodeURIComponent(studentId)).then(function (res) {
+    var query = studentId ? "studentId=" + encodeURIComponent(studentId) : recognitionQuery();
+    if (!query) return null;
+    var request = fetch(PREFETCH_ENDPOINT + "/prefetch?" + query).then(function (res) {
       if (!res.ok) throw new Error("HTTP " + res.status);
       return res.json();
     }).catch(function (err) {
@@ -5241,6 +5311,7 @@ var ContourForm1Logic = function () {
   function resetToBlankForm() {
     draftLocked = true;
     clearDraft();
+    if (recognitionRequested) setTabFlag(RECOGNITION_DECLINED_KEY);
     window.location.href = window.location.pathname + campaignQuery();
   }
   function renderPrefillBanner(fullName) {
@@ -5322,12 +5393,12 @@ var ContourForm1Logic = function () {
          contact observer re-apply the class, and put the value back if a
          re-render blanked it.
      ========================================================= */
-  var PRESET_YEAR_PARAM = "preset_year";
-  var PRESET_LOCATION_PARAM = "preset_location";
+  var PRESET_YEAR_PARAM = CAMPAIGN_YEAR_PARAM;
+  var PRESET_LOCATION_PARAM = CAMPAIGN_LOCATION_PARAM;
   var PRESET_HIDDEN_CLASS = "contour-preset-hidden";
   // On the year-level row when a preset hides Location's: see enforceLinkPresets.
   var PRESET_SOLO_CLASS = "contour-preset-solo";
-  var PRESET_LOCATIONS = ["VIC", "NSW", "QLD", "WA", "SA", "TAS", "ACT", "NT", "New Zealand"];
+  var PRESET_LOCATIONS = CAMPAIGN_LOCATIONS;
   var linkPresets = null;
   var linkPresetsApplied = false;
   // False once a pre-fill record names a location other than the preset.
@@ -6462,6 +6533,10 @@ var ContourForm1Logic = function () {
       prefillSessionLive = false;
       stripStudentIdFromUrl();
     }
+    // Recognised or not, the visit is the visitor's from their first edit: a
+    // refresh restores their answers, never a record HubSpot has tied the
+    // browser to since.
+    if (recognitionRequested) setTabFlag(RECOGNITION_DONE_KEY);
     scheduleDraftSave();
   }
   function initDraftCache() {
