@@ -1860,6 +1860,7 @@ var ContourForm1Logic = function () {
   // visible radio group otherwise.
   function enforcePrefillLinkPresentation() {
     syncEmptyFieldsets();
+    enforceLinkPresets();
     if (!prefillLinkSession) return;
     if (!featureEnabled("hideContactTypeOnPrefill")) return;
     var radio = q(FIELD_SELECTORS.contactType);
@@ -5240,7 +5241,7 @@ var ContourForm1Logic = function () {
   function resetToBlankForm() {
     draftLocked = true;
     clearDraft();
-    window.location.href = window.location.pathname;
+    window.location.href = window.location.pathname + campaignQuery();
   }
   function renderPrefillBanner(fullName) {
     renderRestoreBanner({
@@ -5288,12 +5289,211 @@ var ContourForm1Logic = function () {
     startSections();
     playFormEntrance();
   }
+  /* =========================================================
+     LINK PRESETS — a campaign link answers the intake year and the location
+     -----------------------------------------------------------
+     ?preset_year=2027&preset_location=NSW sets those two answers and takes
+     both questions off the page (Luke, 6 Oct 2026: NSW Mainstage attendees,
+     and state-targeted ads such as VIC). It is the same form, the same
+     fields and the same submission: the values go into HubSpot's own selects
+     through the setter the pre-fill uses, so every list worked out from them
+     (programs, subjects, campuses, year levels) comes out exactly as it does
+     for a visitor who picked them, and SV2 receives the field values a
+     manual pick sends.
+
+     Rules:
+       - only values the form itself offers are taken. The year must be one of
+         the intake select's options. The location must be an Australian state
+         or territory, or New Zealand: the options that open no follow-up
+         question (United Kingdom and International each open another field,
+         which a hidden answer would strand). Anything else is ignored and the
+         question stays on the page;
+       - parameter names and values are matched case-insensitively, since they
+         are hand-written into campaign links;
+       - a preset beats a remembered draft: the link is the newer, deliberate
+         answer. On a pre-fill link it is written into the record before the
+         record is applied, so Year Level lands against the right intake;
+       - a pre-fill record that names a DIFFERENT location wins: its answer
+         stands, the location stays on the page (locked as a pre-fill locks it)
+         and only the year is preset;
+       - hidden with a class rather than an inline display, because the section
+         cards put back inline display values they recorded earlier. HubSpot
+         re-renders hand back fresh nodes, so the section passes and the
+         contact observer re-apply the class, and put the value back if a
+         re-render blanked it.
+     ========================================================= */
+  var PRESET_YEAR_PARAM = "preset_year";
+  var PRESET_LOCATION_PARAM = "preset_location";
+  var PRESET_HIDDEN_CLASS = "contour-preset-hidden";
+  var PRESET_LOCATIONS = ["VIC", "NSW", "QLD", "WA", "SA", "TAS", "ACT", "NT", "New Zealand"];
+  var linkPresets = null;
+  var linkPresetsApplied = false;
+  // False once a pre-fill record names a location other than the preset.
+  var linkPresetLocationHeld = true;
+  var enforcingLinkPresets = false;
+  // Bounds the settle passes a heal can start (see enforceLinkPresets).
+  var linkPresetSettles = 0;
+  function presetOptionValue(select, wanted) {
+    if (!select || !select.options || !wanted) return "";
+    var target = String(wanted).trim().toLowerCase();
+    for (var i = 0; i < select.options.length; i++) {
+      var value = select.options[i].value;
+      if (value && value.trim().toLowerCase() === target) return value;
+    }
+    return "";
+  }
+  function readLinkPresets() {
+    if (linkPresets) return linkPresets;
+    var presets = {};
+    var year = presetOptionValue(q(FIELD_SELECTORS.intakeYear), getUrlParam(PRESET_YEAR_PARAM, true));
+    if (year) presets.intakeYear = year;
+    var asked = getUrlParam(PRESET_LOCATION_PARAM, true).trim().toLowerCase();
+    var allowed = PRESET_LOCATIONS.filter(function (value) {
+      return value.toLowerCase() === asked;
+    })[0];
+    var location = allowed ? presetOptionValue(q(FIELD_SELECTORS.location), allowed) : "";
+    if (location) presets.location = location;
+    linkPresets = presets;
+    return presets;
+  }
+  function hasLinkPresets() {
+    var presets = readLinkPresets();
+    return !!(presets.intakeYear || presets.location);
+  }
+  // Called with the fetched record before applyPrefill, see initPrefetchFromUrl.
+  function presetPrefillRecord(contact) {
+    if (!contact || !hasLinkPresets()) return;
+    if (linkPresets.intakeYear) contact.which_year_are_you_interested_in_tutoring_for_ = linkPresets.intakeYear;
+    if (!linkPresets.location) return;
+    var own = String(contact.state_territory_country || "").trim();
+    if (!own) contact.state_territory_country = linkPresets.location;
+    else if (own.toLowerCase() !== linkPresets.location.toLowerCase()) linkPresetLocationHeld = false;
+  }
+  function injectPresetStyles() {
+    if (document.getElementById("contour-preset-styles")) return;
+    var style = document.createElement("style");
+    style.id = "contour-preset-styles";
+    style.textContent = "." + PRESET_HIDDEN_CLASS + "{display:none !important}";
+    document.head.appendChild(style);
+  }
+  function markPresetHidden(wrap) {
+    if (!wrap) return;
+    if (!wrap.classList.contains(PRESET_HIDDEN_CLASS)) wrap.classList.add(PRESET_HIDDEN_CLASS);
+    // The row too when the field is all it holds, or its empty line box stays.
+    var row = wrap.closest ? wrap.closest("fieldset[class*=form-columns-]") : null;
+    if (row && row.querySelectorAll("." + FIELD_WRAPPER_CLASS).length === 1 && !row.classList.contains(PRESET_HIDDEN_CLASS)) row.classList.add(PRESET_HIDDEN_CLASS);
+  }
+  function enforceLinkPresets() {
+    if (!linkPresetsApplied || enforcingLinkPresets || !formRoot) return;
+    enforcingLinkPresets = true;
+    var wrote = false;
+    try {
+      if (linkPresets.intakeYear) {
+        var year = q(FIELD_SELECTORS.intakeYear);
+        if (year && year.value !== linkPresets.intakeYear) {
+          setSelectOrTextValue(FIELD_SELECTORS.intakeYear, linkPresets.intakeYear);
+          wrote = true;
+        }
+        if (year) markPresetHidden(fieldWrapper(year));
+        var gate = formRoot.querySelector("." + INTAKE_GATE_CLASS);
+        if (gate && !gate.classList.contains(PRESET_HIDDEN_CLASS)) gate.classList.add(PRESET_HIDDEN_CLASS);
+      }
+      if (linkPresets.location && linkPresetLocationHeld) {
+        var location = q(FIELD_SELECTORS.location);
+        if (location && location.value !== linkPresets.location) {
+          setSelectOrTextValue(FIELD_SELECTORS.location, linkPresets.location);
+          wrote = true;
+        }
+        if (location) markPresetHidden(fieldWrapper(location));
+      }
+    } finally {
+      enforcingLinkPresets = false;
+    }
+    // HubSpot's React form commits a select's new value a beat after the
+    // change event, and a change on one select re-renders the others from the
+    // state it has so far. So the evaluators that ran inside these writes can
+    // have read the OTHER answer blank (the location's listener reading the
+    // year mid-commit, which disables Year Level), and React then restores the
+    // value without an event, leaving that verdict stale. The pre-fill path
+    // meets the same thing; this is its answer: re-run the derived state once
+    // React has settled. Bounded, so a form that keeps fighting cannot loop.
+    if (wrote && linkPresetSettles < 8) {
+      linkPresetSettles++;
+      scheduleDerivedStateRefresh();
+    }
+  }
+  function applyLinkPresets() {
+    if (!hasLinkPresets()) return;
+    linkPresetsApplied = true;
+    injectPresetStyles();
+    enforceLinkPresets();
+    if (linkPresets.intakeYear) syncIntakeYearGate();
+    scheduleDerivedStateRefresh();
+    // HubSpot's embed re-renders shortly after the form is ready and can drop
+    // a value written now (see defaultContactTypeToStudent): checked again.
+    [250, 600, 1200, 2500].forEach(function (ms) {
+      setTimeout(enforceLinkPresets, ms);
+    });
+  }
+  /* =========================================================
+     CAMPAIGN VISIT — a preset link opens clean
+     -----------------------------------------------------------
+     A visitor who has ever used the form on this device has a draft (see
+     LOCAL DRAFT CACHE), and restoring it on a campaign link would put their
+     old answers back over the link's: another year, another state, another
+     child's name. So the first load of a campaign link in a tab deletes the
+     stored draft and restores nothing, and the saved-draft banner is never
+     shown on a campaign link.
+
+     The visit is remembered for the tab (sessionStorage) and every draft it
+     saves is stamped with it, so a refresh of that same tab keeps what was
+     typed there — a phone that reloads the page mid-form loses nothing, and
+     a personal link, whose student_id leaves the URL at the first edit,
+     comes back with its locks as it always has. Anything else is not this
+     visit's and is deleted: a draft from an earlier visit, from another tab
+     or from another campaign. Without sessionStorage every load is a new
+     visit, which only ever errs towards clean.
+     ========================================================= */
+  var CAMPAIGN_SESSION_KEY = "contour_form1_campaign";
+  // "<year>|<location>#<tab>" on a campaign link, "" everywhere else.
+  var campaignTag = "";
+  function beginCampaignSession() {
+    if (!hasLinkPresets()) return;
+    var signature = (linkPresets.intakeYear || "") + "|" + (linkPresets.location || "");
+    var held = "";
+    try {
+      held = window.sessionStorage.getItem(CAMPAIGN_SESSION_KEY) || "";
+    } catch (err) {
+      held = "";
+    }
+    if (held.split("#")[0] === signature) {
+      campaignTag = held;
+    } else {
+      campaignTag = signature + "#" + Math.random().toString(36).slice(2, 10);
+      try {
+        window.sessionStorage.setItem(CAMPAIGN_SESSION_KEY, campaignTag);
+      } catch (err) { }
+    }
+    var entry = readDraft();
+    if (entry && entry.campaign !== campaignTag) clearDraft();
+  }
+  // "Clear the form" on a campaign link stays on that campaign.
+  function campaignQuery() {
+    if (!campaignTag) return "";
+    var kept = window.location.search.replace(/^\?/, "").split("&").filter(function (pair) {
+      var name = decodeURIComponent(pair.split("=")[0] || "").toLowerCase();
+      return name === PRESET_YEAR_PARAM || name === PRESET_LOCATION_PARAM;
+    });
+    return kept.length ? "?" + kept.join("&") : "";
+  }
   function initPrefetchFromUrl() {
+    beginCampaignSession();
     if (!urlPrefetchPromise) {
       // No record to fetch, so a local draft is the best answer we have.
       // Restore before the default is applied: a stored contact type has to
       // win over the Student fallback.
       initDraftRestore();
+      applyLinkPresets();
       defaultContactTypeToStudent();
       startFormPresentation();
       return;
@@ -5313,6 +5513,7 @@ var ContourForm1Logic = function () {
         // into the record before applyPrefill so Year Level, which reads
         // "year level in <intake>", lands on an enabled select in the usual
         // order rather than being cleared for want of an intake.
+        presetPrefillRecord(data.contact);
         fillIntakeYearForPrefillRecord(data.contact);
         applyPrefill(data.contact, data.guardian, data.associatedStudent, true);
         // Only on the Student flow: on the Guardian flow data.guardian is the
@@ -5362,6 +5563,7 @@ var ContourForm1Logic = function () {
       // year either, the coming intake is the answer (see above). A record
       // the server said is gone is a dud link and gets no default.
       if (data === null) defaultIntakeYearForPrefillLink();
+      applyLinkPresets();
       // Prefill takes precedence (Guardian/Parent records select Guardian);
       // anything else — no record, unknown contact_type — defaults to Student.
       defaultContactTypeToStudent();
@@ -5553,6 +5755,7 @@ var ContourForm1Logic = function () {
     };
     var prefill = draftPrefillMeta();
     if (prefill) payload.prefill = prefill;
+    if (campaignTag) payload.campaign = campaignTag;
     var boxes = draftSectionBoxState();
     if (boxes) payload.boxes = boxes;
     // The visitor having taken over the program cards is not derivable from
@@ -6225,7 +6428,7 @@ var ContourForm1Logic = function () {
     if (entry.programsTouched) programCardsTouched = true;
     restoreDraft(values);
     enforcePrefilledFieldLock();
-    renderDraftBanner(firstNameFromDraft(values));
+    if (!campaignTag) renderDraftBanner(firstNameFromDraft(values));
     scheduleDerivedStateRefresh();
     return true;
   }
@@ -14573,6 +14776,7 @@ var ContourForm1Logic = function () {
   // (see enforceContactTypeLayout).
   function syncIntakeYearGate() {
     if (!formRoot) return;
+    enforceLinkPresets();
     var gate = formRoot.querySelector("." + INTAKE_GATE_CLASS);
     if (!gate) return;
     var select = q(FIELD_SELECTORS.intakeYear);
