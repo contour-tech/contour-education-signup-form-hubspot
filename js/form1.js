@@ -5325,6 +5325,8 @@ var ContourForm1Logic = function () {
   var PRESET_YEAR_PARAM = "preset_year";
   var PRESET_LOCATION_PARAM = "preset_location";
   var PRESET_HIDDEN_CLASS = "contour-preset-hidden";
+  // On the year-level row when a preset hides Location's: see enforceLinkPresets.
+  var PRESET_SOLO_CLASS = "contour-preset-solo";
   var PRESET_LOCATIONS = ["VIC", "NSW", "QLD", "WA", "SA", "TAS", "ACT", "NT", "New Zealand"];
   var linkPresets = null;
   var linkPresetsApplied = false;
@@ -5373,7 +5375,14 @@ var ContourForm1Logic = function () {
     if (document.getElementById("contour-preset-styles")) return;
     var style = document.createElement("style");
     style.id = "contour-preset-styles";
-    style.textContent = "." + PRESET_HIDDEN_CLASS + "{display:none !important}";
+    // Academic Details is a two-column grid on desktop that pins Location to
+    // the left and Year Level to the right (INTAKE YEAR GATE styles). With
+    // Location hidden, Year Level spans both columns and fills its row, like
+    // every other single-field row in the card. Without the grid (phones)
+    // the row already stacks full width, so only the width rule applies.
+    style.textContent = "." + PRESET_HIDDEN_CLASS + "{display:none !important}" +
+      ".hs-form .contour-section-box__content-inner > fieldset." + PRESET_SOLO_CLASS + "{grid-column:1 / -1 !important}" +
+      ".hs-form fieldset." + PRESET_SOLO_CLASS + " > .hs-form-field:not(." + PRESET_HIDDEN_CLASS + "){width:100% !important;float:none !important;padding-right:0 !important}";
     document.head.appendChild(style);
   }
   function markPresetHidden(wrap) {
@@ -5405,6 +5414,11 @@ var ContourForm1Logic = function () {
           wrote = true;
         }
         if (location) markPresetHidden(fieldWrapper(location));
+        // Year Level's row loses its partner column: span it. Re-applied on
+        // every pass, since a HubSpot re-render hands back a fresh fieldset.
+        var yearLevel = q(FIELD_SELECTORS.yearLevel);
+        var yearRow = yearLevel && yearLevel.closest ? yearLevel.closest("fieldset") : null;
+        if (yearRow && !yearRow.classList.contains(PRESET_SOLO_CLASS)) yearRow.classList.add(PRESET_SOLO_CLASS);
       }
     } finally {
       enforcingLinkPresets = false;
