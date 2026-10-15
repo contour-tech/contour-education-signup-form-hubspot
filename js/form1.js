@@ -3583,6 +3583,9 @@ var ContourForm1Logic = function () {
     // Year 5 has no 2026 offering publicly, but internal test rounds need it
     // selectable so a test:true Year 5 subject can be reached in either intake.
     var year5Blocked = intakeYear === "2026" && !isInternalMode();
+    // Queensland has no Year 5 program in either intake, so a Year 5 there could only reach the "no programs" opt-in,
+    // which sends nothing: the option is hidden, as Year 13 is outside its countries (Amitav, 15 Oct 2026).
+    var year5Hidden = location === "QLD";
     Array.prototype.forEach.call(select.options, function (opt) {
       if (opt.value === "Year 13") {
         opt.hidden = !year13Eligible;
@@ -3594,7 +3597,8 @@ var ContourForm1Logic = function () {
           opt.setAttribute("data-original-text", opt.textContent);
         }
         var originalText = opt.getAttribute("data-original-text");
-        opt.disabled = year5Blocked;
+        opt.hidden = year5Hidden;
+        opt.disabled = year5Blocked || year5Hidden;
         opt.textContent = year5Blocked ? originalText + " - Subjects coming in 2027" : originalText;
       }
     });
@@ -3604,7 +3608,7 @@ var ContourForm1Logic = function () {
         bubbles: true
       }));
     }
-    if (year5Blocked && select.value === "Year 5") {
+    if ((year5Blocked || year5Hidden) && select.value === "Year 5") {
       select.value = "";
       select.dispatchEvent(new Event("change", {
         bubbles: true
