@@ -1,4 +1,29 @@
 /* Contour Form 1 logic — source of truth: github.com/contour-tech/contour-education-signup-form-hubspot */
+/* =========================================================
+   KEEP THE FORM OUT OF SEARCH SNIPPETS
+   Google wrote the free-trial page's search result description from the
+   signed_up_by menu (Tech ticket #5673, 20 Oct 2026): its staff names sit in
+   the rendered page while that question is hidden from visitors, and Google
+   reads hidden text. data-nosnippet keeps everything inside an element out of
+   snippets, so Google falls back to the page's own meta description.
+   Google reads the attribute both before and after rendering, and asks that
+   script never add it to a node already on the page, only set it on a node as
+   the node is inserted. So the Webflow container stays where it is under a new
+   id, and a fresh node born with the attribute takes over the id the page's
+   hbspt.forms.create targets. This runs as the file loads, before the page
+   creates the form; the staff gate's panel lands in the same node.
+   ========================================================= */
+(function keepFormOutOfSnippets() {
+  "use strict";
+  var host = document.getElementById("contour-form1");
+  // Guarded in the page itself already, or the form has drawn: leave it alone.
+  if (!host || host.hasAttribute("data-nosnippet") || host.querySelector("form")) return;
+  var target = document.createElement("div");
+  target.setAttribute("data-nosnippet", "");
+  host.id = "contour-form1-host";
+  target.id = "contour-form1";
+  host.appendChild(target);
+})();
 var ContourForm1Logic = function () {
   "use strict";
   var FIELD_SELECTORS = {
