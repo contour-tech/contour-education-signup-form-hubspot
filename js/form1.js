@@ -6597,7 +6597,12 @@ var ContourForm1Logic = function () {
   // open-soon note and are never shown the calendar, and Selective & Scholarship keeps its note too.
   var WC_EMBED_ORIGIN = "https://www.link.contoureducation.com.au";
   var WC_EMBED_PAGE = WC_EMBED_ORIGIN + "/book/medprep-welcome-consultation-anz";
-  var WC_EMBED_AUDIENCES = ["UCAT"];
+  // TestPrep (Selective & Scholarship) families book on their own round robin page from midnight on Sunday 1 November 2026
+  // in Melbourne; until then they keep the open-soon note.
+  var WC_TESTPREP_AUDIENCE = "Selective & Scholarship";
+  var WC_TESTPREP_PAGE = WC_EMBED_ORIGIN + "/book/testprep-welcome-consultation";
+  var WC_TESTPREP_OPENS = Date.parse("2026-10-31T13:00:00Z");
+  var WC_EMBED_AUDIENCES = ["UCAT", WC_TESTPREP_AUDIENCE];
   var WC_BOOKED_MESSAGE = "contour-wc-booked";
   var WC_BOOKING_STORAGE_KEY = "contour_form1_wc_bookings";
   var WC_BOOKINGS_KEPT = 5;
@@ -6653,6 +6658,7 @@ var ContourForm1Logic = function () {
   function wcBookableAudiences(audiences) {
     if (!WC_BOOKINGS_OPEN || getValue(FIELD_SELECTORS.location) === UK_TOKEN) return [];
     return audiences.filter(function (audience) {
+      if (audience === WC_TESTPREP_AUDIENCE && Date.now() < WC_TESTPREP_OPENS) return false;
       return WC_EMBED_AUDIENCES.indexOf(audience) !== -1;
     });
   }
@@ -6961,7 +6967,7 @@ var ContourForm1Logic = function () {
       if (!earlier) {
         if (waitingEl) waitingEl.style.display = "none";
         schedulerContainer.style.display = "";
-        mountWcEmbed(schedulerContainer, WC_EMBED_PAGE, bookable, values);
+        mountWcEmbed(schedulerContainer, bookable.indexOf("UCAT") === -1 ? WC_TESTPREP_PAGE : WC_EMBED_PAGE, bookable, values);
         return;
       }
       wcEmbed.booked = true;
