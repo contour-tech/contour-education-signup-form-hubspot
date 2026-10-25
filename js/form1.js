@@ -400,7 +400,7 @@ var ContourForm1Logic = function () {
   }, {
     match: /test\s*prep|selective/i,
     title: "Selective & Scholarship School Entry",
-    description: "Prep for the victorian selective entry & scholarship exams",
+    description: "Prep for the Victorian selective entry and scholarship exams",
     logoUrl: "https://cdn.prod.website-files.com/696ed06d2e62378f0a51f2d4/6a0bbed5fdbd2c829b5e4e7c_Final%20TESTPREP%20Charcoal%20horizontal%20logo.svg",
     logoTintRight: "41.8%",
     accent: "#3478F7",
@@ -7064,7 +7064,7 @@ var ContourForm1Logic = function () {
       items: interested,
       chipClass: "contour-subject-chip--navy"
     }, {
-      title: "Your Trialing Subject" + (trialing.length === 1 ? "" : "s"),
+      title: "Your trial subject" + (trialing.length === 1 ? "" : "s"),
       items: trialing,
       chipClass: "contour-subject-chip--lime"
     }, {
