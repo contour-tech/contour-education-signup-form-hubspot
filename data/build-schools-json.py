@@ -21,6 +21,12 @@ ROOT = pathlib.Path(__file__).resolve().parent
 SOURCE = ROOT / "source" / "lms-schools-comprehensive.csv"
 OVERRIDES = ROOT / "school-code-overrides.json"
 OUTPUT = ROOT / "schools-v1.json"
+# v2 (28 Oct 2026): v1 plus each university's LMS School UUID, which the form sends as lms_school_id so the sign-up links the
+# student to their university (a university has a CRICOS code, which the number field acara_id cannot hold). ACARA schools keep
+# linking by acara_id and carry no UUID here, which keeps the file the size of v1 (with a UUID on every school it would be 2.7
+# times as big for every visitor). The UUIDs are the HubSpot companies' lms_school_uuid, matched by Source ID (acara_id_code).
+OUTPUT_V2 = ROOT / "schools-v2.json"
+UNIVERSITY_UUIDS = ROOT / "source" / "university-lms-uuids.csv"
 
 # acara_id carries the CRICOS code for universities. The name stays because
 # it is the HubSpot property the form writes into — one hidden field, two id
@@ -60,6 +66,13 @@ def build():
     # Sorted so a regenerated file diffs by content, not by row order.
     entries.sort(key=lambda e: (e["name"].lower(), e["state"], e["acara_id"]))
     OUTPUT.write_text(json.dumps(entries, ensure_ascii=False, separators=(",", ":")) + "\n", encoding="utf-8", newline="\n")
+
+    with UNIVERSITY_UUIDS.open(newline="", encoding="utf-8") as handle:
+        uuids = {row["source_id"].strip(): row["lms_school_uuid"].strip() for row in csv.DictReader(handle)}
+    v2 = [dict(e, lms_school_uuid=uuids[e["acara_id"]]) if e["acara_id"] in uuids else e for e in entries]
+    OUTPUT_V2.write_text(json.dumps(v2, ensure_ascii=False, separators=(",", ":")) + "\n", encoding="utf-8", newline="\n")
+    print("%s: %d entries, %d with an LMS School UUID, %.1f KB"
+          % (OUTPUT_V2.name, len(v2), sum(1 for e in v2 if "lms_school_uuid" in e), OUTPUT_V2.stat().st_size / 1024))
 
     universities = sum(1 for e in entries if e["type"] == "University")
     print("%s: %d entries (%d universities, %d schools), %.1f KB"

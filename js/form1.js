@@ -39,6 +39,7 @@ var ContourForm1Logic = function () {
     schoolText: '[name="school_text"]',
     schoolCode: '[name="school_code"]',
     acaraId: '[name="acara_id"]',
+    lmsSchoolId: '[name="lms_school_id"]',
     canAddMoreSubjects: '[name="can_add_more_subjects"]',
     firstName: '[name="firstname"]',
     lastName: '[name="lastname"]',
@@ -3688,6 +3689,7 @@ var ContourForm1Logic = function () {
       if (input.value) setHiddenValue(FIELD_SELECTORS.schoolText, "");
       if (codeInput && codeInput.value) setHiddenValue(FIELD_SELECTORS.schoolCode, "");
       if (acaraInput && acaraInput.value) setHiddenValue(FIELD_SELECTORS.acaraId, "");
+      if (getValue(FIELD_SELECTORS.lmsSchoolId)) setHiddenValue(FIELD_SELECTORS.lmsSchoolId, "");
     } else if (input.value === SCHOOL_NOT_ASKED_VALUE) {
       // The placeholder only ever stood in for a question that was not asked.
       // A blocked submit followed by a move back to an Australian state must
@@ -3780,6 +3782,7 @@ var ContourForm1Logic = function () {
     var acaraInput = q(FIELD_SELECTORS.acaraId);
     if (codeInput && codeInput.value) setHiddenValue(FIELD_SELECTORS.schoolCode, "");
     if (acaraInput && acaraInput.value) setHiddenValue(FIELD_SELECTORS.acaraId, "");
+    if (getValue(FIELD_SELECTORS.lmsSchoolId)) setHiddenValue(FIELD_SELECTORS.lmsSchoolId, "");
   }
   // HubSpot's shipped helper text is replaced wholesale with this shorter copy
   // (Angad): one instruction up front, and the "can't find it" advice moves to
@@ -3831,6 +3834,7 @@ var ContourForm1Logic = function () {
         setHiddenValue(FIELD_SELECTORS.schoolText, "");
         setHiddenValue(FIELD_SELECTORS.schoolCode, "");
         setHiddenValue(FIELD_SELECTORS.acaraId, "");
+        setHiddenValue(FIELD_SELECTORS.lmsSchoolId, "");
       });
       setSchoolNotFoundHint(false);
     });
@@ -5178,6 +5182,7 @@ var ContourForm1Logic = function () {
       setSelectOrTextValue(FIELD_SELECTORS.schoolText, contact.school_text);
       setSelectOrTextValue(FIELD_SELECTORS.schoolCode, contact.school_code || "");
       setSelectOrTextValue(FIELD_SELECTORS.acaraId, contact.acara_id || "");
+      setSelectOrTextValue(FIELD_SELECTORS.lmsSchoolId, contact.lms_school_id || "");
       var schoolInput = q(FIELD_SELECTORS.schoolText);
       if (schoolInput) setTimeout(function () {
         schoolInput.dispatchEvent(new Event("blur"));
@@ -5723,7 +5728,7 @@ var ContourForm1Logic = function () {
   // Everything applyPrefill already knows how to put back, so the draft can
   // reuse it wholesale instead of keeping a second copy of the same wiring
   // (the phone widgets and the dependent selects especially).
-  var DRAFT_PREFILL_FIELDS = ["web_form_contact_type", "firstname", "lastname", "email_2", "phone", "student_first_name", "student_last_name", "student_email", "student_phone_number", "state_territory_country", "state", "country_dropdown", "which_year_are_you_interested_in_tutoring_for_", "year_level", "school_text", "school_code", "acara_id", "program_interest", "web_form__interested_subject", "web_form__preferred_campuses", "referral"];
+  var DRAFT_PREFILL_FIELDS = ["web_form_contact_type", "firstname", "lastname", "email_2", "phone", "student_first_name", "student_last_name", "student_email", "student_phone_number", "state_territory_country", "state", "country_dropdown", "which_year_are_you_interested_in_tutoring_for_", "year_level", "school_text", "school_code", "acara_id", "lms_school_id", "program_interest", "web_form__interested_subject", "web_form__preferred_campuses", "referral"];
   var draftLocked = false;
   var draftUserTouched = false;
   var draftSaveTimer = null;
@@ -5988,6 +5993,7 @@ var ContourForm1Logic = function () {
       school_text: values.school_text,
       school_code: values.school_code,
       acara_id: values.acara_id,
+      lms_school_id: values.lms_school_id,
       program_interest: joined("program_interest"),
       web_form__interested_subject: joined("web_form__interested_subject"),
       web_form__preferred_campuses: joined("web_form__preferred_campuses"),
@@ -7169,7 +7175,7 @@ var ContourForm1Logic = function () {
      The filename is versioned because production and staging run different
      builds of this script: a shape change ships as -v2 and leaves the
      production build reading the file it was written against. */
-  var SCHOOL_LIST_URL = "https://contour-tech.github.io/contour-education-signup-form-hubspot/data/schools-v1.json";
+  var SCHOOL_LIST_URL = "https://contour-tech.github.io/contour-education-signup-form-hubspot/data/schools-v2.json";
   var schoolListCache = null;
   var schoolListPromise = null;
   function loadSchoolList() {
@@ -7251,6 +7257,7 @@ var ContourForm1Logic = function () {
     if (input.closest(".contour-school-search")) return;
     var codeInput = q(FIELD_SELECTORS.schoolCode);
     var acaraInput = q(FIELD_SELECTORS.acaraId);
+    var lmsInput = q(FIELD_SELECTORS.lmsSchoolId);
     var wrapper = document.createElement("div");
     wrapper.className = "contour-school-search";
     input.parentNode.insertBefore(wrapper, input);
@@ -7463,6 +7470,9 @@ var ContourForm1Logic = function () {
       // the error on a hidden field, so a university pick leaves it empty and keeps its name and short code (28 Oct 2026)
       setHiddenField(acaraInput, /^\d{1,5}$/.test(String(school.acara_id || "")) ? school.acara_id : "");
       setHiddenField(codeInput, school.school_code);
+      // a university's LMS School UUID (schools-v2.json), so the sign-up links the student to it (an ACARA school has none here:
+      // it links by acara_id), 28 Oct 2026
+      setHiddenField(lmsInput, school.lms_school_uuid || "");
       closeListbox();
       setSchoolNotFoundHint(false);
       suppressNextInputEvent = true;
@@ -7496,10 +7506,12 @@ var ContourForm1Logic = function () {
         setSchoolNotFoundHint(query.length > 0 ? "typing" : false);
         if (codeInput && codeInput.value) setHiddenField(codeInput, "");
         if (acaraInput && acaraInput.value) setHiddenField(acaraInput, "");
+        if (lmsInput && lmsInput.value) setHiddenField(lmsInput, "");
         return;
       }
       if (codeInput && codeInput.value) setHiddenField(codeInput, "");
       if (acaraInput && acaraInput.value) setHiddenField(acaraInput, "");
+      if (lmsInput && lmsInput.value) setHiddenField(lmsInput, "");
       loadSchoolList().then(function (list) {
         var currentLocation = getValue(FIELD_SELECTORS.location);
         var matches = searchSchools(list, query, currentLocation).slice(0, MAX_RESULTS);
@@ -7937,7 +7949,7 @@ var ContourForm1Logic = function () {
     // a name that is actually on screen (Amrit, 23 Aug 2026).
     var typed = (input.value || "").trim();
     if (typed === "") return false;
-    if (getValue(FIELD_SELECTORS.schoolCode) || getValue(FIELD_SELECTORS.acaraId)) return true;
+    if (getValue(FIELD_SELECTORS.schoolCode) || getValue(FIELD_SELECTORS.acaraId) || getValue(FIELD_SELECTORS.lmsSchoolId)) return true;
     if (typed.length < SCHOOL_MIN_SEARCH_CHARS) return false;
     return document.activeElement !== input;
   }
@@ -8456,7 +8468,7 @@ var ContourForm1Logic = function () {
   }, {
     id: "study",
     title: "Academic Details",
-    fields: ["state_territory_country", "state", "country_dropdown", "which_year_are_you_interested_in_tutoring_for_", "year_level", "school_text", "school_code", "acara_id"]
+    fields: ["state_territory_country", "state", "country_dropdown", "which_year_are_you_interested_in_tutoring_for_", "year_level", "school_text", "school_code", "acara_id", "lms_school_id"]
   }, {
     id: "programs",
     title: "Programs and Subjects",
