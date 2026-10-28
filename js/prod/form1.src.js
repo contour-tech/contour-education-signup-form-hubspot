@@ -6607,7 +6607,9 @@ var ContourForm1Logic = function () {
     }
     function selectSchool(school) {
       input.value = school.name;
-      setHiddenField(acaraInput, school.acara_id);
+      // acara_id is a NUMBER field in HubSpot: a university's CRICOS code (00120C) there stops the embed sending the form, with
+      // the error on a hidden field, so a university pick leaves it empty and keeps its name and short code (28 Oct 2026)
+      setHiddenField(acaraInput, /^\d{1,5}$/.test(String(school.acara_id || "")) ? school.acara_id : "");
       setHiddenField(codeInput, school.school_code);
       closeListbox();
       setSchoolNotFoundHint(false);
