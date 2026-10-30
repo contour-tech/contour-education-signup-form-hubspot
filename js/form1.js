@@ -6643,6 +6643,23 @@ var ContourForm1Logic = function () {
   // The booking has to carry exactly the identity the signup will submit. LGM-04/05 files the
   // signup under the booking's contact only when the email and both names match; the same email
   // under another name goes to manual review as a separate record.
+  // The booking form also asks the student's year level in 2027, state and school (31 Oct 2026, Amitav and Josh: they arrived empty).
+  // The signup already has them, so they are prefilled like the phone: left out of wcIdentityKey, so they stay the visitor's to change
+  // and editing them never restarts a booking part way through. Only values the booking form's dropdowns accept are sent (its HubSpot
+  // properties wc_student_year_level and wc_student_state, read 31 Oct 2026); anything else is left for the family to pick.
+  var WC_YEAR_LEVELS = ["Year 5", "Year 6", "Year 7", "Year 8", "Year 9", "Year 10", "Year 11", "Year 12", "Year 13", "Graduated"];
+  var WC_STATES = ["VIC", "NSW", "QLD", "SA", "WA", "TAS", "ACT", "NT", "New Zealand", "United Kingdom"];
+  function wcYearLevel(value) {
+    if (WC_YEAR_LEVELS.indexOf(value) !== -1) return value;
+    if (/^Year 13\b/.test(value)) return "Year 13";
+    if (/^(Graduated|Gap Year|University|Higher education|PhD)/i.test(value)) return "Graduated";
+    return "";
+  }
+  function wcState(value) {
+    if (WC_STATES.indexOf(value) !== -1) return value;
+    if (value === "NZ") return "New Zealand";
+    return value ? "Other" : "";
+  }
   function wcIdentity() {
     var guardian = isGuardianContactType();
     var values = {
@@ -6657,6 +6674,12 @@ var ContourForm1Logic = function () {
       values.wc_student_last_name = getValue(FIELD_SELECTORS.studentLastName).trim();
       values.wc_student_email = getValue(FIELD_SELECTORS.studentEmail).trim();
     }
+    var yearLevel = wcYearLevel(getValue(FIELD_SELECTORS.yearLevel).trim());
+    if (yearLevel) values.wc_student_year_level = yearLevel;
+    var state = wcState(getValue(FIELD_SELECTORS.location).trim());
+    if (state) values.wc_student_state = state;
+    var school = getValue(FIELD_SELECTORS.schoolText).trim();
+    if (school && school !== SCHOOL_NOT_ASKED_VALUE) values.wc_student_school = school;
     return values;
   }
   // The UK check reads the location on every render, so a family that switches to the UK after the
