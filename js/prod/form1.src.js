@@ -732,10 +732,97 @@ var ContourForm1Logic = function () {
     console.warn('Contour Form 1 logic: Program Interest option "' + haystack.trim() + "\" didn't match a known card pattern — falling back to positional order.");
     return PROGRAM_CARD_CONFIG[index] || null;
   }
+  /* One Glen Waverley (Amitav and Wassim, 3 Nov 2026). HubSpot keeps three
+     Glen Waverley campuses (Kingsway, Railway Parade and Springvale Road), and
+     a student who picks Glen Waverley belongs at all three in the Learning
+     Portal. So the form shows one "Glen Waverley" card: the first Glen option,
+     relabelled. The other two stay in the form, hidden, and are ticked and
+     unticked with it, so the submission carries all three codes. A known
+     family holding any one of the three comes back with Glen Waverley ticked,
+     and so with all three. Fewer than two Glen options on the form (HubSpot
+     changed) means no merge: every option shows as it is. */
+  var GLEN_CAMPUS_CODES = ["GLWK", "GLWR", "GLWS"];
+  var GLEN_CAMPUS_NAME = "Glen Waverley";
+  var GLEN_CAMPUS_ADDRESS = "Kingsway, Railway Parade or Springvale Road";
+  var GLEN_OWN_ADDRESS_ATTR = "data-contour-own-address";
+  var GLEN_BOUND_ATTR = "data-contour-glen-bound";
+  var glenCampusSyncing = false;
+  function isGlenCampusOption(opt) {
+    return GLEN_CAMPUS_CODES.indexOf(getCampusClassification(opt).code) !== -1;
+  }
+  function glenCampusOptions() {
+    var glens = qAll(FIELD_SELECTORS.campus).filter(isGlenCampusOption);
+    return glens.length > 1 ? glens : [];
+  }
+  function glenPrimaryCampusOption() {
+    var glens = glenCampusOptions();
+    return glens.length ? glens[0] : null;
+  }
+  function isAbsorbedGlenCampusOption(opt) {
+    var primary = glenPrimaryCampusOption();
+    return !!primary && opt !== primary && isGlenCampusOption(opt);
+  }
+  // A campus's own premises: the address its HubSpot label carries, kept
+  // aside on the Glen Waverley card, whose shown address is the merged one.
+  function campusOwnAddress(opt) {
+    var wrap = optionWrapper(opt);
+    var span = wrap && wrap.querySelector(".contour-campus-address");
+    if (span) return (span.getAttribute(GLEN_OWN_ADDRESS_ATTR) || span.textContent).trim();
+    var match = optionLabelText(opt).match(/^(.*?)\s*\(([^)]+)\)\s*$/);
+    return match ? match[2].trim() : "";
+  }
+  // The card leads. A hidden Glen ticked on its own (HubSpot pre-filling a
+  // known contact) brings the card and the third with it; with no leader,
+  // any Glen ticked means all three.
+  function syncGlenCampuses(leader) {
+    var glens = glenCampusOptions();
+    if (!glens.length || glenCampusSyncing) return;
+    var primary = glens[0];
+    var target;
+    if (leader === primary) target = primary.checked;
+    else if (leader) target = leader.checked || primary.checked;
+    else target = glens.some(function (opt) {
+      return opt.checked;
+    });
+    glenCampusSyncing = true;
+    try {
+      glens.forEach(function (opt) {
+        setCheckboxChecked(opt, target);
+      });
+    } finally {
+      glenCampusSyncing = false;
+    }
+  }
+  function bindGlenCampusSync() {
+    if (!formRoot || formRoot.hasAttribute(GLEN_BOUND_ATTR)) return;
+    formRoot.setAttribute(GLEN_BOUND_ATTR, "true");
+    formRoot.addEventListener("change", function (e) {
+      var input = e.target;
+      if (!input || input.tagName !== "INPUT" || input.type !== "checkbox") return;
+      if (!input.matches || !input.matches(FIELD_SELECTORS.campus) || !isGlenCampusOption(input)) return;
+      syncGlenCampuses(input);
+    });
+  }
+  // A saved campus list (a draft, a known family) names whichever Glen it
+  // holds; on this form all three ride on the one card.
+  function glenPrefillValues(values) {
+    var primary = glenPrimaryCampusOption();
+    if (!primary || !values || !values.length) return values;
+    var out = [];
+    values.forEach(function (value) {
+      var parsed = parseStructuredCampusValue(value);
+      var mapped = parsed && GLEN_CAMPUS_CODES.indexOf(parsed.code) !== -1 ? primary.value : value;
+      if (out.indexOf(mapped) === -1) out.push(mapped);
+    });
+    return out;
+  }
   function enhanceCampusLabels() {
     var options = qAll(FIELD_SELECTORS.campus);
+    var glenPrimary = glenPrimaryCampusOption();
     options.forEach(function (opt) {
       var wrap = optionWrapper(opt);
+      // Rides on the Glen Waverley card; never a card of its own.
+      if (wrap && glenPrimary && opt !== glenPrimary && isGlenCampusOption(opt)) wrap.style.display = "none";
       if (!wrap || wrap.querySelector(".contour-campus-address")) return;
       var span = wrap.querySelector("input + span");
       if (!span) return;
@@ -750,12 +837,18 @@ var ContourForm1Logic = function () {
       mainSpan.className = "contour-campus-name";
       // Inline because the live page only takes CSS shipped from this script.
       mainSpan.style.fontWeight = "700";
-      mainSpan.textContent = mainText;
+      mainSpan.textContent = opt === glenPrimary ? GLEN_CAMPUS_NAME : mainText;
       span.appendChild(mainSpan);
       span.appendChild(document.createTextNode(" "));
       var addressSpan = document.createElement("span");
       addressSpan.className = "contour-campus-address";
-      addressSpan.textContent = addressText;
+      addressSpan.textContent = opt === glenPrimary ? GLEN_CAMPUS_ADDRESS : addressText;
+      if (opt === glenPrimary) {
+        addressSpan.setAttribute(GLEN_OWN_ADDRESS_ATTR, addressText);
+        // Three streets run long on a phone: balance the two lines rather
+        // than leave "Road" alone on the second.
+        addressSpan.style.textWrap = "balance";
+      }
       span.appendChild(addressSpan);
     });
   }
@@ -932,7 +1025,14 @@ var ContourForm1Logic = function () {
     // "Level 1/75-77 Railway Parade or Level 1/6-10 Kingsway" — two premises
     // share one campus; each address gets its own tab in the popover. A
     // pending address is not a premises, so it contributes none.
-    var addresses = pending ? [] : addressText.split(/\s+or\s+/i).map(function (part) {
+    // The Glen Waverley card's map shows each Glen premises once, from each
+    // Glen option's own label (one label may name two: "... or ...").
+    var glenAddresses = inputEl === glenPrimaryCampusOption() ? glenCampusOptions().map(campusOwnAddress).join(" or ") : null;
+    var addresses = glenAddresses !== null ? glenAddresses.split(/\s+or\s+/i).map(function (part) {
+      return part.trim();
+    }).filter(function (part, i, all) {
+      return part && all.indexOf(part) === i;
+    }) : pending ? [] : addressText.split(/\s+or\s+/i).map(function (part) {
       return part.trim();
     }).filter(Boolean);
     if (!pending && !addresses.length) return null;
@@ -3821,11 +3921,19 @@ var ContourForm1Logic = function () {
     options.forEach(function (opt) {
       var classification = getCampusClassification(opt);
       var shouldShow = fieldShouldShow && subjectMatchesLocation(classification.state, location);
+      if (isAbsorbedGlenCampusOption(opt)) {
+        // Never a card of its own: it is ticked with the Glen Waverley card.
+        var absorbedWrap = optionWrapper(opt);
+        if (absorbedWrap) absorbedWrap.style.display = "none";
+        if (!shouldShow) setCheckboxChecked(opt, false);
+        return;
+      }
       shouldShow ? showOption(opt) : hideOption(opt);
       var forcedOnline = medPrepWithOthers && classification.code === "ONLINE" && shouldShow;
       if (forcedOnline && !opt.checked) setCheckboxChecked(opt, true);
       setCampusOptionLocked(opt, forcedOnline);
     });
+    syncGlenCampuses(null);
     renderCampusOnlineNote(fieldShouldShow && medPrepWithOthers);
     toggleFieldWrapper(q(FIELD_SELECTORS.campus), fieldShouldShow);
     toggleCampusDivider(fieldShouldShow);
@@ -4036,7 +4144,7 @@ var ContourForm1Logic = function () {
     var excludeCodes = prefetchedTrialSubjectCodes.concat(prefetchedEnrolledSubjectCodes);
     pendingPrefill.programs = attemptCheckboxValues(FIELD_SELECTORS.programInterest, pendingPrefill.programs);
     pendingPrefill.subjects = attemptCheckboxValues(FIELD_SELECTORS.interestedSubjects, pendingPrefill.subjects, excludeCodes);
-    pendingPrefill.campuses = attemptCheckboxValues(FIELD_SELECTORS.campus, pendingPrefill.campuses);
+    pendingPrefill.campuses = attemptCheckboxValues(FIELD_SELECTORS.campus, glenPrefillValues(pendingPrefill.campuses));
     if (pendingPrefill.programs.length === 0 && pendingPrefill.subjects.length === 0 && pendingPrefill.campuses.length === 0) {
       pendingPrefill = null;
     }
@@ -8954,7 +9062,7 @@ var ContourForm1Logic = function () {
     }
     if (def.id === "campus") {
       return qAll(FIELD_SELECTORS.campus).filter(function (opt) {
-        return opt.checked;
+        return opt.checked && !isAbsorbedGlenCampusOption(opt);
       }).map(function (opt) {
         // Suburb only — enhanceCampusLabels split the label into name and
         // address spans, so the address never carries brackets to strip on.
@@ -12393,6 +12501,7 @@ var ContourForm1Logic = function () {
     enhanceRegionField();
     watchRegionField();
     enhanceCampusLabels();
+    bindGlenCampusSync();
     initCampusMapHover();
     renderIntakeYearGate();
     ensureIntakeYearNote();
