@@ -6722,6 +6722,21 @@ var ContourForm1Logic = function () {
   var WC_TESTPREP_PAGE = WC_EMBED_ORIGIN + "/book/testprep-welcome-consultation";
   var WC_TESTPREP_OPENS = Date.parse("2026-10-31T13:00:00Z");
   var WC_EMBED_AUDIENCES = ["UCAT", WC_TESTPREP_AUDIENCE];
+  // Only Year 7 and Year 8 Selective Entry students book a Welcome Consultation. Year 5 Scholarship and Year 6 Selective Entry
+  // open later, so those families keep the open-soon note, as UK families do.
+  var WC_TESTPREP_YEARS = ["Year 7", "Year 8"];
+  function isTestprepConsultYear() {
+    var checkedSubjects = qAll(FIELD_SELECTORS.interestedSubjects + ":checked");
+    for (var i = 0; i < checkedSubjects.length; i++) {
+      if (isHeldSubjectOption(checkedSubjects[i])) continue;
+      var classification = getClassification(checkedSubjects[i]);
+      if (classification.program !== "TestPrep" || !classification.yearsShown) continue;
+      for (var j = 0; j < classification.yearsShown.length; j++) {
+        if (WC_TESTPREP_YEARS.indexOf(classification.yearsShown[j]) !== -1) return true;
+      }
+    }
+    return false;
+  }
   var WC_BOOKED_MESSAGE = "contour-wc-booked";
   var WC_BOOKING_STORAGE_KEY = "contour_form1_wc_bookings";
   var WC_BOOKINGS_KEPT = 5;
@@ -6800,7 +6815,7 @@ var ContourForm1Logic = function () {
   function wcBookableAudiences(audiences) {
     if (!WC_BOOKINGS_OPEN || getValue(FIELD_SELECTORS.location) === UK_TOKEN) return [];
     return audiences.filter(function (audience) {
-      if (audience === WC_TESTPREP_AUDIENCE && Date.now() < WC_TESTPREP_OPENS) return false;
+      if (audience === WC_TESTPREP_AUDIENCE && (Date.now() < WC_TESTPREP_OPENS || !isTestprepConsultYear())) return false;
       return WC_EMBED_AUDIENCES.indexOf(audience) !== -1;
     });
   }
