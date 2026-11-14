@@ -58,6 +58,16 @@ def build():
             "type": row["type"].strip(),
         })
 
+    # "names" (12 Nov 2026): a school's own spelling where the CSV's differs, by acara_id, with the CSV's name kept in "aka" so the
+    # form's search still finds it by the name families type. A CSV refresh cannot undo it.
+    names = overrides.get("names", {})
+    for e in entries:
+        fix = names.get(e["acara_id"])
+        if fix:
+            e["name"] = fix["name"]
+            if fix.get("aka"):
+                e["aka"] = list(fix["aka"])
+
     known = {e["acara_id"] for e in entries}
     for extra in overrides["extra"]:
         if extra["acara_id"] not in known:

@@ -20,5 +20,14 @@
       "suburb": "Geelong",
       "type": "Secondary"
     }
-  ]
+  ],
+  "_names_comment": "Rae Ng, #marketing-tech 12 Nov 2026: the school's own name. 'aka' keeps the list's old name searchable.",
+  "names": {
+    "45437": {
+      "name": "The Mac.Robertson Girls' High School",
+      "aka": [
+        "MacRobertson Girls High School"
+      ]
+    }
+  }
 }

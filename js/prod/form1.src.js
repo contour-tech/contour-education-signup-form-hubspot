@@ -6597,7 +6597,12 @@ var ContourForm1Logic = function () {
     }
     function matchesQueryAndLocation(school, query, location) {
       if (!inScope(school) || !locationMatches(school, location)) return false;
-      return normalize(school.name).indexOf(query) !== -1;
+      if (normalize(school.name).indexOf(query) !== -1) return true;
+      // a school's other names (schools-v2.json "aka", from data/school-code-overrides.json "names"): a school spelled its own
+      // way is still found by the name families type (The Mac.Robertson Girls' High School, Rae Ng 12 Nov 2026)
+      return (school.aka || []).some(function (a) {
+        return normalize(a).indexOf(query) !== -1;
+      });
     }
     function tokenize(s) {
       return normalize(s).split(/[^a-z0-9]+/).filter(function (w) {
@@ -6636,7 +6641,7 @@ var ContourForm1Logic = function () {
     }
     function fuzzyMatchesQueryAndLocation(school, queryWords, location) {
       if (!inScope(school) || !locationMatches(school, location)) return false;
-      var nameWords = tokenize(school.name);
+      var nameWords = tokenize([school.name].concat(school.aka || []).join(" "));
       return queryWords.every(function (qw) {
         return nameWords.some(function (nw) {
           return fuzzyWordMatches(qw, nw);
