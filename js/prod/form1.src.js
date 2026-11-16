@@ -224,9 +224,15 @@ var ContourForm1Logic = function () {
     // Intake years the form no longer takes sign-ups for, comma separated.
     // Their tile is greyed and unpickable, the dropdown option disabled, and
     // a pre-filled, restored or linked closed year is moved to the coming
-    // intake with Year Level cleared. See CLOSED INTAKE YEARS. 2026 closed on
-    // 17 Nov 2026 for every program and location, staff mode too (Josh).
-    closedIntakeYears: "2026",
+    // intake with Year Level cleared. See CLOSED INTAKE YEARS. Empty since
+    // 17 Nov 2026: 2026 reopened for interview prep only (next setting).
+    closedIntakeYears: "",
+    // Intake years open for Medical & Dental Interviews (MD-INT) only, comma
+    // separated. In such a year every other program and subject is greyed
+    // and unpickable, its card saying "<year> intake closed". 2026 since
+    // 17 Nov 2026, public and staff mode (Josh: "ONLY REOPEN MEDPREP
+    // INTERVIEWS"). "" lifts it.
+    interviewOnlyIntakeYears: "2026",
     // How the intake-year figures fill under the pointer and on the pick.
     //   "fade"        — the fill fades in, slowly (default; Amrit, 8 Sep 2026)
     //   "wipe-radial" — a circle grows out from the centre until it covers
@@ -458,7 +464,21 @@ var ContourForm1Logic = function () {
   // are treated as AY27 signups downstream — no form change needed for them.
   var UCAT_BLOCKED_INTAKE = "2026";
   var UCAT_BLOCKED_CODES = ["UCAT-ANZ-MAST", "UCAT-UK-MAST"];
+  // INTERVIEW-ONLY INTAKE YEARS (Josh, 17 Nov 2026): in a year listed in the
+  // interviewOnlyIntakeYears setting only MD-INT can be picked. Checked here
+  // because every eligibility path (program cards, subject list, the
+  // add-more flag) already asks this function.
+  var INTERVIEW_ONLY_CODE = "MD-INT";
+  var ignoreInterviewOnly = false;
+  function intakeYearInterviewOnly(value) {
+    var year = String(value == null ? "" : value).trim();
+    if (!year) return false;
+    return String(settingValue("interviewOnlyIntakeYears") || "").split(",").map(function (s) {
+      return s.trim();
+    }).indexOf(year) !== -1;
+  }
   function ucatBlockedForIntake(classification, selectedIntakeYear) {
+    if (!ignoreInterviewOnly && intakeYearInterviewOnly(selectedIntakeYear) && classification.code !== INTERVIEW_ONLY_CODE) return true;
     if (selectedIntakeYear !== UCAT_BLOCKED_INTAKE) return false;
     return !!classification.code && UCAT_BLOCKED_CODES.indexOf(classification.code) !== -1;
   }
@@ -1618,7 +1638,8 @@ var ContourForm1Logic = function () {
       ".hs-form .contour-program-card:hover .contour-program-card__logo-tint, .hs-form .contour-program-card--selected .contour-program-card__logo-tint { clip-path: inset(0 var(--contour-logo-tint-right, 0%) 0 0); }" +
       // Selected: the whole logo (suffix included) flips to white over the
       // navy, covering the charcoal original entirely.
-      ".hs-form .contour-program-card--selected .contour-program-card__logo-tint, .hs-form .contour-program-card--selected:hover .contour-program-card__logo-tint { filter: brightness(0) invert(1); clip-path: inset(0 0 0 0); }";
+      ".hs-form .contour-program-card--selected .contour-program-card__logo-tint, .hs-form .contour-program-card--selected:hover .contour-program-card__logo-tint { filter: brightness(0) invert(1); clip-path: inset(0 0 0 0); }" +
+      ".hs-form .contour-program-card__closed-note { display: block; margin-top: 6px; font-size: 13px; font-weight: 600; color: #0C3166; }";
     document.head.appendChild(style);
   }
   function injectSubjectTileStyles() {
@@ -2724,6 +2745,29 @@ var ContourForm1Logic = function () {
   var updateProgramInterestRequiredMark = createRequiredMarkUpdater("programInterest", "contour-program-interest-required");
   var updateCampusRequiredMark = createRequiredMarkUpdater("campus", "contour-campus-required");
   var updateSubjectsRequiredMark = createRequiredMarkUpdater("interestedSubjects", "contour-subjects-required");
+  // A program the interview-only year shuts (it would be offered otherwise)
+  // says so on its greyed card.
+  function programEligibleIgnoringInterviewOnly(programValue, location, yearLevel, intakeYear) {
+    ignoreInterviewOnly = true;
+    try {
+      return isProgramEligibleFromSubjects(programValue, location, yearLevel, intakeYear);
+    } finally {
+      ignoreInterviewOnly = false;
+    }
+  }
+  function syncIntakeClosedNote(card, text) {
+    var note = card.querySelector(".contour-program-card__closed-note");
+    if (!text) {
+      if (note && note.parentNode) note.parentNode.removeChild(note);
+      return;
+    }
+    if (!note) {
+      note = document.createElement("span");
+      note.className = "contour-program-card__closed-note";
+      (card.querySelector(".contour-program-card__body") || card).appendChild(note);
+    }
+    if (note.textContent !== text) note.textContent = text;
+  }
   function evaluateProgramInterestOptions() {
     var location = getValue(FIELD_SELECTORS.location);
     var yearLevel = getValue(FIELD_SELECTORS.yearLevel);
@@ -2739,7 +2783,10 @@ var ContourForm1Logic = function () {
         eligibleOptions.push(opt);
       }
       var card = opt.closest(".contour-program-card");
-      if (card) card.classList.toggle("contour-program-card--disabled", !eligible);
+      if (card) {
+        card.classList.toggle("contour-program-card--disabled", !eligible);
+        syncIntakeClosedNote(card, !eligible && intakeYearInterviewOnly(intakeYear) && programEligibleIgnoringInterviewOnly(programValue, location, yearLevel, intakeYear) ? intakeYear + " intake closed" : "");
+      }
       if (!eligible) setCheckboxChecked(opt, false);
       opt.disabled = !eligible;
     });
