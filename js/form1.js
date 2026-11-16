@@ -281,6 +281,12 @@ var ContourForm1Logic = function () {
   // Settings with a value rather than a switch, overridden the same way:
   //   <script>window.ContourForm1Config = { animationStyle: "wipe-radial" };</script>
   var SETTING_DEFAULTS = {
+    // Intake years the form no longer takes sign-ups for, comma separated.
+    // Their tile is greyed and unpickable, the dropdown option disabled, and
+    // a pre-filled, restored or linked closed year is moved to the coming
+    // intake with Year Level cleared. See CLOSED INTAKE YEARS. 2026 closed on
+    // 17 Nov 2026 for every program and location, staff mode too (Josh).
+    closedIntakeYears: "2026",
     // How the intake-year figures fill under the pointer and on the pick.
     //   "fade"        — the fill fades in, slowly (default; Amrit, 8 Sep 2026)
     //   "wipe-radial" — a circle grows out from the centre until it covers
@@ -5229,6 +5235,7 @@ var ContourForm1Logic = function () {
     });
   }
   function applyPrefill(contact, guardian, associatedStudent, lockPrefilled) {
+    reopenClosedIntakeOnRecord(contact);
     var contactType = contact.contact_type;
     // "Parent" records use the same flow as "Guardian" — the form radio only
     // knows Student/Guardian.
@@ -5566,7 +5573,7 @@ var ContourForm1Logic = function () {
     if (linkPresets) return linkPresets;
     var presets = {};
     var year = presetOptionValue(q(FIELD_SELECTORS.intakeYear), getUrlParam(PRESET_YEAR_PARAM, true));
-    if (year) presets.intakeYear = year;
+    if (year && !intakeYearClosed(year)) presets.intakeYear = year;
     var asked = getUrlParam(PRESET_LOCATION_PARAM, true).trim().toLowerCase();
     var allowed = PRESET_LOCATIONS.filter(function (value) {
       return value.toLowerCase() === asked;
@@ -14607,6 +14614,68 @@ var ContourForm1Logic = function () {
   // intake. Matched against the select's options before it is used, so a
   // form that has moved on to 2028 simply gets no default.
   var PREFILL_DEFAULT_INTAKE_YEAR = "2027";
+  /* CLOSED INTAKE YEARS (Josh, 17 Nov 2026: "DISABLE ALL 2026 SIGNUPS ON THE
+     SIGNUP FORM"). A closed year stays on the page as a greyed tile with a
+     short note, so the visitor sees why, but it cannot be picked: the tile
+     is a disabled button and the hidden dropdown's option is disabled. A
+     closed year that arrives anyway (a pre-fill record, a restored draft, a
+     browser restore, a preset_year link) is replaced by the coming intake,
+     and Year Level, which meant "year level in <closed year>", is cleared
+     for the visitor to answer again. The list is the closedIntakeYears
+     setting. */
+  function closedIntakeYears() {
+    return String(settingValue("closedIntakeYears") || "").split(",").map(function (s) {
+      return s.trim();
+    }).filter(Boolean);
+  }
+  function intakeYearClosed(value) {
+    var year = String(value == null ? "" : value).trim();
+    return !!year && closedIntakeYears().indexOf(year) !== -1;
+  }
+  function openIntakeYearFallback() {
+    var select = q(FIELD_SELECTORS.intakeYear);
+    if (!select || intakeYearClosed(PREFILL_DEFAULT_INTAKE_YEAR)) return "";
+    return intakeYearOptions(select).some(function (option) {
+      return option.value === PREFILL_DEFAULT_INTAKE_YEAR;
+    }) ? PREFILL_DEFAULT_INTAKE_YEAR : "";
+  }
+  // A record or draft about to be applied: its closed year and the year
+  // level that went with it are not carried onto the page.
+  function reopenClosedIntakeOnRecord(contact) {
+    if (!contact || !intakeYearClosed(contact.which_year_are_you_interested_in_tutoring_for_)) return;
+    contact.which_year_are_you_interested_in_tutoring_for_ = openIntakeYearFallback();
+    contact.year_level = "";
+  }
+  var enforcingClosedIntake = false;
+  function clearSelectValue(el) {
+    if (!el || !el.value) return;
+    el.value = "";
+    asProgrammaticEdit(function () {
+      el.dispatchEvent(new Event("input", {
+        bubbles: true
+      }));
+      el.dispatchEvent(new Event("change", {
+        bubbles: true
+      }));
+    });
+  }
+  function enforceClosedIntakeYears() {
+    var select = q(FIELD_SELECTORS.intakeYear);
+    if (!select || enforcingClosedIntake) return;
+    Array.prototype.forEach.call(select.options, function (option) {
+      if (intakeYearClosed(option.value) && !option.disabled) option.disabled = true;
+    });
+    if (!intakeYearClosed(select.value)) return;
+    enforcingClosedIntake = true;
+    try {
+      var fallback = openIntakeYearFallback();
+      if (fallback) setSelectOrTextValue(FIELD_SELECTORS.intakeYear, fallback);
+      else clearSelectValue(select);
+      clearSelectValue(q(FIELD_SELECTORS.yearLevel));
+    } finally {
+      enforcingClosedIntake = false;
+    }
+  }
   var intakeGateAnswered = null;
   function intakeYearGateEnabled() {
     return featureEnabled("intakeYearGate");
@@ -14657,6 +14726,9 @@ var ContourForm1Logic = function () {
       tile + " { position: relative; flex: 1 1 0%; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; box-sizing: border-box; margin: 0; padding: 26px 16px 22px; border: 1px solid rgba(12, 49, 102, 0.14); border-radius: 1rem; background: #FFF9F1; color: #0C3166; font: inherit; text-align: center; cursor: pointer; appearance: none; -webkit-appearance: none; transition: background-color .3s ease, border-color .2s ease, color .3s ease, transform .15s ease, box-shadow .2s ease; }" +
       tile + ":hover { border-color: #0C3166; box-shadow: 0 0 0 1px #0C3166; transform: translateY(-1px); }" +
       tile + ":active { transform: scale(0.985); }" +
+      // A closed intake: greyed like an ineligible program card, and deaf to
+      // the pointer so the hover fill never suggests it can be picked.
+      tile + "--closed { opacity: 0.5; filter: grayscale(1); pointer-events: none; box-shadow: none; transform: none; }" +
       tile + ":focus { outline: none; }" +
       tile + ":focus-visible { border-color: #0540F2; box-shadow: 0 0 0 3px rgba(5, 64, 242, 0.18); }" +
       // Picked in the program cards' #005FCC rather than the navy: the
@@ -14911,7 +14983,13 @@ var ContourForm1Logic = function () {
       year.className = "contour-sr-only";
       year.textContent = option.label;
       tile.appendChild(year);
-      var hint = intakeYearHint(option.value);
+      var closed = intakeYearClosed(option.value);
+      if (closed) {
+        tile.disabled = true;
+        tile.setAttribute("aria-disabled", "true");
+        tile.classList.add(INTAKE_GATE_CLASS + "__tile--closed");
+      }
+      var hint = closed ? option.label + " intake closed" : intakeYearHint(option.value);
       if (hint) {
         var hintEl = document.createElement("span");
         hintEl.className = INTAKE_GATE_CLASS + "__hint";
@@ -14935,7 +15013,9 @@ var ContourForm1Logic = function () {
     tiles.addEventListener("keydown", function (e) {
       var keys = { ArrowLeft: -1, ArrowUp: -1, ArrowRight: 1, ArrowDown: 1 };
       if (!(e.key in keys)) return;
-      var all = Array.prototype.slice.call(tiles.querySelectorAll("." + INTAKE_GATE_CLASS + "__tile"));
+      var all = Array.prototype.slice.call(tiles.querySelectorAll("." + INTAKE_GATE_CLASS + "__tile")).filter(function (tile) {
+        return !tile.disabled;
+      });
       var at = all.indexOf(document.activeElement);
       if (at === -1) return;
       e.preventDefault();
@@ -15048,7 +15128,7 @@ var ContourForm1Logic = function () {
   }
   function chooseIntakeYear(value) {
     var select = q(FIELD_SELECTORS.intakeYear);
-    if (!select || select.value === value) return;
+    if (!select || select.value === value || intakeYearClosed(value)) return;
     // Programmatic on purpose: the setter's change event is what runs the
     // evaluators, and the draft and step logic are told about the visitor's
     // act directly here rather than through an event they would discount.
@@ -15070,6 +15150,7 @@ var ContourForm1Logic = function () {
   // (see enforceContactTypeLayout).
   function syncIntakeYearGate() {
     if (!formRoot) return;
+    enforceClosedIntakeYears();
     enforceLinkPresets();
     var gate = formRoot.querySelector("." + INTAKE_GATE_CLASS);
     if (!gate) return;
@@ -15087,7 +15168,7 @@ var ContourForm1Logic = function () {
       if (tile.getAttribute("aria-checked") !== want) tile.setAttribute("aria-checked", want);
       // Roving tabindex: the chosen tile (or the first, before a choice) is
       // the group's one tab stop.
-      var stop = checked || (!value && tile === gate.querySelector("." + INTAKE_GATE_CLASS + "__tile"));
+      var stop = checked || (!value && tile === gate.querySelector("." + INTAKE_GATE_CLASS + "__tile:not([disabled])"));
       var tab = stop ? "0" : "-1";
       if (tile.getAttribute("tabindex") !== tab) tile.setAttribute("tabindex", tab);
     });
@@ -15221,6 +15302,7 @@ var ContourForm1Logic = function () {
     bindGlenCampusSync();
     initCampusMapHover();
     renderIntakeYearGate();
+    enforceClosedIntakeYears();
     ensureIntakeYearNote();
     ensureDividerBefore(q(FIELD_SELECTORS.programInterest), "contour-divider-program-interest");
     // Sits between the "Your Subjects" summary box and Preferred Campuses —
